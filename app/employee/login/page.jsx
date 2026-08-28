@@ -20,8 +20,10 @@ export default function EmployeeLoginPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Login failed');
+      const raw = await res.text();
+      let data = {};
+      try { data = raw ? JSON.parse(raw) : {}; } catch { /* non-JSON response, fall through to generic error */ }
+      if (!res.ok) throw new Error(data.error || `Login failed (${res.status})`);
       router.push('/employee');
       router.refresh();
     } catch (e) {

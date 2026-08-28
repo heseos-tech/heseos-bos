@@ -20,8 +20,10 @@ export default function PartnerLoginPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ phone, password }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Login failed');
+      const raw = await res.text();
+      let data = {};
+      try { data = raw ? JSON.parse(raw) : {}; } catch { /* non-JSON response, fall through to generic error */ }
+      if (!res.ok) throw new Error(data.error || `Login failed (${res.status})`);
       router.push('/partner');
       router.refresh();
     } catch (e) {
