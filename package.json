@@ -1,0 +1,22 @@
+{
+  "name": "heseos-bos",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@neondatabase/serverless": "^1.1.0",
+    "next": "15.5.18",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0"
+  },
+  "devDependencies": {
+    "eslint": "^9.28.0",
+    "eslint-config-next": "15.5.18",
+    "postcss": "^8.5.15"
+  }
+}

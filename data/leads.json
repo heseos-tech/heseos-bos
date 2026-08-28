@@ -1,0 +1,89 @@
+[
+  {
+    "id": "L2566527812",
+    "createdAt": "2026-08-28T14:01:05.278Z",
+    "date": "2026-08-28",
+    "status": "new",
+    "name": "Baljeet Singh",
+    "phone": "07696585944",
+    "email": "baljeetsinghkhiva@gmail.com",
+    "city": "Pune",
+    "postcode": "411001",
+    "productInterest": [
+      "touch_panel_switches"
+    ],
+    "propertyType": "1bhk",
+    "budget": "60k_plus",
+    "timeline": "within_30d",
+    "persona": "builder",
+    "source": "partner_app",
+    "partnerId": "PTR001",
+    "contactStage": null,
+    "demoOutcome": null,
+    "assignedTo": null,
+    "salesEngineerId": null,
+    "history": [
+      {
+        "at": "2026-08-28T14:01:05.319Z",
+        "event": "Lead Submitted",
+        "by": "partner:PTR001",
+        "note": "Partner App"
+      }
+    ]
+  },
+  {
+    "id": "L2234972983",
+    "createdAt": "2026-08-28T13:05:49.729Z",
+    "date": "2026-08-28",
+    "status": "new",
+    "name": "Baljeet Singh",
+    "phone": "07696585944",
+    "email": "baljeetsinghkhiva@gmail.com",
+    "city": "Pune",
+    "postcode": "411001",
+    "productInterest": [
+      "touch_panel_switches"
+    ],
+    "propertyType": "3bhk_plus",
+    "budget": "50k_70k",
+    "timeline": "within_30d",
+    "persona": "builder",
+    "source": "partner_app",
+    "partnerId": "PTR001",
+    "contactStage": "qualified",
+    "demoOutcome": "converted",
+    "assignedTo": "EMP001",
+    "salesEngineerId": null,
+    "history": [
+      {
+        "at": "2026-08-28T13:05:49.779Z",
+        "event": "Lead Submitted",
+        "by": "partner:PTR001",
+        "note": "Partner App"
+      },
+      {
+        "at": "2026-08-28T13:08:28.132Z",
+        "event": "Demo Scheduled — 2026-08-28 07:39",
+        "by": "Heseos Admin (admin)",
+        "note": "kharadi Pune"
+      },
+      {
+        "at": "2026-08-28T13:09:12.930Z",
+        "event": "Converted",
+        "by": "Sales Engineer Demo (sales_engineer)",
+        "note": ""
+      }
+    ],
+    "contactStageAt": "2026-08-28T13:08:28.132Z",
+    "contactStageBy": "EMP001",
+    "demoScheduledAt": "2026-08-28T13:08:28.132Z",
+    "demoScheduledBy": "EMP001",
+    "demoAddress": "kharadi Pune",
+    "demoDate": "2026-08-28",
+    "demoTime": "07:39",
+    "demoOutcomeAt": "2026-08-28T13:09:12.929Z",
+    "demoOutcomeBy": "EMP003",
+    "demoOutcomeNote": "",
+    "convertedAt": "2026-08-28T13:09:12.929Z"
+  }
+]

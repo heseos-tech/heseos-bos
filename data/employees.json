@@ -1,0 +1,29 @@
+[
+  {
+    "id": "EMP001",
+    "name": "Heseos Admin",
+    "email": "admin@heseos.com",
+    "password": "admin123",
+    "role": "admin",
+    "active": true,
+    "createdAt": "2026-08-28T00:00:00.000Z"
+  },
+  {
+    "id": "EMP002",
+    "name": "Presales Demo",
+    "email": "presales@heseos.com",
+    "password": "presales123",
+    "role": "presales",
+    "active": true,
+    "createdAt": "2026-08-28T00:00:00.000Z"
+  },
+  {
+    "id": "EMP003",
+    "name": "Sales Engineer Demo",
+    "email": "engineer@heseos.com",
+    "password": "engineer123",
+    "role": "sales_engineer",
+    "active": true,
+    "createdAt": "2026-08-28T00:00:00.000Z"
+  }
+]

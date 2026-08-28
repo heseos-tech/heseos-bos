@@ -1,0 +1,12 @@
+[
+  {
+    "id": "PTR001",
+    "name": "Demo Partner",
+    "businessName": "Heseos Demo Electronics",
+    "phone": "9876543210",
+    "password": "partner123",
+    "type": "shop",
+    "active": true,
+    "createdAt": "2026-08-28T00:00:00.000Z"
+  }
+]
