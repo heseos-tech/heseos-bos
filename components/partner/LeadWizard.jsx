@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { ScreenHeader, ProgressSteps, TextField, SelectField, TextareaField, Button } from './ui';
 import {
@@ -25,6 +25,12 @@ export default function LeadWizard() {
   const [error, setError] = useState('');
   const [leadId, setLeadId] = useState('');
   const [copied, setCopied] = useState(false);
+  const [cities, setCities] = useState([]);
+  const [citiesLoading, setCitiesLoading] = useState(true);
+
+  useEffect(() => {
+    fetch('/api/cities').then((r) => (r.ok ? r.json() : { cities: [] })).then((d) => setCities(d.cities || [])).finally(() => setCitiesLoading(false));
+  }, []);
 
   function set(field, val) {
     setForm((f) => ({ ...f, [field]: val, ...(field === 'propertyType' ? { budget: '' } : {}) }));
@@ -103,7 +109,7 @@ export default function LeadWizard() {
           <TextField label="Full Name" icon={<IconUser size={18} />} placeholder="Enter full name" value={form.name} onChange={(e) => set('name', e.target.value)} />
           <TextField label="Mobile Number" icon={<IconPhone size={18} />} placeholder="Enter 10 digit mobile number" value={form.phone} onChange={(e) => set('phone', e.target.value)} inputMode="numeric" />
           <TextField label="Alternate Number (Optional)" icon={<IconPhone size={18} />} placeholder="Enter alternate number" value={form.altPhone} onChange={(e) => set('altPhone', e.target.value)} inputMode="numeric" />
-          <TextField label="Location" icon={<IconMapPin size={18} />} placeholder="Enter city / area" value={form.city} onChange={(e) => set('city', e.target.value)} />
+          <SelectField label="City" icon={<IconMapPin size={18} />} value={form.city} onChange={(e) => set('city', e.target.value)} options={cities.map((c) => ({ v: c, l: c }))} placeholder={citiesLoading ? 'Loading cities…' : (cities.length ? 'Select city' : 'No cities configured yet')} disabled={citiesLoading || cities.length === 0} />
         </div>
       )}
 
