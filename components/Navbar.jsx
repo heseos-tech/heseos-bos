@@ -2,6 +2,17 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { IconChevronDown, IconArrowRight } from './bos/icons';
+
+// "Product", "Solutions" and "Resources" are visual-only dropdown triggers for
+// now (no menu content defined yet) — Platform and About Us are real links.
+const NAV_ITEMS = [
+  { label: 'Product', dropdown: true },
+  { label: 'Platform', href: '/' },
+  { label: 'Solutions', dropdown: true },
+  { label: 'Resources', dropdown: true },
+  { label: 'About Us', href: '/#footer' },
+];
 
 export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
@@ -14,18 +25,29 @@ export default function Navbar() {
   }, []);
 
   return (
-    <nav className={`nav${scrolled ? ' scrolled' : ''}`}>
+    <nav className={`nav bos-nav${scrolled ? ' scrolled' : ''}`}>
       <div className="nav-inner">
         <Link href="/" className="nav-logo">
-          <Image src="/brand/lockup-navy.png" alt="Heseos" width={282} height={64} priority style={{ height: 30, width: 'auto' }} />
+          <Image src="/brand/lockup-navy.png" alt="Heseos" width={282} height={64} priority style={{ height: 28, width: 'auto' }} />
         </Link>
 
-        <div className="nav-links">
-          <a href="#how-it-works" className="nav-link">How It Works</a>
-          <a href="#products" className="nav-link">Products</a>
-          <Link href="/become-a-partner" className="nav-link">Become a Partner</Link>
-          <a href="#get-started" className="nav-cta">Book a Free Demo</a>
+        <div className="bos-nav-links">
+          {NAV_ITEMS.map((item) =>
+            item.dropdown ? (
+              <span className="bos-nav-link bos-nav-link--drop" key={item.label}>
+                {item.label}
+                <IconChevronDown size={13} />
+              </span>
+            ) : (
+              <Link href={item.href} className="bos-nav-link" key={item.label}>{item.label}</Link>
+            )
+          )}
         </div>
+
+        <a href="/#get-started" className="bos-nav-cta">
+          Request Demo
+          <IconArrowRight size={14} />
+        </a>
 
         <button className="nav-hamburger" aria-label="Toggle menu" onClick={() => setMenuOpen(!menuOpen)}>
           <span style={menuOpen ? { transform: 'rotate(45deg) translate(5px, 5px)' } : {}} />
@@ -35,12 +57,17 @@ export default function Navbar() {
       </div>
 
       {menuOpen && (
-        <div style={{ background: 'rgba(248,250,251,0.98)', backdropFilter: 'blur(24px)', borderTop: '1px solid var(--border)', padding: '16px 20px 24px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-          <a href="#how-it-works" className="nav-link" onClick={() => setMenuOpen(false)} style={{ padding: '12px 8px', fontSize: '15px' }}>How It Works</a>
-          <a href="#products" className="nav-link" onClick={() => setMenuOpen(false)} style={{ padding: '12px 8px', fontSize: '15px' }}>Products</a>
-          <Link href="/become-a-partner" className="nav-link" onClick={() => setMenuOpen(false)} style={{ padding: '12px 8px', fontSize: '15px' }}>Become a Partner</Link>
-          <a href="#get-started" className="nav-cta" onClick={() => setMenuOpen(false)} style={{ marginTop: '8px', width: '100%', borderRadius: '12px', textAlign: 'center', display: 'block' }}>
-            Book a Free Demo
+        <div className="bos-nav-mobile">
+          {NAV_ITEMS.map((item) =>
+            item.dropdown ? (
+              <span className="bos-nav-mobile-link bos-nav-mobile-link--drop" key={item.label}>{item.label}</span>
+            ) : (
+              <Link href={item.href} className="bos-nav-mobile-link" key={item.label} onClick={() => setMenuOpen(false)}>{item.label}</Link>
+            )
+          )}
+          <a href="/#get-started" className="bos-nav-cta bos-nav-cta--mobile" onClick={() => setMenuOpen(false)}>
+            Request Demo
+            <IconArrowRight size={14} />
           </a>
         </div>
       )}

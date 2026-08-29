@@ -27,7 +27,7 @@ const cols = [
 
 export default function Footer() {
   return (
-    <footer>
+    <footer id="footer">
       <div className="container">
         <div className="footer-grid">
           <div>
