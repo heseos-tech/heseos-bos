@@ -3,7 +3,7 @@
 // demo scheduling, demo outcome (sales engineer), and assignment (admin). Each write appends
 // a timestamped entry to `history` so the full lifecycle is always reconstructable.
 
-import { dbGetById, dbPatch } from '@/lib/db';
+import { dbGetById, dbPatch, dbClaim } from '@/lib/db';
 import { getEmployee, getPartner } from '@/lib/auth';
 import { pushHistory, CONTACT_LABEL, DEMO_OUTCOME_LABEL, DEMO_OUTCOME_KIND } from '@/lib/leadStage';
 
@@ -33,6 +33,33 @@ export async function PATCH(request, { params }) {
 
   const body = await request.json();
   const actorLabel = `${employee.name || employee.email} (${employee.role})`;
+
+  if (body.type === 'claim') {
+    // First-come-first-served claim of an open demo: pre-sales schedules the demo (address,
+    // date, time) and leaves salesEngineerId unset; every sales engineer in that city sees it
+    // as "available", and whoever claims it first wins — everyone else stops seeing it. The
+    // actual race is resolved by dbClaim's conditional write, not by anything checked here.
+    if (employee.role !== 'sales_engineer' && employee.role !== 'admin') {
+      return Response.json({ error: 'Only sales engineers can claim a lead' }, { status: 403 });
+    }
+    if (!lead.demoScheduledAt) {
+      return Response.json({ error: 'No demo scheduled for this lead yet' }, { status: 400 });
+    }
+    if (lead.salesEngineerId) {
+      return Response.json({ error: 'This lead has already been claimed' }, { status: 409 });
+    }
+    const claimPatch = { salesEngineerId: employee.id, salesEngineerClaimedAt: new Date().toISOString() };
+    claimPatch.history = pushHistory(lead, { event: 'Claimed by sales engineer', by: actorLabel });
+    const result = await dbClaim('leads', id, 'salesEngineerId', claimPatch);
+    if (!result.ok) {
+      return Response.json(
+        { error: result.reason === 'already_claimed' ? 'Someone else already claimed this lead' : 'Lead not found' },
+        { status: result.reason === 'already_claimed' ? 409 : 404 }
+      );
+    }
+    return Response.json(result.data);
+  }
+
   let patch = {};
 
   if (body.type === 'contact') {

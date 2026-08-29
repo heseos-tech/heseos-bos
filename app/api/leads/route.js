@@ -88,8 +88,8 @@ export async function POST(request) {
       history: [],
     };
     lead.history = pushHistory(lead, { event: 'Lead Submitted', by: partnerId ? `partner:${partnerId}` : source, note: LEAD_SOURCES[source] });
-    if (assignedTo || salesEngineerId) {
-      lead.history = pushHistory(lead, { event: 'Auto-assigned by city', by: 'system', note: `${city}${assignedTo ? ' · pre-sales matched' : ''}${salesEngineerId ? ' · sales engineer matched' : ''}` });
+    if (assignedTo) {
+      lead.history = pushHistory(lead, { event: 'Auto-assigned by city', by: 'system', note: `${city} · pre-sales matched` });
     }
 
     await dbInsert('leads', id, lead);

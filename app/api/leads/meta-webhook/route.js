@@ -125,8 +125,8 @@ export async function POST(req) {
           history: [],
         };
         lead.history = pushHistory(lead, { event: 'Lead Submitted', by: 'meta_lead_form', note: 'Meta Instant Form' });
-        if (assignedTo || salesEngineerId) {
-          lead.history = pushHistory(lead, { event: 'Auto-assigned by city', by: 'system', note: mapped.city || '' });
+        if (assignedTo) {
+          lead.history = pushHistory(lead, { event: 'Auto-assigned by city', by: 'system', note: (mapped.city || '') + ' · pre-sales matched' });
         }
         await dbInsert('leads', id, lead);
       } catch (err) {
