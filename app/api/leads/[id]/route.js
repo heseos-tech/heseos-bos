@@ -107,6 +107,19 @@ export async function PATCH(request, { params }) {
     }
     patch.history = pushHistory(lead, { event: DEMO_OUTCOME_LABEL[body.demoOutcome], by: actorLabel, note: body.note || '' });
 
+  } else if (body.type === 'quotation') {
+    // Admin/sales-engineer marks a quotation as sent (and can log the amount). This is a
+    // real, timestamped overlay used for the "Quotations Sent" metric across the admin
+    // dashboard, leads table and funnel — separate from the demo-outcome/contact-stage
+    // lifecycle so it can be logged at any point after a demo is scheduled.
+    const now = new Date().toISOString();
+    patch = {
+      quotationSentAt: now,
+      quotationSentBy: employee.id,
+      quotationAmount: body.amount != null ? Number(body.amount) || null : (lead.quotationAmount || null),
+    };
+    patch.history = pushHistory(lead, { event: 'Quotation Sent', by: actorLabel, note: body.amount ? `₹${body.amount}` : '' });
+
   } else if (body.type === 'assign') {
     patch = {
       assignedTo: body.assignedTo !== undefined ? body.assignedTo : lead.assignedTo,

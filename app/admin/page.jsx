@@ -1,10 +1,7 @@
-import { redirect } from 'next/navigation';
 import { getEmployee } from '@/lib/auth';
-import AdminPanel from '@/components/AdminPanel';
+import DashboardPage from '@/components/admin/DashboardPage';
 
-export default async function AdminPage() {
+export default async function AdminDashboardRoute() {
   const employee = await getEmployee();
-  if (!employee) redirect('/employee/login');
-  if (employee.role !== 'admin') redirect('/employee');
-  return <AdminPanel employee={employee} />;
+  return <DashboardPage employee={employee} />;
 }

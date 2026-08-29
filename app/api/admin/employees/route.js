@@ -21,7 +21,7 @@ export async function POST(request) {
   const admin = await requireAdmin();
   if (!admin) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const { name, email, password, role } = await request.json();
+  const { name, email, password, role, phone, location } = await request.json();
   if (!name || !email || !password || !EMPLOYEE_ROLES.includes(role)) {
     return Response.json({ error: `name, email, password and a valid role (${EMPLOYEE_ROLES.join(', ')}) are required` }, { status: 400 });
   }
@@ -34,6 +34,8 @@ export async function POST(request) {
   const id = `EMP${Date.now().toString().slice(-8)}`;
   const record = {
     id, name, email, role, active: true,
+    phone: phone || '',
+    location: location || '',
     password: await hashPassword(password),
     createdAt: new Date().toISOString(),
     createdBy: admin.id,

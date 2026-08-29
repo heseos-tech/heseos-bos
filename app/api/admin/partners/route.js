@@ -20,7 +20,7 @@ export async function POST(request) {
   const admin = await requireAdmin();
   if (!admin) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const { name, businessName, phone, password, type } = await request.json();
+  const { name, businessName, phone, password, type, city } = await request.json();
   if (!name || !phone || !password) {
     return Response.json({ error: 'name, phone and password are required' }, { status: 400 });
   }
@@ -35,7 +35,8 @@ export async function POST(request) {
 
   const id = `PTR${Date.now().toString().slice(-8)}`;
   const record = {
-    id, name, businessName: businessName || name, phone: digits, type: type || 'shop', active: true,
+    id, name, businessName: businessName || name, phone: digits, type: type || 'electrical_shop', active: true,
+    city: city || '',
     password: await hashPassword(password),
     createdAt: new Date().toISOString(),
     createdBy: admin.id,
