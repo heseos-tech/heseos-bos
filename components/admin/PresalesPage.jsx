@@ -1,103 +1,67 @@
 'use client';
 import { useEffect, useState, useMemo, useCallback } from 'react';
-import { fmtDateTime } from '@/lib/date';
-import { LEAD_SOURCES } from '@/lib/formOptions';
-import { CONTACT_LABEL, DEMO_OUTCOME_LABEL } from '@/lib/leadStage';
-import { nextAction } from '@/lib/adminMetrics';
-import { StatCard, Pagination } from './ui';
-import { IconSearch, IconDownload, IconPresales, IconLeads, IconDemo, IconConversions } from './icons';
+import { presalesStats, performanceTag, windowDelta } from '@/lib/adminMetrics';
+import { StatCard, Pagination, PerformanceTag } from './ui';
+import { IconSearch, IconPlus, IconDownload, IconPresales, IconLeads, IconDemo, IconConversions } from './icons';
 import { AddEmployeeModal } from './SalesEngineersPage';
-import { IconPlus } from './icons';
 
 const PAGE_SIZE = 8;
 
-function callStatusOf(l) {
-  if (!l.contactStageAt) return { key: 'not_called', label: 'Not Called' };
-  if (CONTACT_LABEL[l.contactStage]) return { key: l.contactStage, label: CONTACT_LABEL[l.contactStage] };
-  return { key: 'called', label: 'Called' };
-}
-function demoStatusOf(l) {
-  if (l.demoOutcomeAt) return { key: 'completed', label: DEMO_OUTCOME_LABEL[l.demoOutcome] || 'Completed' };
-  if (l.demoScheduledAt) return { key: 'scheduled', label: `Demo on ${l.demoDate || ''}`.trim() };
-  return { key: 'none', label: 'Not Scheduled' };
-}
-function presalesBucket(l) {
-  if (l.contactStage === 'not_interested' || (l.demoOutcome && l.demoOutcome.includes('not_interested'))) return 'not_interested';
-  if (l.contactStage === 'call_not_picked') return 'no_response';
-  if (l.demoOutcomeAt) return 'demo_completed';
-  if (l.demoScheduledAt) return 'demo_scheduled';
-  if (l.contactStageAt) return 'called';
-  return 'unworked';
-}
-
-const TABS = [
-  { key: 'all', label: 'All Leads' },
-  { key: 'called', label: 'Called' },
-  { key: 'demo_scheduled', label: 'Demo Scheduled' },
-  { key: 'demo_completed', label: 'Demo Completed' },
-  { key: 'no_response', label: 'No Response' },
-  { key: 'not_interested', label: 'Not Interested' },
-];
-
 export default function PresalesPage() {
-  const [leads, setLeads] = useState([]);
   const [employees, setEmployees] = useState([]);
+  const [leads, setLeads] = useState([]);
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState('');
-  const [execId, setExecId] = useState('all');
-  const [tab, setTab] = useState('all');
+  const [status, setStatus] = useState('all');
   const [page, setPage] = useState(1);
   const [modal, setModal] = useState(null);
   const [notice, setNotice] = useState('');
 
   const load = useCallback(async () => {
-    const [l, e] = await Promise.all([
-      fetch('/api/leads').then((r) => (r.ok ? r.json() : [])),
+    const [e, l] = await Promise.all([
       fetch('/api/admin/employees').then((r) => (r.ok ? r.json() : [])),
+      fetch('/api/leads').then((r) => (r.ok ? r.json() : [])),
     ]);
-    setLeads(l.filter((x) => x.assignedTo)); setEmployees(e.filter((x) => x.role === 'presales')); setLoading(false);
+    setEmployees(e.filter((x) => x.role === 'presales')); setLeads(l); setLoading(false);
   }, []);
   useEffect(() => { load(); }, [load]);
 
   function flash(msg) { setNotice(msg); setTimeout(() => setNotice(''), 3000); }
-  const execName = (id) => employees.find((e) => e.id === id)?.name || 'Unassigned';
+  async function toggleActive(e) {
+    await fetch(`/api/admin/employees/${e.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ active: !(e.active !== false) }) });
+    load();
+  }
 
-  const counts = useMemo(() => {
-    const c = { all: leads.length };
-    for (const t of TABS) if (t.key !== 'all') c[t.key] = 0;
-    for (const l of leads) c[presalesBucket(l)] = (c[presalesBucket(l)] || 0) + 1;
-    return c;
-  }, [leads]);
+  const rows = useMemo(() => employees.map((e) => ({ ...e, stats: presalesStats(e, leads) })), [employees, leads]);
+  const dNew = useMemo(() => windowDelta(employees, 'createdAt'), [employees]);
+  const activeCount = employees.filter((e) => e.active !== false).length;
+  const callsMade = rows.reduce((s, r) => s + r.stats.callsMade, 0);
+  const demosScheduled = rows.reduce((s, r) => s + r.stats.demosScheduled, 0);
+  const conversions = rows.reduce((s, r) => s + r.stats.conversions, 0);
 
-  const callsMade = leads.filter((l) => l.contactStageAt).length;
-  const demosScheduled = leads.filter((l) => l.demoScheduledAt).length;
-  const demosCompleted = leads.filter((l) => l.demoOutcomeAt).length;
-  const converted = leads.filter((l) => l.demoOutcome === 'converted').length;
-  const conversionFromDemo = demosScheduled ? Math.round((converted / demosScheduled) * 1000) / 10 : 0;
-
-  const filtered = useMemo(() => leads.filter((l) => {
-    if (tab !== 'all' && presalesBucket(l) !== tab) return false;
-    if (execId !== 'all' && l.assignedTo !== execId) return false;
-    if (q.trim() && !(`${l.name} ${l.phone}`.toLowerCase().includes(q.trim().toLowerCase()))) return false;
+  const filtered = useMemo(() => rows.filter((e) => {
+    if (status === 'active' && e.active === false) return false;
+    if (status === 'inactive' && e.active !== false) return false;
+    if (q.trim() && !(`${e.name} ${e.email} ${e.location || ''}`.toLowerCase().includes(q.trim().toLowerCase()))) return false;
     return true;
-  }), [leads, tab, execId, q]);
+  }), [rows, status, q]);
 
   const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const pageRows = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   function exportCsv() {
-    const cols = ['name', 'phone', 'source', 'presalesExec', 'callStatus', 'demoStatus', 'nextAction'];
-    const csv = [cols.join(','), ...filtered.map((l) => [l.name, l.phone, LEAD_SOURCES[l.source] || l.source, execName(l.assignedTo), callStatusOf(l).label, demoStatusOf(l).label, nextAction(l).label].map((v) => `"${String(v ?? '')}"`).join(','))].join('\n');
+    const cols = ['name', 'email', 'location', 'assigned', 'callsMade', 'demosScheduled', 'demosCompleted', 'conversions', 'conversionRate'];
+    const csv = [cols.join(','), ...filtered.map((e) => [e.name, e.email, e.location || '', e.stats.assigned, e.stats.callsMade, e.stats.demosScheduled, e.stats.demosCompleted, e.stats.conversions, e.stats.conversionRate].map((v) => `"${String(v ?? '')}"`).join(','))].join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a'); a.href = url; a.download = 'heseos-presales-leads.csv'; a.click();
+    const a = document.createElement('a'); a.href = url; a.download = 'heseos-presales.csv'; a.click();
     URL.revokeObjectURL(url);
   }
 
   return (
     <>
       <div className="adm-page-head">
-        <div><h1 className="adm-h1">Pre-sales</h1><p className="adm-page-sub">Pre-sales team calls leads and schedules demos</p></div>
+        <div><h1 className="adm-h1">Pre-sales</h1><p className="adm-page-sub">Manage your pre-sales team and track their performance</p></div>
         <div className="adm-page-head-actions">
           <button className="adm-btn-outline" onClick={exportCsv}><IconDownload size={15} /> Export</button>
           <button className="adm-btn-primary" onClick={() => setModal({ type: 'add' })}><IconPlus size={15} /> Add Pre-sales</button>
@@ -107,47 +71,39 @@ export default function PresalesPage() {
       {notice && <div className="adm-notice">{notice}</div>}
 
       <div className="adm-stat-row">
-        <StatCard label="Total Leads" value={leads.length} Icon={IconLeads} tone="orange" />
+        <StatCard label="Total Pre-sales" value={employees.length} delta={dNew.pct} Icon={IconPresales} tone="orange" />
+        <StatCard label="Active" value={activeCount} Icon={IconPresales} tone="green" />
         <StatCard label="Calls Made" value={callsMade} Icon={IconPresales} tone="blue" />
         <StatCard label="Demos Scheduled" value={demosScheduled} Icon={IconDemo} tone="purple" />
-        <StatCard label="Demos Completed" value={demosCompleted} Icon={IconConversions} tone="teal" />
-        <StatCard label="Conversion from Demo" value={`${conversionFromDemo}%`} Icon={IconConversions} tone="green" />
+        <StatCard label="Conversions" value={conversions} Icon={IconConversions} tone="teal" />
       </div>
 
       <div className="adm-card">
         <div className="adm-toolbar">
-          <div className="adm-search adm-search--inline"><IconSearch size={16} /><input placeholder="Search by lead name or phone number…" value={q} onChange={(e) => { setQ(e.target.value); setPage(1); }} /></div>
-          <select value={execId} onChange={(e) => { setExecId(e.target.value); setPage(1); }}>
-            <option value="all">All Pre-sales</option>
-            {employees.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
+          <div className="adm-search adm-search--inline"><IconSearch size={16} /><input placeholder="Search by name, email or location…" value={q} onChange={(e) => { setQ(e.target.value); setPage(1); }} /></div>
+          <select value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }}>
+            <option value="all">All Status</option><option value="active">Active</option><option value="inactive">Inactive</option>
           </select>
-        </div>
-
-        <div className="adm-tabs">
-          {TABS.map((t) => (
-            <button key={t.key} className={`adm-tab${tab === t.key ? ' active' : ''}`} onClick={() => { setTab(t.key); setPage(1); }}>{t.label} <span className="adm-tab-count">{counts[t.key] || 0}</span></button>
-          ))}
         </div>
 
         <div className="adm-table-scroll">
           <table className="adm-table">
-            <thead><tr><th>Lead / Customer</th><th>Phone</th><th>Source</th><th>Pre-sales Exec</th><th>Call Status</th><th>Demo Status</th><th>Next Action</th><th>Last Activity</th></tr></thead>
+            <thead><tr><th>Pre-sales Details</th><th>Location</th><th>Assigned Leads</th><th>Calls Made</th><th>Demos Scheduled</th><th>Demos Completed</th><th>Conv. Rate</th><th>Performance</th><th>Status</th><th></th></tr></thead>
             <tbody>
-              {loading ? <tr><td colSpan={8} className="adm-empty">Loading…</td></tr> : pageRows.length === 0 ? <tr><td colSpan={8} className="adm-empty">No leads match these filters.</td></tr> : pageRows.map((l) => {
-                const last = (l.history || [])[l.history.length - 1];
-                return (
-                  <tr key={l.id}>
-                    <td><div className="adm-lead-name">{l.name}</div><div className="adm-lead-sub">{l.city}</div></td>
-                    <td>{l.phone}</td>
-                    <td>{LEAD_SOURCES[l.source] || l.source}</td>
-                    <td>{execName(l.assignedTo)}</td>
-                    <td>{callStatusOf(l).label}</td>
-                    <td>{demoStatusOf(l).label}</td>
-                    <td>{nextAction(l).label}</td>
-                    <td>{last ? fmtDateTime(last.at) : '—'}</td>
-                  </tr>
-                );
-              })}
+              {loading ? <tr><td colSpan={10} className="adm-empty">Loading…</td></tr> : pageRows.length === 0 ? <tr><td colSpan={10} className="adm-empty">No pre-sales team members yet.</td></tr> : pageRows.map((e) => (
+                <tr key={e.id}>
+                  <td><div className="adm-lead-name">{e.name}</div><div className="adm-lead-sub">{e.phone || e.email}</div></td>
+                  <td>{e.location || '—'}</td>
+                  <td>{e.stats.assigned}</td>
+                  <td>{e.stats.callsMade}</td>
+                  <td>{e.stats.demosScheduled}</td>
+                  <td>{e.stats.demosCompleted}</td>
+                  <td>{e.stats.conversionRate}%</td>
+                  <td><PerformanceTag tag={performanceTag(e.stats.conversionRate)} /></td>
+                  <td><span className={`adm-status-pill${e.active !== false ? ' active' : ''}`}>{e.active !== false ? 'Active' : 'Inactive'}</span></td>
+                  <td className="adm-row-actions"><button className="adm-chip-btn" onClick={() => toggleActive(e)}>{e.active !== false ? 'Deactivate' : 'Activate'}</button></td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
