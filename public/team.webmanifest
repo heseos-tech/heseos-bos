@@ -1,0 +1,19 @@
+{
+  "name": "Heseos Team On-The-Go",
+  "short_name": "Heseos Team",
+  "description": "Manage your assigned leads on the go.",
+  "start_url": "/team",
+  "scope": "/team",
+  "id": "/team",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#060f1c",
+  "theme_color": "#060f1c",
+  "categories": ["business", "productivity"],
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

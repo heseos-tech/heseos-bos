@@ -1,0 +1,141 @@
+"use client";
+// Team-app "My Leads" — same tab groupings as the desktop PresalesPanel / SalesEngineerPanel
+// (New/Follow-ups/Demo Scheduled/Converted/Rejected for pre-sales; Available/Upcoming/Needs
+// Reschedule/Quoted/Converted/Lost for sales engineers), rendered as mobile cards instead of a
+// table. Tapping a card opens the Lead Detail screen, where all the actions live.
+import { useEffect, useMemo, useState, useCallback } from "react";
+import Link from "next/link";
+import { Avatar } from "@/components/partner/ui";
+import { IconLeads } from "@/components/partner/icons";
+import { fmtDate, fmtDateTime } from "@/lib/date";
+import { stageOf, displayStatus, isFollowUpLead, needsReschedule } from "@/lib/leadStage";
+import { PROPERTY_TYPE } from "@/lib/formOptions";
+
+const PT_LABEL = Object.fromEntries(PROPERTY_TYPE.map((p) => [p.v, p.l]));
+function norm(s) { return String(s || "").trim().toLowerCase(); }
+
+export default function TeamLeadsScreen({ employee }) {
+  const isPresales = employee.role === "presales";
+  const [leads, setLeads] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [tab, setTab] = useState(isPresales ? "new" : "available");
+
+  const fetchLeads = useCallback(async () => {
+    try {
+      const res = await fetch("/api/leads");
+      if (res.ok) setLeads(await res.json());
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchLeads();
+    const t = setInterval(fetchLeads, isPresales ? 20000 : 15000);
+    return () => clearInterval(t);
+  }, [fetchLeads, isPresales]);
+
+  const myCity = norm(employee.location);
+  const available = useMemo(
+    () => leads.filter((l) => l.demoScheduledAt && !l.salesEngineerId && myCity && norm(l.city) === myCity),
+    [leads, myCity]
+  );
+  const mine = useMemo(
+    () => leads.filter((l) => (isPresales ? l.assignedTo === employee.id : l.salesEngineerId === employee.id)),
+    [leads, employee.id, isPresales]
+  );
+
+  const TABS = useMemo(() => {
+    if (isPresales) {
+      const g = { new: [], followup: [], demo: [], converted: [], rejected: [] };
+      for (const l of mine) {
+        const st = stageOf(l);
+        if (st === "Rejected") g.rejected.push(l);
+        else if (st === "Converted") g.converted.push(l);
+        else if (st === "Demo Scheduled") g.demo.push(l);
+        else if (isFollowUpLead(l)) g.followup.push(l);
+        else g.new.push(l);
+      }
+      return [
+        { key: "new", label: "New", list: g.new },
+        { key: "followup", label: "Follow-ups", list: g.followup },
+        { key: "demo", label: "Demo Scheduled", list: g.demo },
+        { key: "converted", label: "Converted", list: g.converted },
+        { key: "rejected", label: "Rejected", list: g.rejected },
+        { key: "all", label: "All Mine", list: mine },
+      ];
+    }
+    const g = { upcoming: [], reschedule: [], quoted: [], converted: [], lost: [] };
+    for (const l of mine) {
+      const st = stageOf(l);
+      if (st === "Rejected") g.lost.push(l);
+      else if (st === "Converted") g.converted.push(l);
+      else if (needsReschedule(l)) g.reschedule.push(l);
+      else if (l.quotationSentAt) g.quoted.push(l);
+      else if (l.demoScheduledAt) g.upcoming.push(l);
+    }
+    return [
+      { key: "available", label: "Available", list: available },
+      { key: "upcoming", label: "Upcoming", list: g.upcoming },
+      { key: "reschedule", label: "Reschedule", list: g.reschedule },
+      { key: "quoted", label: "Quoted", list: g.quoted },
+      { key: "converted", label: "Converted", list: g.converted },
+      { key: "lost", label: "Lost", list: g.lost },
+      { key: "all", label: "All Mine", list: mine },
+    ];
+  }, [isPresales, mine, available]);
+
+  const active = TABS.find((t) => t.key === tab) || TABS[0];
+
+  return (
+    <>
+      <div className="hp-header" style={{ paddingBottom: 4 }}>
+        <div className="hp-header-title" style={{ fontSize: 21, fontWeight: 800 }}>My Leads</div>
+      </div>
+
+      <div className="hp-tabs">
+        {TABS.map((t) => (
+          <button key={t.key} className={`hp-tab${tab === t.key ? " active" : ""}`} onClick={() => setTab(t.key)}>
+            {t.label} ({t.list.length})
+          </button>
+        ))}
+      </div>
+
+      {!isPresales && tab === "available" && !myCity && (
+        <div className="hp-card" style={{ background: "var(--hp-warn-dim)", border: "1px solid var(--hp-warn)" }}>
+          <div className="hp-summary-label" style={{ color: "var(--hp-warn)" }}>Your profile has no city set — ask an admin to set it so open demos show up here.</div>
+        </div>
+      )}
+
+      {loading ? (
+        <div className="hp-empty"><div className="hp-empty-sub">Loading…</div></div>
+      ) : active.list.length === 0 ? (
+        <div className="hp-empty">
+          <div className="hp-empty-icon"><IconLeads size={24} /></div>
+          <div className="hp-empty-title">Nothing here</div>
+          <div className="hp-empty-sub">{tab === "available" ? "No open demos in your city right now." : "Try a different tab."}</div>
+        </div>
+      ) : (
+        <div className="hp-lead-list">
+          {active.list.map((l) => {
+            const status = tab === "available" ? { label: "Open — unclaimed", c: "#38bdf8", bg: "var(--hp-info-dim)" } : displayStatus(l);
+            return (
+              <Link key={l.id} href={`/team/leads/${l.id}`} className="hp-lead-card">
+                <Avatar name={l.name} />
+                <div className="hp-lead-info">
+                  <div className="hp-lead-name">{l.name}</div>
+                  <div className="hp-lead-meta">{PT_LABEL[l.propertyType] || "Enquiry"} · {l.city}</div>
+                  {l.demoDate && <div className="hp-lead-meta">{fmtDate(l.demoDate)} · {l.demoTime}</div>}
+                </div>
+                <div className="hp-lead-right">
+                  <span className="hp-badge" style={{ color: status.c, background: status.bg }}><span className="hp-badge-dot" />{status.label}</span>
+                  <span className="hp-lead-time">{fmtDateTime(l.createdAt)}</span>
+                </div>
+              </Link>
+            );
+          })}
+        </div>
+      )}
+    </>
+  );
+}
