@@ -61,8 +61,14 @@
 
 .hp-root a { color: inherit; text-decoration: none; -webkit-tap-highlight-color: transparent; }
 
-/* ── App shell (authenticated screens with bottom nav) ─────────────────── */
-.hp-shell { display: flex; flex-direction: column; min-height: 100%; background: var(--hp-bg); }
+/* ── App shell (authenticated screens with bottom nav) ───────────────────
+   height:100% (not min-height) pins .hp-shell to exactly fill .hp-root's 100dvh, so
+   .hp-shell-scroll's flex:1/min-height:0 is actually bounded and becomes the ONLY
+   scrolling region — the bottom nav (a flex-shrink:0 sibling, never inside the scroll
+   region) stays visually fixed like a native app's tab bar instead of drifting with
+   the page, and there's no gap below it since the shell always exactly fills the
+   viewport regardless of content length. */
+.hp-shell { display: flex; flex-direction: column; height: 100%; overflow: hidden; background: var(--hp-bg); }
 .hp-shell-scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden; overscroll-behavior-y: contain; -webkit-overflow-scrolling: touch; padding-bottom: 28px; }
 
 /* ── Plain page (no bottom nav) ─────────────────────────────────────────── */
@@ -76,7 +82,9 @@
 .hp-hero-bg { position: absolute; inset: 0; background-size: cover; background-position: center; }
 .hp-hero-scrim { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(6,15,28,0.15) 0%, rgba(6,15,28,0.55) 45%, rgba(6,15,28,0.94) 78%, #060f1c 100%); }
 .hp-hero-scrim-full { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(6,15,28,0.35) 0%, rgba(6,15,28,0.72) 55%, #060f1c 92%); }
-.hp-hero-content { position: relative; z-index: 2; padding: 28px 22px 34px; display: flex; flex-direction: column; flex: 1; }
+/* env(safe-area-inset-top) keeps the logo/headline clear of the device status bar
+   (notch/clock/battery) when running standalone/installed — 0px on a normal browser tab. */
+.hp-hero-content { position: relative; z-index: 2; padding: calc(28px + env(safe-area-inset-top, 0px)) 22px 34px; display: flex; flex-direction: column; flex: 1; }
 .hp-hero-top { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; padding-bottom: 24px; }
 .hp-hero-form { position: relative; z-index: 2; padding: 0 22px 34px; margin-top: auto; }
 
@@ -156,7 +164,9 @@
 .hp-link-accent { color: var(--hp-orange); font-weight: 700; }
 
 /* ── Top bar (authenticated) ────────────────────────────────────────── */
-.hp-topbar { display: flex; align-items: center; justify-content: space-between; padding: 18px 20px 4px; }
+/* Same status-bar clearance as .hp-hero-content — .hp-topbar is the first element on
+   every Home tab. */
+.hp-topbar { display: flex; align-items: center; justify-content: space-between; padding: calc(18px + env(safe-area-inset-top, 0px)) 20px 4px; }
 .hp-topbar-right { display: flex; align-items: center; gap: 12px; }
 .hp-bell { position: relative; width: 38px; height: 38px; border-radius: 50%; background: var(--hp-surface); border: 1px solid var(--hp-border); display: flex; align-items: center; justify-content: center; color: #fff; }
 .hp-bell-dot { position: absolute; top: 7px; right: 8px; width: 7px; height: 7px; border-radius: 50%; background: var(--hp-orange); box-shadow: 0 0 0 2px var(--hp-bg); }
@@ -165,7 +175,9 @@
 .hp-avatar-lg { width: 68px; height: 68px; font-size: 24px; }
 
 /* ── Header (inner screens: back arrow + title) ─────────────────────── */
-.hp-header { display: flex; align-items: center; gap: 14px; padding: 18px 20px; }
+/* Same status-bar clearance — .hp-header is the first element on every drill-down/detail
+   screen (Lead Detail, wizard steps, etc.). */
+.hp-header { display: flex; align-items: center; gap: 14px; padding: calc(18px + env(safe-area-inset-top, 0px)) 20px 18px; }
 .hp-header-title { font-size: 17px; font-weight: 700; color: #fff; }
 .hp-back-btn { width: 36px; height: 36px; border-radius: 50%; background: var(--hp-surface); border: 1px solid var(--hp-border); display: flex; align-items: center; justify-content: center; color: #fff; flex-shrink: 0; }
 
