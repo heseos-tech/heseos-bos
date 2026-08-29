@@ -115,19 +115,42 @@ export default function SalesEngineersPage() {
   );
 }
 
+// City covered by this employee: sales engineers (and partners) pick exactly ONE city — they
+// physically visit. Pre-sales can cover several specific cities, or every city ("All Cities"),
+// since they're working the phones, not driving out. Both pull their options from the
+// admin-controlled list at Admin -> Settings -> Cities (see lib/cities.js) — so only cities the
+// business actually operates in are selectable, which is also what makes city-based
+// auto-assignment (lib/leadAssign.js) reliable.
 export function AddEmployeeModal({ role, title, onClose, onDone }) {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
-  const [location, setLocation] = useState('');
+  const [location, setLocation] = useState('');           // sales_engineer: single city
+  const [citySelections, setCitySelections] = useState([]); // presales: multiple cities
+  const [allCities, setAllCities] = useState(false);        // presales: "All Cities" toggle
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
+  const [cities, setCities] = useState([]);
+  const [citiesLoading, setCitiesLoading] = useState(true);
+
+  useEffect(() => {
+    fetch('/api/admin/cities').then((r) => (r.ok ? r.json() : { cities: [] })).then((d) => setCities(d.cities || [])).finally(() => setCitiesLoading(false));
+  }, []);
+
+  function toggleCity(c) {
+    setCitySelections((prev) => (prev.includes(c) ? prev.filter((x) => x !== c) : [...prev, c]));
+  }
+
+  const cityValid = role === 'presales' ? (allCities || citySelections.length > 0) : !!location;
 
   async function submit() {
     setError(''); setSaving(true);
     try {
-      const res = await fetch('/api/admin/employees', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, email, password, role, phone, location }) });
+      const body = { name, email, password, role, phone };
+      if (role === 'presales') body.cities = allCities ? ['ALL'] : citySelections;
+      else body.location = location;
+      const res = await fetch('/api/admin/employees', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed');
       onDone();
@@ -139,12 +162,50 @@ export function AddEmployeeModal({ role, title, onClose, onDone }) {
       <div className="lf-field"><label className="lf-label">Full name</label><input className="lf-input" value={name} onChange={(e) => setName(e.target.value)} /></div>
       <div className="lf-field"><label className="lf-label">Email</label><input className="lf-input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} /></div>
       <div className="lf-field"><label className="lf-label">Phone</label><input className="lf-input" value={phone} onChange={(e) => setPhone(e.target.value)} /></div>
-      <div className="lf-field"><label className="lf-label">Location</label><input className="lf-input" value={location} onChange={(e) => setLocation(e.target.value)} placeholder="e.g. Pune, MH" /></div>
+
+      {role === 'presales' ? (
+        <div className="lf-field">
+          <label className="lf-label">Cities covered</label>
+          {citiesLoading ? (
+            <div className="adm-meta-hint">Loading cities…</div>
+          ) : cities.length === 0 ? (
+            <div className="adm-meta-hint">No cities set up yet — add some from Admin → Settings → Cities first.</div>
+          ) : (
+            <>
+              <div className="lf-pills cols-1">
+                <button type="button" className={`lf-pill${allCities ? ' active' : ''}`} onClick={() => setAllCities((v) => !v)}>All Cities</button>
+              </div>
+              {!allCities && (
+                <div className="lf-pills cols-3" style={{ marginTop: 8 }}>
+                  {cities.map((c) => (
+                    <button key={c} type="button" className={`lf-pill${citySelections.includes(c) ? ' active' : ''}`} onClick={() => toggleCity(c)}>{c}</button>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      ) : (
+        <div className="lf-field">
+          <label className="lf-label">City</label>
+          {citiesLoading ? (
+            <div className="adm-meta-hint">Loading cities…</div>
+          ) : cities.length === 0 ? (
+            <div className="adm-meta-hint">No cities set up yet — add some from Admin → Settings → Cities first.</div>
+          ) : (
+            <select className="lf-input" value={location} onChange={(e) => setLocation(e.target.value)}>
+              <option value="">Select city…</option>
+              {cities.map((c) => <option key={c} value={c}>{c}</option>)}
+            </select>
+          )}
+        </div>
+      )}
+
       <div className="lf-field"><label className="lf-label">Temporary password</label><input className="lf-input" value={password} onChange={(e) => setPassword(e.target.value)} /></div>
       {error && <div className="lf-error">{error}</div>}
       <div className="lf-actions">
         <button className="lf-btn-back" onClick={onClose} disabled={saving}>Cancel</button>
-        <button className="lf-btn-next" onClick={submit} disabled={saving || !name || !email || !password}>{saving ? 'Saving…' : 'Create'}</button>
+        <button className="lf-btn-next" onClick={submit} disabled={saving || !name || !email || !password || !cityValid}>{saving ? 'Saving…' : 'Create'}</button>
       </div>
     </Modal>
   );

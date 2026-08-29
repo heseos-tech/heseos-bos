@@ -149,6 +149,12 @@ function AddPartnerModal({ onClose, onDone }) {
   const [type, setType] = useState('electrical_shop');
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
+  const [cities, setCities] = useState([]);
+  const [citiesLoading, setCitiesLoading] = useState(true);
+
+  useEffect(() => {
+    fetch('/api/admin/cities').then((r) => (r.ok ? r.json() : { cities: [] })).then((d) => setCities(d.cities || [])).finally(() => setCitiesLoading(false));
+  }, []);
 
   async function submit() {
     setError(''); setSaving(true);
@@ -165,7 +171,19 @@ function AddPartnerModal({ onClose, onDone }) {
       <div className="lf-field"><label className="lf-label">Contact name</label><input className="lf-input" value={name} onChange={(e) => setName(e.target.value)} /></div>
       <div className="lf-field"><label className="lf-label">Business name</label><input className="lf-input" value={businessName} onChange={(e) => setBusinessName(e.target.value)} placeholder="Shown on their dashboard" /></div>
       <div className="lf-field"><label className="lf-label">Phone (login)</label><input className="lf-input" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="10-digit mobile number" /></div>
-      <div className="lf-field"><label className="lf-label">City</label><input className="lf-input" value={city} onChange={(e) => setCity(e.target.value)} /></div>
+      <div className="lf-field">
+        <label className="lf-label">City</label>
+        {citiesLoading ? (
+          <div className="adm-meta-hint">Loading cities…</div>
+        ) : cities.length === 0 ? (
+          <div className="adm-meta-hint">No cities set up yet — add some from Admin → Settings → Cities first.</div>
+        ) : (
+          <select className="lf-input" value={city} onChange={(e) => setCity(e.target.value)}>
+            <option value="">Select city…</option>
+            {cities.map((c) => <option key={c} value={c}>{c}</option>)}
+          </select>
+        )}
+      </div>
       <div className="lf-field"><label className="lf-label">Temporary password</label><input className="lf-input" value={password} onChange={(e) => setPassword(e.target.value)} /></div>
       <div className="lf-field">
         <label className="lf-label">Category</label>

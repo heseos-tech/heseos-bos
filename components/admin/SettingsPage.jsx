@@ -70,6 +70,8 @@ export default function SettingsPage() {
 
       {notice && <div className="adm-notice">{notice}</div>}
 
+      <CitiesCard />
+
       <div className="adm-card adm-meta-card">
         <div className="adm-card-title-row">
           <div className="adm-card-title">Meta Lead Ads</div>
@@ -143,5 +145,83 @@ export default function SettingsPage() {
         )}
       </div>
     </>
+  );
+}
+
+function CitiesCard() {
+  const [cities, setCities] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [input, setInput] = useState('');
+  const [adding, setAdding] = useState(false);
+  const [removing, setRemoving] = useState(null);
+  const [error, setError] = useState('');
+
+  const load = useCallback(async () => {
+    const res = await fetch('/api/admin/cities');
+    const data = res.ok ? await res.json() : { cities: [] };
+    setCities(data.cities || []);
+    setLoading(false);
+  }, []);
+  useEffect(() => { load(); }, [load]);
+
+  async function addCity() {
+    const city = input.trim();
+    if (!city) return;
+    setError(''); setAdding(true);
+    try {
+      const res = await fetch('/api/admin/cities', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ city }) });
+      const data = await res.json();
+      if (!res.ok) { setError(data.error || 'Could not add city.'); return; }
+      setCities(data.cities); setInput('');
+    } finally { setAdding(false); }
+  }
+
+  async function removeCityChip(city) {
+    setRemoving(city); setError('');
+    try {
+      const res = await fetch('/api/admin/cities', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ city }) });
+      const data = await res.json();
+      if (!res.ok) { setError(data.error || 'Could not remove city.'); return; }
+      setCities(data.cities);
+    } finally { setRemoving(null); }
+  }
+
+  return (
+    <div className="adm-card adm-meta-card" style={{ marginBottom: 18 }}>
+      <div className="adm-card-title-row">
+        <div className="adm-card-title">Cities</div>
+      </div>
+      <p className="adm-card-sub">
+        The cities Heseos operates in. Only these show up in the City dropdown when adding a partner or sales engineer, and pre-sales pick which of these (or all of them) they cover — this is also what powers automatic lead assignment by city.
+      </p>
+
+      {error && <div className="adm-notice adm-notice--error">{error}</div>}
+
+      <div className="adm-city-add">
+        <input
+          className="lf-input"
+          placeholder="Add a city, e.g. Pune"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && addCity()}
+        />
+        <button className="adm-btn-primary" onClick={addCity} disabled={adding || !input.trim()}>{adding ? 'Adding…' : 'Add City'}</button>
+      </div>
+
+      {loading ? (
+        <div className="adm-empty">Loading…</div>
+      ) : cities.length === 0 ? (
+        <div className="adm-empty">No cities added yet.</div>
+      ) : (
+        <div className="adm-city-chips">
+          {cities.map((c) => (
+            <span className="adm-city-chip" key={c}>
+              {c}
+              <button aria-label={`Remove ${c}`} onClick={() => removeCityChip(c)} disabled={removing === c}>×</button>
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }

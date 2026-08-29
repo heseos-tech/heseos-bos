@@ -21,9 +21,21 @@ export async function POST(request) {
   const admin = await requireAdmin();
   if (!admin) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const { name, email, password, role, phone, location } = await request.json();
+  const { name, email, password, role, phone, location, cities } = await request.json();
   if (!name || !email || !password || !EMPLOYEE_ROLES.includes(role)) {
     return Response.json({ error: `name, email, password and a valid role (${EMPLOYEE_ROLES.join(', ')}) are required` }, { status: 400 });
+  }
+
+  // Pre-sales can cover multiple cities (or every city); sales engineers and partners are
+  // pinned to exactly one, since they physically visit. `location` stays the single display
+  // string used everywhere in the UI; `cities` is the structured list city-matching actually
+  // reads for pre-sales (see lib/leadAssign.js).
+  let finalLocation = location || '';
+  let finalCities = undefined;
+  if (role === 'presales' && Array.isArray(cities) && cities.length) {
+    const isAll = cities.some((c) => String(c).trim().toLowerCase() === 'all cities' || String(c).trim().toLowerCase() === 'all');
+    finalCities = isAll ? ['ALL'] : cities.map((c) => String(c).trim()).filter(Boolean);
+    finalLocation = isAll ? 'All Cities' : finalCities.join(', ');
   }
 
   const existing = await dbList('employees');
@@ -35,7 +47,8 @@ export async function POST(request) {
   const record = {
     id, name, email, role, active: true,
     phone: phone || '',
-    location: location || '',
+    location: finalLocation,
+    ...(finalCities ? { cities: finalCities } : {}),
     password: await hashPassword(password),
     createdAt: new Date().toISOString(),
     createdBy: admin.id,
