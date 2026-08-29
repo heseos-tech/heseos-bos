@@ -1,7 +1,7 @@
 'use client';
 import { useState } from 'react';
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   IconEye, IconEyeOff, IconChevronDown, IconArrowLeft, IconHome, IconLeads, IconPlus, IconGift, IconUser, IconCheck,
 } from './icons';
@@ -131,20 +131,23 @@ export function SectionHead({ title, viewAllHref }) {
 }
 
 // ── Bottom navigation — consistent across all authenticated tab screens ───
+// Home/Leads/Rewards/Profile all point at the SAME route (/partner/home) with a different
+// ?tab= — see components/partner/PartnerHome.jsx. `tab` here must match PartnerHome's switch
+// cases exactly. Add Lead stays its own real route (a wizard, not a dashboard tab).
 const NAV_ITEMS = [
-  { href: '/partner/home', label: 'Home', icon: IconHome },
-  { href: '/partner/leads', label: 'Leads', icon: IconLeads },
+  { tab: 'home', href: '/partner/home', label: 'Home', icon: IconHome },
+  { tab: 'leads', href: '/partner/home?tab=leads', label: 'Leads', icon: IconLeads },
   { href: '/partner/leads/new', label: 'Add Lead', icon: IconPlus, center: true },
-  { href: '/partner/rewards', label: 'Rewards', icon: IconGift },
-  { href: '/partner/profile', label: 'Profile', icon: IconUser },
+  { tab: 'rewards', href: '/partner/home?tab=rewards', label: 'Rewards', icon: IconGift },
+  { tab: 'profile', href: '/partner/home?tab=profile', label: 'Profile', icon: IconUser },
 ];
 export function BottomNav() {
-  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const activeTab = searchParams.get('tab') || 'home';
   return (
     <nav className="hp-bottom-nav">
       {NAV_ITEMS.map((item) => {
         const Icon = item.icon;
-        const active = item.center ? false : pathname === item.href || (item.href === '/partner/leads' && pathname.startsWith('/partner/leads') && !pathname.includes('/new'));
         if (item.center) {
           return (
             <Link key={item.href} href={item.href} className="hp-nav-center">
@@ -153,8 +156,9 @@ export function BottomNav() {
             </Link>
           );
         }
+        const active = item.tab === activeTab;
         return (
-          <Link key={item.href} href={item.href} className={`hp-nav-item${active ? ' active' : ''}`}>
+          <Link key={item.tab} href={item.href} className={`hp-nav-item${active ? ' active' : ''}`}>
             <Icon size={21} />
             <span>{item.label}</span>
           </Link>

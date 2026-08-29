@@ -88,7 +88,7 @@ export default function TeamHomeScreen({ employee }) {
         <img src="/brand/lockup-white.png" alt="Heseos — Lighting Ahead" className="hp-brand-logo hp-brand-logo-sm" />
         <div className="hp-topbar-right">
           <button className="hp-bell" aria-label="Notifications"><IconBell size={18} /></button>
-          <Link href="/team/profile"><Avatar name={employee.name} /></Link>
+          <Link href="/team/home?tab=profile"><Avatar name={employee.name} /></Link>
         </div>
       </div>
 
@@ -135,7 +135,7 @@ export default function TeamHomeScreen({ employee }) {
 
       <div className="hp-section-head" style={{ marginTop: 0 }}>
         <div className="hp-section-title">Recent Leads</div>
-        <Link className="hp-view-all" href="/team/leads">View All</Link>
+        <Link className="hp-view-all" href="/team/home?tab=leads">View All</Link>
       </div>
 
       {loading ? (
@@ -168,7 +168,7 @@ export default function TeamHomeScreen({ employee }) {
       )}
 
       <div className="hp-cta-block" style={{ paddingBottom: 24 }}>
-        <Link href="/team/leads" className="hp-btn hp-btn-primary hp-btn-block">
+        <Link href="/team/home?tab=leads" className="hp-btn hp-btn-primary hp-btn-block">
           {isPresales ? "View My Leads" : available.length > 0 ? `View ${available.length} Available Lead${available.length === 1 ? "" : "s"}` : "View My Leads"}
         </Link>
       </div>

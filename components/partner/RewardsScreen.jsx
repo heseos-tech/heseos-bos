@@ -1,8 +1,21 @@
 'use client';
+import { useEffect, useState } from 'react';
 import { IconWallet, IconGift, IconLeads, IconCheck, IconSpark } from './icons';
-import { MOCK_PAYOUTS, HOW_YOU_EARN } from '@/lib/partnerMock';
+import { MOCK_PAYOUTS, HOW_YOU_EARN, earningsFor } from '@/lib/partnerMock';
 
-export default function RewardsScreen({ earnings }) {
+// Fetches its own leads now (instead of a server-fetched prop) so it can stay mounted and
+// cached inside PartnerHome's tab switcher — see components/partner/PartnerHome.jsx.
+export default function RewardsScreen() {
+  const [leads, setLeads] = useState([]);
+
+  useEffect(() => {
+    let alive = true;
+    fetch('/api/leads').then((r) => (r.ok ? r.json() : [])).then((l) => { if (alive) setLeads(l); });
+    return () => { alive = false; };
+  }, []);
+
+  const earnings = earningsFor(leads);
+
   return (
     <>
       <div className="hp-header" style={{ paddingBottom: 4 }}>

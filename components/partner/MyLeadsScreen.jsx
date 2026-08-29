@@ -1,5 +1,5 @@
 'use client';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import { Avatar, StatusBadge } from './ui';
 import { IconPlus, IconLeads } from './icons';
@@ -13,8 +13,19 @@ const TABS = [
   { key: 'converted', label: 'Converted' },
 ];
 
-export default function MyLeadsScreen({ leads }) {
+// Fetches its own leads now (instead of a server-fetched prop) so it can stay mounted and
+// cached inside PartnerHome's tab switcher — see components/partner/PartnerHome.jsx.
+export default function MyLeadsScreen() {
+  const [leads, setLeads] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState('all');
+
+  useEffect(() => {
+    let alive = true;
+    fetch('/api/leads').then((r) => (r.ok ? r.json() : [])).then((l) => { if (alive) { setLeads(l); setLoading(false); } });
+    return () => { alive = false; };
+  }, []);
+
   const withStatus = useMemo(() => leads.map((l) => ({ ...l, _status: partnerStatusOf(l) })), [leads]);
 
   const counts = useMemo(() => ({
@@ -44,7 +55,9 @@ export default function MyLeadsScreen({ leads }) {
         ))}
       </div>
 
-      {filtered.length === 0 ? (
+      {loading ? (
+        <div className="hp-empty"><div className="hp-empty-sub">Loading…</div></div>
+      ) : filtered.length === 0 ? (
         <div className="hp-empty">
           <div className="hp-empty-icon"><IconLeads size={24} /></div>
           <div className="hp-empty-title">No leads here</div>

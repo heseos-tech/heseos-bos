@@ -78,7 +78,7 @@ export default function TeamLeadDetailScreen({ employee, lead: initialLead }) {
 
   return (
     <>
-      <ScreenHeader title="Lead Details" backHref="/team/leads" />
+      <ScreenHeader title="Lead Details" backHref="/team/home?tab=leads" />
 
       <div className="hp-detail-hero">
         <Avatar name={lead.name} size="lg" />

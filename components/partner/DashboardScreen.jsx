@@ -1,11 +1,24 @@
 'use client';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Avatar, StatusBadge } from './ui';
 import { IconBell, IconLeads, IconGift, IconCheck, IconPlus } from './icons';
 import { fmtDateTime } from '@/lib/date';
-import { partnerStatusOf, PROPERTY_TYPE_LABEL } from '@/lib/partnerMock';
+import { partnerStatusOf, PROPERTY_TYPE_LABEL, earningsFor } from '@/lib/partnerMock';
 
-export default function DashboardScreen({ partner, leads, earnings }) {
+// Fetches its own leads now (instead of a server-fetched prop) so it can stay mounted and
+// cached inside PartnerHome's tab switcher — see components/partner/PartnerHome.jsx.
+export default function DashboardScreen({ partner }) {
+  const [leads, setLeads] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let alive = true;
+    fetch('/api/leads').then((r) => (r.ok ? r.json() : [])).then((l) => { if (alive) { setLeads(l); setLoading(false); } });
+    return () => { alive = false; };
+  }, []);
+
+  const earnings = earningsFor(leads);
   const firstName = (partner.name || 'Partner').split(' ')[0];
   const withStatus = leads.map((l) => ({ ...l, _status: partnerStatusOf(l) }));
   const stats = {
@@ -22,7 +35,7 @@ export default function DashboardScreen({ partner, leads, earnings }) {
         <img src="/brand/lockup-white.png" alt="Heseos — Lighting Ahead" className="hp-brand-logo hp-brand-logo-sm" />
         <div className="hp-topbar-right">
           <button className="hp-bell" aria-label="Notifications"><IconBell size={18} /><span className="hp-bell-dot" /></button>
-          <Link href="/partner/profile"><Avatar name={partner.name} /></Link>
+          <Link href="/partner/home?tab=profile"><Avatar name={partner.name} /></Link>
         </div>
       </div>
 
@@ -57,10 +70,12 @@ export default function DashboardScreen({ partner, leads, earnings }) {
 
       <div className="hp-section-head" style={{ marginTop: 0 }}>
         <div className="hp-section-title">Recent Leads</div>
-        <Link className="hp-view-all" href="/partner/leads">View All</Link>
+        <Link className="hp-view-all" href="/partner/home?tab=leads">View All</Link>
       </div>
 
-      {recent.length === 0 ? (
+      {loading ? (
+        <div className="hp-empty"><div className="hp-empty-sub">Loading…</div></div>
+      ) : recent.length === 0 ? (
         <div className="hp-empty">
           <div className="hp-empty-icon"><IconLeads size={24} /></div>
           <div className="hp-empty-title">No leads yet</div>

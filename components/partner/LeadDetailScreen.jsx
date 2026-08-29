@@ -33,7 +33,7 @@ export default function LeadDetailScreen({ lead }) {
 
   return (
     <>
-      <ScreenHeader title="Lead Details" backHref="/partner/leads" />
+      <ScreenHeader title="Lead Details" backHref="/partner/home?tab=leads" />
 
       <div className="hp-detail-hero">
         <Avatar name={lead.name} size="lg" />

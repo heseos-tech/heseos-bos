@@ -3,24 +3,27 @@
 // screen header, section head) is generic and shared straight from the Partner app's
 // components/partner/ui.jsx — no need to fork it.
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { IconHome, IconLeads, IconUser } from '@/components/partner/icons';
 
+// All three point at the SAME route (/team/home) with a different ?tab= — see
+// components/team/TeamHome.jsx. `tab` here must match TeamHome's switch cases exactly.
 const NAV_ITEMS = [
-  { href: '/team/home', label: 'Home', icon: IconHome },
-  { href: '/team/leads', label: 'Leads', icon: IconLeads },
-  { href: '/team/profile', label: 'Profile', icon: IconUser },
+  { tab: 'home', href: '/team/home', label: 'Home', icon: IconHome },
+  { tab: 'leads', href: '/team/home?tab=leads', label: 'Leads', icon: IconLeads },
+  { tab: 'profile', href: '/team/home?tab=profile', label: 'Profile', icon: IconUser },
 ];
 
 export function TeamBottomNav() {
-  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const activeTab = searchParams.get('tab') || 'home';
   return (
     <nav className="hp-bottom-nav">
       {NAV_ITEMS.map((item) => {
         const Icon = item.icon;
-        const active = pathname === item.href || pathname.startsWith(item.href + '/');
+        const active = item.tab === activeTab;
         return (
-          <Link key={item.href} href={item.href} className={`hp-nav-item${active ? ' active' : ''}`}>
+          <Link key={item.tab} href={item.href} className={`hp-nav-item${active ? ' active' : ''}`}>
             <Icon size={21} />
             <span>{item.label}</span>
           </Link>

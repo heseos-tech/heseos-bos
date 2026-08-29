@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import { redirect } from 'next/navigation';
 import { getEmployee } from '@/lib/auth';
 import { TeamAppShell } from '@/components/team/ui';
@@ -11,9 +12,13 @@ export default async function TeamAppLayout({ children }) {
   if (employee.role === 'admin') redirect('/admin');
   if (employee.role !== 'presales' && employee.role !== 'sales_engineer') redirect('/team/login');
 
+  // TeamAppShell's bottom nav reads ?tab= (useSearchParams) to highlight the active tab,
+  // which Next.js requires to sit inside a Suspense boundary.
   return (
     <div className="hp-root">
-      <TeamAppShell>{children}</TeamAppShell>
+      <Suspense fallback={null}>
+        <TeamAppShell>{children}</TeamAppShell>
+      </Suspense>
     </div>
   );
 }

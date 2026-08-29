@@ -1,13 +1,18 @@
+import { Suspense } from 'react';
+import { redirect } from 'next/navigation';
 import { getPartner } from '@/lib/auth';
-import { dbWhere } from '@/lib/db';
-import { earningsFor } from '@/lib/partnerMock';
-import DashboardScreen from '@/components/partner/DashboardScreen';
+import PartnerHome from '@/components/partner/PartnerHome';
 
 export const dynamic = 'force-dynamic';
 
+// The single Partner-app route — Home, Leads, Rewards and Profile all render inside PartnerHome
+// now, switched by ?tab= instead of a separate page each. See components/partner/PartnerHome.jsx.
 export default async function PartnerHomePage() {
   const partner = await getPartner();
-  const leads = await dbWhere('leads', 'partnerId', partner.id);
-  const earnings = earningsFor(leads);
-  return <DashboardScreen partner={partner} leads={leads} earnings={earnings} />;
+  if (!partner) redirect('/partner/login');
+  return (
+    <Suspense fallback={null}>
+      <PartnerHome partner={partner} />
+    </Suspense>
+  );
 }

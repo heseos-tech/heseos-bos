@@ -1,11 +1,8 @@
 import { redirect } from 'next/navigation';
-import { getEmployee } from '@/lib/auth';
-import TeamProfileScreen from '@/components/team/ProfileScreen';
 
-export const dynamic = 'force-dynamic';
-
-export default async function TeamProfilePage() {
-  const employee = await getEmployee();
-  if (!employee) redirect('/employee/login');
-  return <TeamProfileScreen employee={employee} />;
+// This tab now lives on the single /team/home page (see components/team/TeamHome.jsx) so
+// switching tabs never refetches data. This route stays only so old bookmarks/links keep
+// working.
+export default function TeamProfileLegacyRedirect() {
+  redirect('/team/home?tab=profile');
 }

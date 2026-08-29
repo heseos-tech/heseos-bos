@@ -1,9 +1,8 @@
-import { getPartner } from '@/lib/auth';
-import ProfileScreen from '@/components/partner/ProfileScreen';
+import { redirect } from 'next/navigation';
 
-export const dynamic = 'force-dynamic';
-
-export default async function PartnerProfilePage() {
-  const partner = await getPartner();
-  return <ProfileScreen partner={partner} />;
+// This section now lives on the single /partner/home page (see
+// components/partner/PartnerHome.jsx) so switching tabs never refetches data. This route stays
+// only so old bookmarks/links to /partner/profile keep working.
+export default function PartnerProfilePage() {
+  redirect('/partner/home?tab=profile');
 }

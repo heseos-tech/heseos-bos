@@ -1,11 +1,8 @@
-import { getPartner } from '@/lib/auth';
-import { dbWhere } from '@/lib/db';
-import MyLeadsScreen from '@/components/partner/MyLeadsScreen';
+import { redirect } from 'next/navigation';
 
-export const dynamic = 'force-dynamic';
-
-export default async function PartnerLeadsPage() {
-  const partner = await getPartner();
-  const leads = await dbWhere('leads', 'partnerId', partner.id);
-  return <MyLeadsScreen leads={leads} />;
+// This section now lives on the single /partner/home page (see
+// components/partner/PartnerHome.jsx) so switching tabs never refetches data. This route stays
+// only so old bookmarks/links to /partner/leads keep working.
+export default function PartnerLeadsPage() {
+  redirect('/partner/home?tab=leads');
 }
