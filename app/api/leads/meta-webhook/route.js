@@ -7,6 +7,7 @@
 // webhook only tells you a leadgen_id was created; the actual answers are fetched separately
 // via the Graph API (see fetchLeadFields below).
 
+import crypto from 'crypto';
 import { dbInsert, dbGetById } from '@/lib/db';
 import { istDateStr } from '@/lib/date';
 import { pushHistory } from '@/lib/leadStage';
@@ -15,6 +16,23 @@ import { mapMetaLead } from '@/lib/metaLeadMap';
 export const dynamic = 'force-dynamic';
 
 const API_VERSION = process.env.WHATSAPP_API_VERSION || 'v20.0';
+
+// Verifies Meta's X-Hub-Signature-256 header against the raw request body, so a forged POST
+// can't inject fake leads into the pipeline. Skipped (returns true) when META_APP_SECRET
+// isn't set yet, so local/dev setups aren't blocked before it's configured — set it in
+// production once you have your Meta App's secret.
+function verifyMetaSignature(rawBody, signatureHeader) {
+  const secret = process.env.META_APP_SECRET;
+  if (!secret) return true;
+  if (!signatureHeader || !signatureHeader.startsWith('sha256=')) return false;
+  const expected = crypto.createHmac('sha256', secret).update(rawBody).digest('hex');
+  const provided = signatureHeader.slice('sha256='.length);
+  try {
+    return crypto.timingSafeEqual(Buffer.from(expected, 'hex'), Buffer.from(provided, 'hex'));
+  } catch {
+    return false;
+  }
+}
 
 export async function GET(req) {
   const { searchParams } = new URL(req.url);
@@ -37,7 +55,13 @@ async function fetchLeadFields(leadgenId) {
 }
 
 export async function POST(req) {
-  const payload = await req.json().catch(() => ({}));
+  const rawBody = await req.text();
+  if (!verifyMetaSignature(rawBody, req.headers.get('x-hub-signature-256'))) {
+    console.error('Meta lead webhook: invalid signature — rejected');
+    return new Response('Invalid signature', { status: 401 });
+  }
+  let payload = {};
+  try { payload = JSON.parse(rawBody || '{}'); } catch { /* empty/invalid body */ }
 
   for (const entry of payload.entry || []) {
     for (const change of entry.changes || []) {
