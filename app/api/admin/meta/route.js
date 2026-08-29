@@ -1,0 +1,105 @@
+// Admin-only settings API for the self-service Meta Lead Ads connection: connect a Page,
+// list its Lead Ad forms, and toggle which forms are allowed to create leads. See lib/metaAds.js.
+import { getEmployee } from '@/lib/auth';
+import { getMetaSettings, saveMetaSettings, fetchPageInfo, fetchLeadForms } from '@/lib/metaAds';
+
+export const dynamic = 'force-dynamic';
+
+async function requireAdmin() {
+  const employee = await getEmployee();
+  if (!employee || employee.role !== 'admin') return null;
+  return employee;
+}
+
+// Never ship the raw access token back to the browser — only whether one is stored.
+function publicSettings(settings) {
+  if (!settings || !settings.pageAccessToken) {
+    return {
+      connected: false,
+      pageId: settings?.pageId || null,
+      pageName: settings?.pageName || null,
+      forms: settings?.forms || [],
+      usingEnvToken: !!process.env.META_LEAD_ACCESS_TOKEN,
+    };
+  }
+  const { pageAccessToken, ...rest } = settings;
+  return { ...rest, connected: true, usingEnvToken: false };
+}
+
+export async function GET() {
+  const admin = await requireAdmin();
+  if (!admin) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+  const settings = await getMetaSettings();
+  return Response.json(publicSettings(settings));
+}
+
+// Connect (or reconnect) a Page: validate the pasted token, pull its lead forms, and save.
+export async function POST(request) {
+  const admin = await requireAdmin();
+  if (!admin) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+
+  const body = await request.json().catch(() => ({}));
+  const token = String(body?.pageAccessToken || '').trim();
+  if (!token) return Response.json({ error: 'Paste a Page Access Token to connect.' }, { status: 400 });
+
+  const { data: page, error: pageErr } = await fetchPageInfo(token);
+  if (pageErr) return Response.json({ error: pageErr }, { status: 400 });
+
+  const { data: forms, error: formsErr } = await fetchLeadForms(page.id, token);
+  if (formsErr) return Response.json({ error: formsErr }, { status: 400 });
+
+  // Keep whatever enabled/disabled choices the admin already made for forms that still exist.
+  const existing = await getMetaSettings();
+  const prevById = new Map((existing?.forms || []).map((f) => [f.id, f]));
+  const mergedForms = forms.map((f) => ({ id: f.id, name: f.name, status: f.status, enabled: prevById.get(f.id)?.enabled ?? false }));
+
+  const settings = await saveMetaSettings({
+    pageAccessToken: token,
+    pageId: page.id,
+    pageName: page.name,
+    forms: mergedForms,
+    connectedAt: existing?.connectedAt || new Date().toISOString(),
+    connectedBy: admin.id,
+  });
+  return Response.json(publicSettings(settings));
+}
+
+// PATCH { action: 'refresh' } → re-pull the form list from Meta (new forms show up as off).
+// PATCH { formId, enabled } → toggle one form's capture state.
+export async function PATCH(request) {
+  const admin = await requireAdmin();
+  if (!admin) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+
+  const existing = await getMetaSettings();
+  if (!existing || !existing.pageAccessToken) {
+    return Response.json({ error: 'Connect a Meta Page first.' }, { status: 400 });
+  }
+
+  const body = await request.json().catch(() => ({}));
+
+  if (body.action === 'refresh') {
+    const { data: forms, error } = await fetchLeadForms(existing.pageId, existing.pageAccessToken);
+    if (error) return Response.json({ error }, { status: 400 });
+    const prevById = new Map((existing.forms || []).map((f) => [f.id, f]));
+    const mergedForms = forms.map((f) => ({ id: f.id, name: f.name, status: f.status, enabled: prevById.get(f.id)?.enabled ?? false }));
+    const settings = await saveMetaSettings({ forms: mergedForms });
+    return Response.json(publicSettings(settings));
+  }
+
+  if (body.formId) {
+    const nextForms = (existing.forms || []).map((f) => (f.id === body.formId ? { ...f, enabled: !!body.enabled } : f));
+    const settings = await saveMetaSettings({ forms: nextForms });
+    return Response.json(publicSettings(settings));
+  }
+
+  return Response.json({ error: 'Nothing to update.' }, { status: 400 });
+}
+
+// Disconnect the Page — clears the stored token so capture falls back to META_LEAD_ACCESS_TOKEN
+// (all forms) if that env var is still set, or stops until reconnected.
+export async function DELETE() {
+  const admin = await requireAdmin();
+  if (!admin) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+  const settings = await saveMetaSettings({ pageAccessToken: null, pageId: null, pageName: null, forms: [] });
+  return Response.json(publicSettings(settings));
+}

@@ -12,6 +12,7 @@ import { dbInsert, dbGetById } from '@/lib/db';
 import { istDateStr } from '@/lib/date';
 import { pushHistory } from '@/lib/leadStage';
 import { mapMetaLead } from '@/lib/metaLeadMap';
+import { getMetaSettings, activeAccessToken, enabledFormIds } from '@/lib/metaAds';
 
 export const dynamic = 'force-dynamic';
 
@@ -45,9 +46,8 @@ export async function GET(req) {
   return new Response('Forbidden', { status: 403 });
 }
 
-async function fetchLeadFields(leadgenId) {
-  const accessToken = process.env.META_LEAD_ACCESS_TOKEN;
-  if (!accessToken) return { error: 'META_LEAD_ACCESS_TOKEN not configured' };
+async function fetchLeadFields(leadgenId, accessToken) {
+  if (!accessToken) return { error: 'No Meta access token configured — connect a Page in Admin → Settings, or set META_LEAD_ACCESS_TOKEN.' };
   const res = await fetch(`https://graph.facebook.com/${API_VERSION}/${leadgenId}?access_token=${encodeURIComponent(accessToken)}`);
   const data = await res.json().catch(() => ({}));
   if (!res.ok) return { error: data?.error?.message || 'Graph API request failed' };
@@ -63,15 +63,26 @@ export async function POST(req) {
   let payload = {};
   try { payload = JSON.parse(rawBody || '{}'); } catch { /* empty/invalid body */ }
 
+  // Self-service form selection: once the admin has connected a Page in Settings, only forms
+  // toggled on there are captured. Until then (no settings row / no forms saved yet), every
+  // form on the subscribed Page is captured — the original behaviour.
+  const settings = await getMetaSettings();
+  const accessToken = activeAccessToken(settings);
+  const allowedFormIds = enabledFormIds(settings);
+
   for (const entry of payload.entry || []) {
     for (const change of entry.changes || []) {
       if (change.field !== 'leadgen') continue;
       const v = change.value || {};
       const leadgenId = v.leadgen_id;
       if (!leadgenId) continue;
+      if (allowedFormIds && (!v.form_id || !allowedFormIds.has(v.form_id))) {
+        console.log('Meta lead webhook: skipped — form not enabled for capture:', v.form_id);
+        continue;
+      }
 
       try {
-        const { data, error } = await fetchLeadFields(leadgenId);
+        const { data, error } = await fetchLeadFields(leadgenId, accessToken);
         if (error || !data) { console.error('Meta lead fetch failed:', leadgenId, error); continue; }
 
         const { mapped, rawMetaFields } = mapMetaLead(data.field_data || []);
