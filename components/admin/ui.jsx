@@ -5,7 +5,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { usePathname, useRouter } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import {
   IconDashboard, IconLeads, IconPartners, IconSalesEngineer, IconPresales, IconDemo,
   IconQuotation, IconConversions, IconReports, IconPayouts, IconTasks, IconSettings,
@@ -13,25 +13,28 @@ import {
   IconArrowDown, IconX, IconLogout,
 } from './icons';
 
+// Every item points at the SAME route (/admin) with a different ?tab= — see
+// components/admin/AdminHome.jsx. `tab` here must match AdminHome's switch cases exactly.
 export const NAV_ITEMS = [
-  { href: '/admin', label: 'Dashboard', Icon: IconDashboard, exact: true },
-  { href: '/admin/leads', label: 'Leads', Icon: IconLeads },
-  { href: '/admin/partners', label: 'Partners', Icon: IconPartners },
-  { href: '/admin/sales-engineers', label: 'Sales Engineers', Icon: IconSalesEngineer },
-  { href: '/admin/presales', label: 'Pre-sales', Icon: IconPresales },
-  { href: '/admin/demo-schedule', label: 'Demo Schedule', Icon: IconDemo },
-  { href: '/admin/quotations', label: 'Quotations', Icon: IconQuotation },
-  { href: '/admin/conversions', label: 'Conversions', Icon: IconConversions },
-  { href: '/admin/reports', label: 'Reports', Icon: IconReports },
-  { href: '/admin/payouts', label: 'Payouts', Icon: IconPayouts },
-  { href: '/admin/tasks', label: 'Tasks', Icon: IconTasks },
-  { href: '/admin/settings', label: 'Settings', Icon: IconSettings },
+  { tab: 'dashboard', href: '/admin', label: 'Dashboard', Icon: IconDashboard },
+  { tab: 'leads', href: '/admin?tab=leads', label: 'Leads', Icon: IconLeads },
+  { tab: 'partners', href: '/admin?tab=partners', label: 'Partners', Icon: IconPartners },
+  { tab: 'sales-engineers', href: '/admin?tab=sales-engineers', label: 'Sales Engineers', Icon: IconSalesEngineer },
+  { tab: 'presales', href: '/admin?tab=presales', label: 'Pre-sales', Icon: IconPresales },
+  { tab: 'demo-schedule', href: '/admin?tab=demo-schedule', label: 'Demo Schedule', Icon: IconDemo },
+  { tab: 'quotations', href: '/admin?tab=quotations', label: 'Quotations', Icon: IconQuotation },
+  { tab: 'conversions', href: '/admin?tab=conversions', label: 'Conversions', Icon: IconConversions },
+  { tab: 'reports', href: '/admin?tab=reports', label: 'Reports', Icon: IconReports },
+  { tab: 'payouts', href: '/admin?tab=payouts', label: 'Payouts', Icon: IconPayouts },
+  { tab: 'tasks', href: '/admin?tab=tasks', label: 'Tasks', Icon: IconTasks },
+  { tab: 'settings', href: '/admin?tab=settings', label: 'Settings', Icon: IconSettings },
 ];
 
 const ROLE_LABEL = { admin: 'Super Admin', presales: 'Pre-Sales', sales_engineer: 'Sales Engineer' };
 
 export function AdminShell({ employee, children }) {
-  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const activeTab = searchParams.get('tab') || 'dashboard';
   const router = useRouter();
   const [collapsed, setCollapsed] = useState(false);
   const [userMenu, setUserMenu] = useState(false);
@@ -52,9 +55,9 @@ export function AdminShell({ employee, children }) {
 
         <nav className="adm-nav">
           {NAV_ITEMS.map((item) => {
-            const active = item.exact ? pathname === item.href : pathname.startsWith(item.href);
+            const active = item.tab === activeTab;
             return (
-              <Link key={item.href} href={item.href} className={`adm-nav-link${active ? ' active' : ''}`}>
+              <Link key={item.tab} href={item.href} className={`adm-nav-link${active ? ' active' : ''}`}>
                 <item.Icon size={18} />
                 <span className="adm-nav-label">{item.label}</span>
               </Link>

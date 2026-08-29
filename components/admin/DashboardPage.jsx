@@ -77,7 +77,7 @@ export default function DashboardPage({ employee }) {
         <div className="adm-card">
           <div className="adm-card-title-row">
             <div className="adm-card-title">Recent Activity</div>
-            <Link href="/admin/leads" className="adm-link">View All</Link>
+            <Link href="/admin?tab=leads" className="adm-link">View All</Link>
           </div>
           {loading ? <div className="adm-empty">Loading…</div> : activity.length === 0 ? <div className="adm-empty">Nothing yet — new leads will show up here.</div> : (
             <div className="adm-activity-list">
@@ -98,10 +98,10 @@ export default function DashboardPage({ employee }) {
         <div className="adm-card">
           <div className="adm-card-title">Quick Actions</div>
           <div className="adm-quick-grid">
-            <Link href="/admin/partners" className="adm-quick-tile"><span className="adm-quick-icon"><IconPartners size={18} /></span><div><div className="adm-quick-title">Add Partner</div><div className="adm-quick-sub">Onboard new partners</div></div></Link>
-            <Link href="/admin/leads" className="adm-quick-tile"><span className="adm-quick-icon"><IconLeads size={18} /></span><div><div className="adm-quick-title">View Leads</div><div className="adm-quick-sub">Manage all leads</div></div></Link>
-            <Link href="/admin/leads?bucket=in_progress" className="adm-quick-tile"><span className="adm-quick-icon"><IconDemo size={18} /></span><div><div className="adm-quick-title">Schedule Demo</div><div className="adm-quick-sub">Assign to sales engineer</div></div></Link>
-            <Link href="/admin/leads?bucket=demo" className="adm-quick-tile"><span className="adm-quick-icon"><IconQuotation size={18} /></span><div><div className="adm-quick-title">Send Quotation</div><div className="adm-quick-sub">Follow up on demos</div></div></Link>
+            <Link href="/admin?tab=partners" className="adm-quick-tile"><span className="adm-quick-icon"><IconPartners size={18} /></span><div><div className="adm-quick-title">Add Partner</div><div className="adm-quick-sub">Onboard new partners</div></div></Link>
+            <Link href="/admin?tab=leads" className="adm-quick-tile"><span className="adm-quick-icon"><IconLeads size={18} /></span><div><div className="adm-quick-title">View Leads</div><div className="adm-quick-sub">Manage all leads</div></div></Link>
+            <Link href="/admin?tab=leads&bucket=in_progress" className="adm-quick-tile"><span className="adm-quick-icon"><IconDemo size={18} /></span><div><div className="adm-quick-title">Schedule Demo</div><div className="adm-quick-sub">Assign to sales engineer</div></div></Link>
+            <Link href="/admin?tab=leads&bucket=demo" className="adm-quick-tile"><span className="adm-quick-icon"><IconQuotation size={18} /></span><div><div className="adm-quick-title">Send Quotation</div><div className="adm-quick-sub">Follow up on demos</div></div></Link>
           </div>
         </div>
       </div>

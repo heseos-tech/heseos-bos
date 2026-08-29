@@ -26,6 +26,15 @@ export default function LeadsPage() {
   const [menuFor, setMenuFor] = useState(null);
   const [notice, setNotice] = useState('');
 
+  // The Leads tab now stays mounted after the first visit (see AdminHome), so a fresh
+  // navigation here — e.g. a Dashboard quick-tile linking to ?tab=leads&bucket=demo — no
+  // longer remounts this component. Without this, the bucket filter above (set once from the
+  // URL at mount) would never pick up a later change. React to it explicitly instead.
+  useEffect(() => {
+    const b = searchParams.get('bucket');
+    if (b) setBucket(b);
+  }, [searchParams]);
+
   const load = useCallback(async () => {
     const [l, p, e] = await Promise.all([
       fetch('/api/leads').then((r) => (r.ok ? r.json() : [])),

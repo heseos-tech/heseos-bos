@@ -1,10 +1,8 @@
-import { Suspense } from 'react';
-import LeadsPage from '@/components/admin/LeadsPage';
+import { redirect } from 'next/navigation';
 
-export default function AdminLeadsRoute() {
-  return (
-    <Suspense fallback={<div className="adm-empty">Loading…</div>}>
-      <LeadsPage />
-    </Suspense>
-  );
+// This section now lives on the single /admin page (see components/admin/AdminHome.jsx) so
+// switching tabs never refetches data. This route stays only so old bookmarks/links to
+// /admin/leads keep working.
+export default function AdminLegacyRedirect() {
+  redirect('/admin?tab=leads');
 }

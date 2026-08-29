@@ -1,5 +1,8 @@
-import StubPage from '@/components/admin/StubPage';
-import { IconPayouts } from '@/components/admin/icons';
-export default function AdminPayoutsRoute() {
-  return <StubPage title="Payouts" Icon={IconPayouts} description="A real payout ledger and settlement workflow for partners is coming soon — today, partner earnings shown across the app are an estimate based on their lead and conversion counts, not a processed payout." />;
+import { redirect } from 'next/navigation';
+
+// This section now lives on the single /admin page (see components/admin/AdminHome.jsx) so
+// switching tabs never refetches data. This route stays only so old bookmarks/links to
+// /admin/payouts keep working.
+export default function AdminLegacyRedirect() {
+  redirect('/admin?tab=payouts');
 }

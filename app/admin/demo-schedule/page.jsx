@@ -1,5 +1,8 @@
-import StubPage from '@/components/admin/StubPage';
-import { IconDemo } from '@/components/admin/icons';
-export default function AdminDemoScheduleRoute() {
-  return <StubPage title="Demo Schedule" Icon={IconDemo} description="A calendar view of every scheduled demo, by sales engineer, is coming soon. For now, demo dates and times are visible on each lead in the Leads and Pre-sales tables." />;
+import { redirect } from 'next/navigation';
+
+// This section now lives on the single /admin page (see components/admin/AdminHome.jsx) so
+// switching tabs never refetches data. This route stays only so old bookmarks/links to
+// /admin/demo-schedule keep working.
+export default function AdminLegacyRedirect() {
+  redirect('/admin?tab=demo-schedule');
 }

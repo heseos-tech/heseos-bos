@@ -1,5 +1,8 @@
-import StubPage from '@/components/admin/StubPage';
-import { IconTasks } from '@/components/admin/icons';
-export default function AdminTasksRoute() {
-  return <StubPage title="Tasks" Icon={IconTasks} description="Assignable follow-up tasks and reminders for your team are coming soon." />;
+import { redirect } from 'next/navigation';
+
+// This section now lives on the single /admin page (see components/admin/AdminHome.jsx) so
+// switching tabs never refetches data. This route stays only so old bookmarks/links to
+// /admin/tasks keep working.
+export default function AdminLegacyRedirect() {
+  redirect('/admin?tab=tasks');
 }
