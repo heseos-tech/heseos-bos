@@ -22,7 +22,7 @@ export default function TeamProfileScreen({ employee }) {
   async function logout() {
     setLoggingOut(true);
     await fetch("/api/auth/employee", { method: "DELETE" });
-    router.push("/employee/login");
+    router.push("/team/login");
     router.refresh();
   }
 

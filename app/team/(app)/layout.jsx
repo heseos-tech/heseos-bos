@@ -7,9 +7,9 @@ import { TeamAppShell } from '@/components/team/ui';
 // anyone who isn't presales/sales_engineer/admin has no business here.
 export default async function TeamAppLayout({ children }) {
   const employee = await getEmployee();
-  if (!employee) redirect('/employee/login');
+  if (!employee) redirect('/team/login');
   if (employee.role === 'admin') redirect('/admin');
-  if (employee.role !== 'presales' && employee.role !== 'sales_engineer') redirect('/employee/login');
+  if (employee.role !== 'presales' && employee.role !== 'sales_engineer') redirect('/team/login');
 
   return (
     <div className="hp-root">
