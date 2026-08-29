@@ -5,7 +5,6 @@
 // visit, send a quotation, and log the final demo outcome.
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import Image from 'next/image';
 import { fmtDateTime, fmtDate } from '@/lib/date';
 import { stageOf, displayStatus, subUpdateOf, needsReschedule, DEMO_OUTCOMES } from '@/lib/leadStage';
@@ -108,7 +107,6 @@ export default function SalesEngineerPanel({ employee }) {
             <span style={{ fontWeight: 500, color: 'var(--ink-soft)', fontSize: 13 }}>Sales Engineer</span>
           </div>
           <div className="dash-user">
-            <Link href="/employee/inbox" className="chip-btn">WhatsApp Inbox</Link>
             <span className="dash-user-name">{employee.name || employee.email}</span>
             <span className="dash-user-role">{employee.location || 'sales engineer'}</span>
             <button className="dash-logout" onClick={logout}>Log out</button>

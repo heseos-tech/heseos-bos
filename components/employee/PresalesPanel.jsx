@@ -4,7 +4,6 @@
 // and Schedule Demo to hand a qualified lead over to a sales engineer.
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import Image from 'next/image';
 import { fmtDateTime, fmtDate } from '@/lib/date';
 import { stageOf, displayStatus, subUpdateOf, isFollowUpLead, CONTACT_STAGES } from '@/lib/leadStage';
@@ -77,7 +76,6 @@ export default function PresalesPanel({ employee }) {
             <span style={{ fontWeight: 500, color: 'var(--ink-soft)', fontSize: 13 }}>Pre-sales</span>
           </div>
           <div className="dash-user">
-            <Link href="/employee/inbox" className="chip-btn">WhatsApp Inbox</Link>
             <span className="dash-user-name">{employee.name || employee.email}</span>
             <span className="dash-user-role">{employee.location || 'pre-sales'}</span>
             <button className="dash-logout" onClick={logout}>Log out</button>

@@ -73,7 +73,6 @@ export default function EmployeeDashboard({ employee }) {
         <div className="dash-topbar-inner">
           <div className="dash-brand" style={{ display: 'flex', alignItems: 'center', gap: 8 }}><Image src="/brand/lockup-navy.png" alt="Heseos" width={282} height={64} style={{ height: 24, width: 'auto' }} /> <span style={{ fontWeight: 500, color: 'var(--ink-soft)', fontSize: 13 }}>Employee</span></div>
           <div className="dash-user">
-            <Link href="/employee/inbox" className="chip-btn">WhatsApp Inbox</Link>
             {employee.role === 'admin' && <Link href="/admin" className="chip-btn">Admin</Link>}
             <span className="dash-user-name">{employee.name || employee.email}</span>
             <span className="dash-user-role">{employee.role.replace('_', ' ')}</span>
