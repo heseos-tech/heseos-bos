@@ -113,6 +113,11 @@ export async function PATCH(request, { params }) {
     if (!lead.demoScheduledAt) {
       return Response.json({ error: 'No demo scheduled for this lead yet' }, { status: 400 });
     }
+    // Converting requires the final, negotiated price — the number the deal actually closed
+    // at, which can (and usually does) differ from the original quotation after back-and-forth.
+    if (body.demoOutcome === 'converted' && (body.finalPrice === undefined || body.finalPrice === null || body.finalPrice === '')) {
+      return Response.json({ error: 'Final price is required to mark a lead as Converted' }, { status: 400 });
+    }
     const now = new Date().toISOString();
     patch = {
       demoOutcome: body.demoOutcome,
@@ -120,7 +125,12 @@ export async function PATCH(request, { params }) {
       demoOutcomeBy: employee.id,
       demoOutcomeNote: body.note || '',
     };
-    if (body.demoOutcome === 'converted') patch.convertedAt = now;
+    if (body.demoOutcome === 'converted') {
+      patch.convertedAt = now;
+      patch.finalPrice = Number(body.finalPrice) || null;
+      patch.finalPriceAt = now;
+      patch.finalPriceBy = employee.id;
+    }
     if (DEMO_OUTCOME_KIND[body.demoOutcome] === 'dead') patch.rejectedAt = now;
     // Reschedule outcomes may come with a fresh date/time/address right away.
     if (DEMO_OUTCOME_KIND[body.demoOutcome] === 'reschedule' && body.demoDate && body.demoTime) {
@@ -132,20 +142,31 @@ export async function PATCH(request, { params }) {
       patch.demoOutcomeAt = null;
       patch.demoOutcomeBy = null;
     }
-    patch.history = pushHistory(lead, { event: DEMO_OUTCOME_LABEL[body.demoOutcome], by: actorLabel, note: body.note || '' });
+    const outcomeNote = body.demoOutcome === 'converted'
+      ? `Final price ₹${patch.finalPrice}${body.note ? ' — ' + body.note : ''}`
+      : (body.note || '');
+    patch.history = pushHistory(lead, { event: DEMO_OUTCOME_LABEL[body.demoOutcome], by: actorLabel, note: outcomeNote });
 
   } else if (body.type === 'quotation') {
-    // Admin/sales-engineer marks a quotation as sent (and can log the amount). This is a
-    // real, timestamped overlay used for the "Quotations Sent" metric across the admin
-    // dashboard, leads table and funnel — separate from the demo-outcome/contact-stage
-    // lifecycle so it can be logged at any point after a demo is scheduled.
+    // Admin/sales-engineer sends (or REVISES) a quotation. Every call appends a new entry to
+    // quotationRevisions — as many times as the price gets negotiated — while
+    // quotationSentAt/quotationSentBy/quotationAmount always mirror the LATEST revision, so
+    // every existing table/column/funnel that already reads those three fields keeps working
+    // unchanged and just shows the current number.
     const now = new Date().toISOString();
+    const prevRevisions = Array.isArray(lead.quotationRevisions) ? lead.quotationRevisions : [];
+    const revisionNum = prevRevisions.length + 1;
+    const amount = body.amount != null && body.amount !== '' ? Number(body.amount) || null : (lead.quotationAmount || null);
+    const revisionEntry = { revision: revisionNum, amount, at: now, by: actorLabel, note: body.note || '' };
     patch = {
       quotationSentAt: now,
       quotationSentBy: employee.id,
-      quotationAmount: body.amount != null ? Number(body.amount) || null : (lead.quotationAmount || null),
+      quotationAmount: amount,
+      quotationRevisions: [...prevRevisions, revisionEntry],
     };
-    patch.history = pushHistory(lead, { event: 'Quotation Sent', by: actorLabel, note: body.amount ? `₹${body.amount}` : '' });
+    const quoteEvent = revisionNum === 1 ? 'Quotation Sent' : `Quotation Revised (v${revisionNum})`;
+    const quoteNote = `${amount != null ? `₹${amount}` : ''}${body.note ? (amount != null ? ' — ' : '') + body.note : ''}`;
+    patch.history = pushHistory(lead, { event: quoteEvent, by: actorLabel, note: quoteNote });
 
   } else if (body.type === 'assign') {
     patch = {

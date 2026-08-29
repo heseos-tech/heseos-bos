@@ -175,7 +175,13 @@ export default function SalesEngineerPanel({ employee }) {
                               <span className="badge-dot" />{status.label}
                             </span>
                             {sub && <div className="lead-meta" style={{ color: '#B7791F', marginTop: 4 }}>{sub.label}</div>}
-                            {l.quotationSentAt && <div className="lead-meta" style={{ marginTop: 4 }}>Quoted {l.quotationAmount ? `₹${l.quotationAmount}` : ''}</div>}
+                            {l.quotationSentAt && (
+                              <div className="lead-meta" style={{ marginTop: 4 }}>
+                                Quoted {l.quotationAmount ? `₹${l.quotationAmount}` : ''}
+                                {(l.quotationRevisions?.length || 0) > 1 && ` (rev ${l.quotationRevisions.length})`}
+                              </div>
+                            )}
+                            {l.finalPrice != null && <div className="lead-meta" style={{ marginTop: 4, fontWeight: 700, color: '#16A34A' }}>Final ₹{l.finalPrice}</div>}
                           </>
                         )}
                       </td>
@@ -186,7 +192,7 @@ export default function SalesEngineerPanel({ employee }) {
                           )}
                           {canAct && (
                             <>
-                              {!l.quotationSentAt && <button className="chip-btn" onClick={() => setModal({ type: 'quotation', lead: l })}>Send Quotation</button>}
+                              <button className="chip-btn" onClick={() => setModal({ type: 'quotation', lead: l })}>{l.quotationSentAt ? 'Revise Quotation' : 'Send Quotation'}</button>
                               <button className="chip-btn primary" onClick={() => setModal({ type: 'outcome', lead: l })}>{tab === 'reschedule' ? 'Reschedule' : 'Mark Outcome'}</button>
                             </>
                           )}
@@ -213,11 +219,14 @@ function EngineerModal({ modal, onClose, onDone }) {
   const [error, setError] = useState('');
 
   const [amount, setAmount] = useState(lead.quotationAmount || '');
+  const [quoteNote, setQuoteNote] = useState('');
   const [outcome, setOutcome] = useState(needsReschedule(lead) ? lead.demoOutcome : '');
+  const [finalPrice, setFinalPrice] = useState(lead.quotationAmount || '');
   const [note, setNote] = useState('');
   const [demoDate, setDemoDate] = useState(lead.demoDate || '');
   const [demoTime, setDemoTime] = useState(lead.demoTime || '');
   const [demoAddress, setDemoAddress] = useState(lead.demoAddress || '');
+  const revisions = Array.isArray(lead.quotationRevisions) ? lead.quotationRevisions : [];
 
   async function submit() {
     setError('');
@@ -225,10 +234,17 @@ function EngineerModal({ modal, onClose, onDone }) {
     try {
       let body;
       if (type === 'quotation') {
-        body = { type: 'quotation', amount: amount ? Number(amount) : null };
+        body = { type: 'quotation', amount: amount ? Number(amount) : null, note: quoteNote };
       } else if (type === 'outcome') {
         if (!outcome) { setError('Choose an outcome.'); setSubmitting(false); return; }
-        body = { type: 'demoOutcome', demoOutcome: outcome, note, ...(demoDate && demoTime ? { demoDate, demoTime, demoAddress } : {}) };
+        if (outcome === 'converted' && !finalPrice) { setError('Enter the final price to mark this Converted.'); setSubmitting(false); return; }
+        body = {
+          type: 'demoOutcome',
+          demoOutcome: outcome,
+          note,
+          ...(outcome === 'converted' ? { finalPrice: Number(finalPrice) } : {}),
+          ...(demoDate && demoTime ? { demoDate, demoTime, demoAddress } : {}),
+        };
       }
       const res = await fetch(`/api/leads/${lead.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
       if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Failed'); }
@@ -245,11 +261,32 @@ function EngineerModal({ modal, onClose, onDone }) {
       <div className="modal-card">
         {type === 'quotation' && (
           <>
-            <div className="modal-title">Send quotation</div>
+            <div className="modal-title">{revisions.length ? 'Revise quotation' : 'Send quotation'}</div>
             <div className="modal-sub">{lead.name} · {lead.phone}</div>
+            {revisions.length > 0 && (
+              <div className="lf-field">
+                <label className="lf-label">Previous revisions</label>
+                <div className="timeline" style={{ marginTop: 0 }}>
+                  {revisions.slice().reverse().map((r) => (
+                    <div className="timeline-item" key={r.revision}>
+                      <div className="timeline-dot" />
+                      <div>
+                        <div className="timeline-label">v{r.revision} · {r.amount != null ? `₹${r.amount}` : 'no amount'}</div>
+                        <div className="timeline-meta">{fmtDateTime(r.at)}</div>
+                        {r.note && <div className="timeline-note">{r.note}</div>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
             <div className="lf-field">
-              <label className="lf-label">Amount (₹, optional)</label>
+              <label className="lf-label">{revisions.length ? 'New amount (₹)' : 'Amount (₹, optional)'}</label>
               <input className="lf-input" type="number" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="e.g. 185000" />
+            </div>
+            <div className="lf-field">
+              <label className="lf-label">Reason for {revisions.length ? 'revision' : 'this quote'} (optional)</label>
+              <input className="lf-input" value={quoteNote} onChange={(e) => setQuoteNote(e.target.value)} placeholder="e.g. Reduced after negotiation" />
             </div>
           </>
         )}
@@ -272,6 +309,13 @@ function EngineerModal({ modal, onClose, onDone }) {
                 <div className="lf-field"><label className="lf-label">New time</label><input className="lf-input" type="time" value={demoTime} onChange={(e) => setDemoTime(e.target.value)} /></div>
                 <div className="lf-field"><label className="lf-label">Address (if changed)</label><input className="lf-input" value={demoAddress} onChange={(e) => setDemoAddress(e.target.value)} /></div>
               </>
+            )}
+            {outcome === 'converted' && (
+              <div className="lf-field">
+                <label className="lf-label">Final price (₹) — after negotiation</label>
+                <input className="lf-input" type="number" value={finalPrice} onChange={(e) => setFinalPrice(e.target.value)} placeholder="The price the deal actually closed at" />
+                {lead.quotationAmount != null && <div className="lead-meta" style={{ marginTop: 4 }}>Last quoted: ₹{lead.quotationAmount}</div>}
+              </div>
             )}
             <div className="lf-field">
               <label className="lf-label">Note (optional)</label>

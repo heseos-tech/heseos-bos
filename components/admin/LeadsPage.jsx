@@ -212,7 +212,29 @@ function ViewLeadModal({ lead, partnerName, engineerName, onClose }) {
         <div><span className="adm-detail-label">Sales Engineer</span>{engineerName}</div>
         <div><span className="adm-detail-label">Property Type</span>{PT_LABEL[lead.propertyType] || '—'}</div>
         <div><span className="adm-detail-label">Budget</span>{lead.budget || '—'}</div>
+        <div>
+          <span className="adm-detail-label">Quotation</span>
+          {lead.quotationAmount != null ? `₹${lead.quotationAmount}${(lead.quotationRevisions?.length || 0) > 1 ? ` (rev ${lead.quotationRevisions.length})` : ''}` : '—'}
+        </div>
+        <div><span className="adm-detail-label">Final Price</span>{lead.finalPrice != null ? `₹${lead.finalPrice}` : '—'}</div>
       </div>
+      {(lead.quotationRevisions?.length || 0) > 1 && (
+        <>
+          <div className="adm-detail-label" style={{ marginTop: 16 }}>Quotation Revisions</div>
+          <div className="adm-timeline">
+            {lead.quotationRevisions.slice().reverse().map((r) => (
+              <div className="adm-timeline-row" key={r.revision}>
+                <span className="adm-timeline-dot" />
+                <div>
+                  <div className="adm-timeline-event">v{r.revision} · {r.amount != null ? `₹${r.amount}` : 'no amount'}</div>
+                  <div className="adm-timeline-meta">{r.by} — {new Date(r.at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}</div>
+                  {r.note && <div className="adm-timeline-meta">{r.note}</div>}
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
       {lead.notes && <p className="adm-detail-notes">{lead.notes}</p>}
       <div className="adm-detail-label" style={{ marginTop: 16 }}>Timeline</div>
       <div className="adm-timeline">
