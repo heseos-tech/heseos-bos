@@ -1,7 +1,8 @@
 'use client';
-// Sales Engineer panel — shows ONLY the leads assigned to this engineer (city auto-assigned,
-// or handed over by pre-sales/admin once a demo is booked). Their job: visit, send a
-// quotation, and log the final demo outcome.
+// Sales Engineer panel — two kinds of leads live here: "Available Leads" (open demos in this
+// engineer's city that nobody has claimed yet — first to accept gets it, everyone else stops
+// seeing it) and everything already claimed/assigned to them ("mine"). Their job: claim,
+// visit, send a quotation, and log the final demo outcome.
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -13,12 +14,16 @@ import { PRODUCT_INTEREST, PROPERTY_TYPE, LEAD_SOURCES } from '@/lib/formOptions
 const PI_LABEL = Object.fromEntries(PRODUCT_INTEREST.map((p) => [p.v, p.l]));
 const PT_LABEL = Object.fromEntries(PROPERTY_TYPE.map((p) => [p.v, p.l]));
 
+function norm(s) { return String(s || '').trim().toLowerCase(); }
+
 export default function SalesEngineerPanel({ employee }) {
   const router = useRouter();
   const [leads, setLeads] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState('upcoming');
+  const [tab, setTab] = useState('available');
   const [modal, setModal] = useState(null); // { type: 'quotation'|'outcome'|'timeline', lead }
+  const [claimingId, setClaimingId] = useState(null);
+  const [notice, setNotice] = useState('');
 
   const fetchLeads = useCallback(async () => {
     try {
@@ -31,7 +36,7 @@ export default function SalesEngineerPanel({ employee }) {
 
   useEffect(() => {
     fetchLeads();
-    const t = setInterval(fetchLeads, 20000);
+    const t = setInterval(fetchLeads, 15000); // short poll — open demos get claimed fast
     return () => clearInterval(t);
   }, [fetchLeads]);
 
@@ -41,7 +46,16 @@ export default function SalesEngineerPanel({ employee }) {
     router.refresh();
   }
 
-  // Only what's assigned to me — never the whole pipeline.
+  function flash(msg) { setNotice(msg); setTimeout(() => setNotice(''), 4000); }
+
+  // Open demos in my city that nobody has claimed yet — first to accept wins.
+  const myCity = norm(employee.location);
+  const available = useMemo(
+    () => leads.filter((l) => l.demoScheduledAt && !l.salesEngineerId && myCity && norm(l.city) === myCity),
+    [leads, myCity]
+  );
+
+  // What's already mine (claimed by me, or assigned by an admin).
   const mine = useMemo(() => leads.filter((l) => l.salesEngineerId === employee.id), [leads, employee.id]);
 
   const groups = useMemo(() => {
@@ -58,6 +72,7 @@ export default function SalesEngineerPanel({ employee }) {
   }, [mine]);
 
   const TABS = [
+    { key: 'available', label: 'Available Leads', list: available },
     { key: 'upcoming', label: 'Upcoming Demos', list: groups.upcoming },
     { key: 'reschedule', label: 'Needs Reschedule', list: groups.reschedule },
     { key: 'quoted', label: 'Quotation Sent', list: groups.quoted },
@@ -66,6 +81,23 @@ export default function SalesEngineerPanel({ employee }) {
     { key: 'all', label: 'All Mine', list: groups.all },
   ];
   const active = TABS.find((t) => t.key === tab) || TABS[0];
+
+  async function acceptLead(lead) {
+    setClaimingId(lead.id);
+    try {
+      const res = await fetch(`/api/leads/${lead.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'claim' }) });
+      const data = await res.json();
+      if (!res.ok) {
+        flash(res.status === 409 ? `Too slow — ${lead.name} was just claimed by someone else.` : (data.error || 'Could not claim this lead.'));
+        fetchLeads();
+        return;
+      }
+      flash(`${lead.name} is now yours.`);
+      fetchLeads();
+    } finally {
+      setClaimingId(null);
+    }
+  }
 
   return (
     <div className="dash">
@@ -85,11 +117,13 @@ export default function SalesEngineerPanel({ employee }) {
       </div>
 
       <div className="dash-body">
+        {notice && <div className="dash-notice" style={{ marginBottom: 16 }}>{notice}</div>}
+
         <div className="kpi-row">
+          <div className="kpi-card"><div className="kpi-label">Available in {employee.location || 'your city'}</div><div className="kpi-val">{available.length}</div></div>
           <div className="kpi-card"><div className="kpi-label">Upcoming Demos</div><div className="kpi-val">{groups.upcoming.length}</div></div>
           <div className="kpi-card"><div className="kpi-label">Quotation Sent</div><div className="kpi-val">{groups.quoted.length}</div></div>
           <div className="kpi-card"><div className="kpi-label">Converted</div><div className="kpi-val">{groups.converted.length}</div></div>
-          <div className="kpi-card"><div className="kpi-label">Needs Reschedule</div><div className="kpi-val">{groups.reschedule.length}</div></div>
         </div>
 
         <div className="dash-tabs">
@@ -100,12 +134,16 @@ export default function SalesEngineerPanel({ employee }) {
           ))}
         </div>
 
+        {!myCity && (
+          <div className="dash-notice" style={{ marginBottom: 16 }}>Your profile has no city set — ask an admin to set it from Sales Engineers so open demos in your city show up here.</div>
+        )}
+
         {loading ? (
           <div className="empty-state">Loading your leads…</div>
         ) : active.list.length === 0 ? (
           <div className="empty-state">
             <div className="empty-state-icon">📭</div>
-            {mine.length === 0 ? 'No leads assigned to you yet.' : `Nothing in ${active.label.toLowerCase()} right now.`}
+            {tab === 'available' ? 'No open demos in your city right now.' : (mine.length === 0 ? 'No leads assigned to you yet.' : `Nothing in ${active.label.toLowerCase()} right now.`)}
           </div>
         ) : (
           <div style={{ overflowX: 'auto' }}>
@@ -131,14 +169,23 @@ export default function SalesEngineerPanel({ employee }) {
                       <td>{LEAD_SOURCES[l.source] || l.source}</td>
                       <td>{l.demoDate ? <>{fmtDate(l.demoDate)} · {l.demoTime}<div className="lead-meta">{l.demoAddress}</div></> : '—'}</td>
                       <td>
-                        <span className="badge" style={{ color: status.c, background: status.bg }}>
-                          <span className="badge-dot" />{status.label}
-                        </span>
-                        {sub && <div className="lead-meta" style={{ color: '#B7791F', marginTop: 4 }}>{sub.label}</div>}
-                        {l.quotationSentAt && <div className="lead-meta" style={{ marginTop: 4 }}>Quoted {l.quotationAmount ? `₹${l.quotationAmount}` : ''}</div>}
+                        {tab === 'available' ? (
+                          <span className="badge" style={{ color: '#0EA5E9', background: '#E0F2FE' }}><span className="badge-dot" />Open — unclaimed</span>
+                        ) : (
+                          <>
+                            <span className="badge" style={{ color: status.c, background: status.bg }}>
+                              <span className="badge-dot" />{status.label}
+                            </span>
+                            {sub && <div className="lead-meta" style={{ color: '#B7791F', marginTop: 4 }}>{sub.label}</div>}
+                            {l.quotationSentAt && <div className="lead-meta" style={{ marginTop: 4 }}>Quoted {l.quotationAmount ? `₹${l.quotationAmount}` : ''}</div>}
+                          </>
+                        )}
                       </td>
                       <td>
                         <div className="row-actions">
+                          {tab === 'available' && (
+                            <button className="chip-btn primary" onClick={() => acceptLead(l)} disabled={claimingId === l.id}>{claimingId === l.id ? 'Claiming…' : 'Accept Lead'}</button>
+                          )}
                           {canAct && (
                             <>
                               {!l.quotationSentAt && <button className="chip-btn" onClick={() => setModal({ type: 'quotation', lead: l })}>Send Quotation</button>}

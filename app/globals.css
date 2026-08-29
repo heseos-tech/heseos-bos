@@ -333,6 +333,8 @@ footer { background: #011F2E; padding: 64px 0 28px; color: rgba(255, 255, 255, 0
 .dash-tab-count { font-size: 11px; font-weight: 700; background: rgba(0,0,0,0.08); border-radius: var(--r-full); padding: 1px 7px; }
 .dash-tab.active .dash-tab-count { background: rgba(255,255,255,0.22); }
 
+.dash-notice { background: #fff7ed; border: 1px solid #ffd8ae; color: #9a4a00; font-size: 13px; font-weight: 600; padding: 10px 16px; border-radius: 10px; }
+
 .kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 24px; }
 .kpi-card { background: var(--white); border: 1px solid var(--border-light); border-radius: var(--r16); padding: 18px 20px; }
 .kpi-label { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-soft); margin-bottom: 8px; }
