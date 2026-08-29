@@ -88,6 +88,11 @@
 .hp-brand-tag { font-size: 8.5px; font-weight: 700; letter-spacing: 2px; color: var(--hp-orange); text-transform: uppercase; margin-top: 2px; }
 .hp-brand-logo { height: 34px; width: auto; display: block; }
 .hp-brand-logo-sm { height: 24px; }
+/* The onboarding hero (app/partner/page.jsx, app/team/page.jsx) puts the logo as a direct
+   child of .hp-hero-content, which is a column flex container — its default
+   align-items:stretch pulls the logo to the full container width, distorting it. Nothing else
+   sets an explicit align-self, so pin it to its own intrinsic/aspect-ratio size here instead. */
+.hp-hero-content > .hp-brand-logo { align-self: flex-start; flex: none; }
 
 /* ── Typography ──────────────────────────────────────────────────────── */
 .hp-h1 { font-size: 30px; font-weight: 800; line-height: 1.18; color: #fff; letter-spacing: -0.3px; }
