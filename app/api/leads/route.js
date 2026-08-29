@@ -7,6 +7,7 @@ import { dbInsert, dbList, dbWhere } from '@/lib/db';
 import { istDateStr } from '@/lib/date';
 import { getEmployee, getPartner } from '@/lib/auth';
 import { pushHistory } from '@/lib/leadStage';
+import { autoAssignByCity } from '@/lib/leadAssign';
 import { LEAD_SOURCES } from '@/lib/formOptions';
 
 export const dynamic = 'force-dynamic';
@@ -50,6 +51,10 @@ export async function POST(request) {
     const now = new Date().toISOString();
     const id = `L${Date.now().toString().slice(-8)}${Math.floor(Math.random() * 90 + 10)}`;
 
+    // City-based auto-assignment — see lib/leadAssign.js. Leaves both null (unassigned) when
+    // no active employee's location matches, same as before this existed.
+    const { assignedTo, salesEngineerId } = await autoAssignByCity(city);
+
     const lead = {
       id,
       createdAt: now,
@@ -77,12 +82,15 @@ export async function POST(request) {
 
       contactStage: null,
       demoOutcome: null,
-      assignedTo: null,
-      salesEngineerId: null,
+      assignedTo,
+      salesEngineerId,
 
       history: [],
     };
     lead.history = pushHistory(lead, { event: 'Lead Submitted', by: partnerId ? `partner:${partnerId}` : source, note: LEAD_SOURCES[source] });
+    if (assignedTo || salesEngineerId) {
+      lead.history = pushHistory(lead, { event: 'Auto-assigned by city', by: 'system', note: `${city}${assignedTo ? ' · pre-sales matched' : ''}${salesEngineerId ? ' · sales engineer matched' : ''}` });
+    }
 
     await dbInsert('leads', id, lead);
 

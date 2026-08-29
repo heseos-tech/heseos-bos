@@ -13,6 +13,7 @@ import { istDateStr } from '@/lib/date';
 import { pushHistory } from '@/lib/leadStage';
 import { mapMetaLead } from '@/lib/metaLeadMap';
 import { getMetaSettings, activeAccessToken, enabledFormIds } from '@/lib/metaAds';
+import { autoAssignByCity } from '@/lib/leadAssign';
 
 export const dynamic = 'force-dynamic';
 
@@ -95,6 +96,7 @@ export async function POST(req) {
         if (existing) continue; // already captured
 
         const now = new Date().toISOString();
+        const { assignedTo, salesEngineerId } = await autoAssignByCity(mapped.city);
         const lead = {
           id,
           createdAt: now,
@@ -118,11 +120,14 @@ export async function POST(req) {
           rawMetaFields,
           contactStage: null,
           demoOutcome: null,
-          assignedTo: null,
-          salesEngineerId: null,
+          assignedTo,
+          salesEngineerId,
           history: [],
         };
         lead.history = pushHistory(lead, { event: 'Lead Submitted', by: 'meta_lead_form', note: 'Meta Instant Form' });
+        if (assignedTo || salesEngineerId) {
+          lead.history = pushHistory(lead, { event: 'Auto-assigned by city', by: 'system', note: mapped.city || '' });
+        }
         await dbInsert('leads', id, lead);
       } catch (err) {
         console.error('Meta lead webhook error:', err);
