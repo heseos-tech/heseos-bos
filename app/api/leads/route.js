@@ -67,6 +67,10 @@ export async function POST(request) {
       budget: body.budget || '',
       timeline: body.timeline || '',
       persona: body.persona || '',
+      altPhone: body.altPhone || '',
+      configuration: body.configuration || '',
+      referralSource: body.referralSource || '',
+      notes: body.notes || '',
 
       source,
       partnerId,
