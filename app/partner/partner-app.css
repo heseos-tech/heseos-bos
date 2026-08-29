@@ -4,6 +4,19 @@
    never touches the public site / employee / admin styles in globals.css.
 ───────────────────────────────────────────────────────────────────────── */
 
+/* :has(.hp-root) keeps this scoped to actual app pages regardless of CSS load order, so it can
+   never leak onto the public marketing site. Pins html/body to the exact viewport, stops them
+   from ever scrolling/bouncing themselves (only .hp-shell-scroll should — see below), and gives
+   them the app's own dark background — belt-and-braces against the marketing site's light body
+   background (globals.css) showing as a white flash/sliver at the true edges of the screen
+   during an iOS rubber-band overscroll bounce or a dvh-rounding gap, instead of matching the app. */
+html:has(.hp-root), body:has(.hp-root) {
+  background: #060f1c;
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior-y: none;
+}
+
 .hp-root {
   --hp-bg: #060f1c;
   --hp-bg2: #0a1826;
