@@ -19,15 +19,7 @@ export default function DashboardScreen({ partner, leads, earnings }) {
   return (
     <>
       <div className="hp-topbar">
-        <div className="hp-brand">
-          <span className="hp-brand-mark" style={{ width: 34, height: 34, borderRadius: 10 }}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2"><path d="M4 14a8 8 0 0 1 16 0" /><path d="M7 17.2a5 5 0 0 1 10 0" /><circle cx="12" cy="20" r="1.4" fill="#fff" stroke="none" /></svg>
-          </span>
-          <div className="hp-brand-text">
-            <span className="hp-brand-name" style={{ fontSize: 15 }}>HESEOS</span>
-            <span className="hp-brand-tag" style={{ fontSize: 7 }}>Lighting Ahead</span>
-          </div>
-        </div>
+        <img src="/brand/lockup-white.png" alt="Heseos — Lighting Ahead" className="hp-brand-logo hp-brand-logo-sm" />
         <div className="hp-topbar-right">
           <button className="hp-bell" aria-label="Notifications"><IconBell size={18} /><span className="hp-bell-dot" /></button>
           <Link href="/partner/profile"><Avatar name={partner.name} /></Link>

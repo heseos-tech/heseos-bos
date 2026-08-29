@@ -12,15 +12,7 @@ export default async function PartnerOnboardingPage() {
         <div className="hp-hero-bg" style={{ backgroundImage: "url('/Home-Screen.png')" }} />
         <div className="hp-hero-scrim" />
         <div className="hp-hero-content">
-          <div className="hp-brand">
-            <span className="hp-brand-mark">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2"><path d="M4 14a8 8 0 0 1 16 0" /><path d="M7 17.2a5 5 0 0 1 10 0" /><circle cx="12" cy="20" r="1.4" fill="#fff" stroke="none" /></svg>
-            </span>
-            <div className="hp-brand-text">
-              <span className="hp-brand-name">HESEOS</span>
-              <span className="hp-brand-tag">Lighting Ahead</span>
-            </div>
-          </div>
+          <img src="/brand/lockup-white.png" alt="Heseos — Lighting Ahead" className="hp-brand-logo" />
 
           <div className="hp-hero-top">
             <h1 className="hp-h1">Smart Homes<br />Start with <span className="hp-accent-text">You</span></h1>

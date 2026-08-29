@@ -76,6 +76,8 @@
 .hp-brand-text { display: flex; flex-direction: column; line-height: 1.05; }
 .hp-brand-name { font-size: 19px; font-weight: 800; letter-spacing: 0.5px; color: #fff; }
 .hp-brand-tag { font-size: 8.5px; font-weight: 700; letter-spacing: 2px; color: var(--hp-orange); text-transform: uppercase; margin-top: 2px; }
+.hp-brand-logo { height: 34px; width: auto; display: block; }
+.hp-brand-logo-sm { height: 24px; }
 
 /* ── Typography ──────────────────────────────────────────────────────── */
 .hp-h1 { font-size: 30px; font-weight: 800; line-height: 1.18; color: #fff; letter-spacing: -0.3px; }
