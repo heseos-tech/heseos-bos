@@ -105,6 +105,15 @@ export default function TeamHomeScreen({ employee }) {
         </div>
       </div>
 
+      <div className="hp-promo">
+        <div className="hp-promo-img" style={{ backgroundImage: "url('/User-home-screen.png')" }} />
+        <div className="hp-promo-fade" />
+        <div className="hp-promo-text">
+          <div className="hp-h3">Smart homes.<br /><span className="hp-accent-text">Brighter results.</span></div>
+          <div className="hp-sub-sm">Let&rsquo;s close together.</div>
+        </div>
+      </div>
+
       <div className="hp-stat-grid">
         {stats.map((s) => {
           const Icon = s.icon;
