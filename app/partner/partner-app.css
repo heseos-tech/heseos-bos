@@ -258,8 +258,17 @@ html:has(.hp-root), body:has(.hp-root) {
 .hp-bottom-nav { position: fixed; left: 50%; bottom: 0; transform: translateX(-50%); width: 100%; max-width: 480px; z-index: 40; flex-shrink: 0; display: flex; align-items: flex-end; justify-content: space-around; background: var(--hp-bg2); border-top: 1px solid var(--hp-border); padding: 7px 6px calc(6px + env(safe-area-inset-bottom, 0px)); }
 .hp-nav-item { display: flex; flex-direction: column; align-items: center; gap: 4px; background: none; border: none; color: var(--hp-text-faint); font-size: 10.5px; font-weight: 600; padding: 4px 8px; flex: 1; cursor: pointer; }
 .hp-nav-item.active { color: var(--hp-orange); }
-.hp-nav-center { display: flex; flex-direction: column; align-items: center; gap: 4px; margin-top: -26px; }
-.hp-nav-center-btn { width: 52px; height: 52px; border-radius: 50%; background: linear-gradient(155deg, var(--hp-orange), var(--hp-orange-dark)); display: flex; align-items: center; justify-content: center; color: #fff; box-shadow: 0 8px 20px var(--hp-orange-glow); border: 4px solid var(--hp-bg2); }
+/* The floating "Add Lead" circle used to be a plain flex item pulled up with a negative
+   margin-top — negative margins inside a flex container's cross-axis sizing are a known spot
+   where browsers disagree (some correctly shrink the item's contribution to the row's
+   auto-height, some don't), which is the likely reason this nav rendered taller — and with
+   extra unexplained space below it — on some devices despite being identical CSS to Team's
+   plain 3-item nav. Switched the circle to position:absolute so it can never affect
+   .hp-bottom-nav's height at all, matching Team's nav mechanism exactly. align-self:stretch
+   + justify-content:flex-end keeps the "Add Lead" label bottom-aligned with the other four
+   items' labels (it used to sit ~26px higher, out of line with them). */
+.hp-nav-center { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; align-self: stretch; gap: 4px; }
+.hp-nav-center-btn { position: absolute; left: 50%; bottom: 26px; transform: translateX(-50%); width: 52px; height: 52px; border-radius: 50%; background: linear-gradient(155deg, var(--hp-orange), var(--hp-orange-dark)); display: flex; align-items: center; justify-content: center; color: #fff; box-shadow: 0 8px 20px var(--hp-orange-glow); border: 4px solid var(--hp-bg2); }
 .hp-nav-center-label { font-size: 10.5px; font-weight: 600; color: var(--hp-text-faint); }
 
 /* ── Wizard progress steps ──────────────────────────────────────────── */
