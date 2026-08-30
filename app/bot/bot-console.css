@@ -51,8 +51,8 @@
 .bc-sidebar-sub { font-size: 11px; color: rgba(255, 255, 255, 0.45); font-weight: 600; }
 
 .bc-nav { display: flex; flex-direction: column; gap: 2px; flex: 1; }
-.bc-nav-item { display: flex; align-items: center; gap: 11px; padding: 10px 12px; border-radius: var(--bc-r-sm); color: rgba(255, 255, 255, 0.65); font-size: 13.5px; font-weight: 600; background: none; border: none; cursor: pointer; text-align: left; width: 100%; }
-.bc-nav-item svg { flex-shrink: 0; opacity: 0.85; }
+.bc-nav-item { display: flex; align-items: center; gap: 11px; padding: 10px 12px; border-radius: var(--bc-r-sm); color: rgba(255, 255, 255, 0.82); font-size: 13.5px; font-weight: 600; background: none; border: none; cursor: pointer; text-align: left; width: 100%; }
+.bc-nav-item svg { flex-shrink: 0; opacity: 0.92; color: rgba(255, 255, 255, 0.82); }
 .bc-nav-item:hover { background: var(--bc-sidebar-hover); color: #fff; }
 .bc-nav-item.active { background: var(--bc-sidebar-active); color: #fff; }
 .bc-nav-item.active svg { color: var(--bc-accent); opacity: 1; }
