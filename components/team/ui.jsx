@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { IconHome, IconLeads, IconUser } from '@/components/partner/icons';
 import { useNavHeightVar } from '@/components/partner/ui';
+import SplashScreen from '@/components/partner/SplashScreen';
 
 // All three point at the SAME route (/team/home) with a different ?tab= — see
 // components/team/TeamHome.jsx. `tab` here must match TeamHome's switch cases exactly.
@@ -44,6 +45,7 @@ export function TeamBottomNav() {
 export function TeamAppShell({ children }) {
   return (
     <div className="hp-shell">
+      <SplashScreen />
       <div className="hp-shell-scroll">{children}</div>
       <TeamBottomNav />
     </div>

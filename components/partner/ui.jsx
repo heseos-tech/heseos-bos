@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import {
   IconEye, IconEyeOff, IconChevronDown, IconArrowLeft, IconHome, IconLeads, IconPlus, IconGift, IconUser, IconCheck,
 } from './icons';
+import SplashScreen from './SplashScreen';
 
 // ── Buttons ──────────────────────────────────────────────────────────────
 export function Button({ variant = 'primary', block, sm, className = '', children, ...props }) {
@@ -196,6 +197,7 @@ export function BottomNav() {
 export function AppShell({ children }) {
   return (
     <div className="hp-shell">
+      <SplashScreen />
       <div className="hp-shell-scroll">{children}</div>
       <BottomNav />
     </div>

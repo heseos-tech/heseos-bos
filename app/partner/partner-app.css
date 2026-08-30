@@ -390,3 +390,62 @@ html:has(.hp-root), body:has(.hp-root) {
 .hp-pill.active { border-color: var(--hp-orange); background: var(--hp-orange-dim); color: var(--hp-orange); }
 .hp-sheet-actions { display: flex; gap: 10px; margin-top: 18px; }
 .hp-hint { font-size: 12px; color: var(--hp-text-faint); margin-top: -8px; margin-bottom: 12px; }
+
+/* ── App-open splash (SplashScreen.jsx) ──────────────────────────────────────
+   Plays once whenever AppShell/TeamAppShell actually mounts fresh (a real "open" of the app,
+   not an in-app tab switch — see the component's own comment). Icon glows in first, then
+   crossfades into the full HESEOS lockup, then the whole overlay fades to reveal the app. */
+.hp-splash {
+  position: fixed;
+  inset: 0;
+  z-index: 999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--hp-bg, #060f1c);
+  opacity: 1;
+  transition: opacity 0.4s ease;
+}
+.hp-splash-out { opacity: 0; pointer-events: none; }
+
+.hp-splash-icon {
+  position: absolute;
+  width: 92px;
+  height: auto;
+  opacity: 0;
+  transform: scale(0.72);
+  animation: hp-splash-icon-in 0.45s ease forwards, hp-splash-glow 0.65s ease-in-out 0.45s 2;
+}
+.hp-splash-lockup .hp-splash-icon {
+  animation: none;
+  opacity: 0;
+  transform: scale(0.85);
+  transition: opacity 0.35s ease, transform 0.35s ease;
+}
+
+.hp-splash-lockup-img {
+  position: absolute;
+  width: 208px;
+  height: auto;
+  opacity: 0;
+  transform: scale(0.92) translateY(6px);
+  transition: opacity 0.45s ease 0.05s, transform 0.45s ease 0.05s;
+}
+.hp-splash-lockup .hp-splash-lockup-img {
+  opacity: 1;
+  transform: scale(1) translateY(0);
+}
+
+@keyframes hp-splash-icon-in {
+  from { opacity: 0; transform: scale(0.72); }
+  to { opacity: 1; transform: scale(1); }
+}
+@keyframes hp-splash-glow {
+  0%, 100% { filter: drop-shadow(0 0 0px rgba(255, 255, 255, 0)) drop-shadow(0 0 0px var(--hp-orange-glow, rgba(255, 122, 0, 0))); }
+  50% { filter: drop-shadow(0 0 14px rgba(255, 255, 255, 0.55)) drop-shadow(0 0 32px var(--hp-orange, #ff7a00)); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hp-splash-icon, .hp-splash-lockup-img { animation: none !important; transition: opacity 0.3s ease !important; transform: none !important; }
+  .hp-splash-icon { opacity: 1; }
+}
