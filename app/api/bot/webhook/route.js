@@ -45,6 +45,10 @@ export async function POST(req) {
       const tenants = await dbWhere('bot_tenants', 'waPhoneNumberId', g.phoneNumberId);
       const tenant = tenants[0];
       if (!tenant) continue; // number not connected to any tenant — nothing we can do with it
+      // Defense in depth: a pending/rejected tenant can never actually reach this point in
+      // practice (they can't log in to set WhatsApp credentials in the first place — see
+      // lib/auth.js's getBotTenant()), but skip explicitly rather than assume that holds forever.
+      if (tenant.approvalStatus === 'pending' || tenant.approvalStatus === 'rejected') continue;
 
       for (const m of g.messages) {
         if (await dbGetById('bot_messages', m.id)) continue; // de-dupe Meta's retries

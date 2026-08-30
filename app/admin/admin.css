@@ -160,6 +160,7 @@
 .adm-badge-dot { width: 6px; height: 6px; border-radius: 50%; }
 .adm-status-pill { font-size: 11.5px; font-weight: 700; padding: 4px 10px; border-radius: 999px; background: #fee2e2; color: #c0392b; }
 .adm-status-pill.active { background: #dcfce7; color: #16a34a; }
+.adm-status-pill.pending { background: #fef3c7; color: #b45309; }
 .adm-perf { font-size: 11.5px; font-weight: 700; padding: 4px 10px; border-radius: 999px; }
 .adm-perf--good { background: #dcfce7; color: #16a34a; }
 .adm-perf--info { background: #dbeafe; color: #2563eb; }

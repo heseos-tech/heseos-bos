@@ -14,6 +14,16 @@ export async function POST(request) {
   const ok = await verifyPassword(password, acct.password);
   if (!ok) return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
 
+  // Approval gate — a signup that hasn't been approved by a Heseos admin yet (or was declined)
+  // never gets a working console, even with the right password. Existing tenants created before
+  // this gate existed have no approvalStatus field, so they're grandfathered in as approved.
+  if (acct.approvalStatus === 'pending') {
+    return NextResponse.json({ error: "Your bot account is awaiting approval — we'll email you once it's live." }, { status: 403 });
+  }
+  if (acct.approvalStatus === 'rejected') {
+    return NextResponse.json({ error: 'This account was not approved. Contact Heseos if you think this is a mistake.' }, { status: 403 });
+  }
+
   let token;
   try {
     token = encodeBotSession(acct.id);

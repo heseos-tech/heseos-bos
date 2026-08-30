@@ -1,16 +1,19 @@
 // app/api/auth/bot/register/route.js
-// Self-serve tenant sign-up for the Heseos Bot platform ("self-service bot configuration so we
-// can make bot live on the go for anyone who wants our bot"). Mirrors
-// app/api/auth/partner/register/route.js's shape (hashed password, sign-straight-in), plus
-// seeds a full demo Inbox (lib/botMock.js) so the tenant lands on a populated console instead
-// of an empty one.
+// Self-serve tenant SIGN-UP REQUEST for the Heseos Bot platform ("self-service bot
+// configuration so we can make bot live on the go for anyone who wants our bot") — with an
+// approval gate: this form is open to anyone (no login required to submit it), so every new
+// tenant lands as approvalStatus 'pending' and does NOT get a session cookie or a seeded demo
+// console yet. That's deliberate — an unapproved signup should cost nothing beyond one small
+// database row until a Heseos admin approves it (Admin -> Settings -> Bot Signups, see
+// app/api/admin/bot-tenants/[id]/route.js), which is also when the demo Inbox gets seeded
+// (lib/botMock.js) and the account can actually log in. Mirrors
+// app/api/auth/partner/register/route.js's shape otherwise (hashed password, uniqueness check).
 
 import { NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { dbList, dbInsert } from '@/lib/db';
-import { hashPassword, encodeBotSession, BOT_COOKIE } from '@/lib/auth';
+import { hashPassword } from '@/lib/auth';
 import { industryByKey } from '@/lib/botPresets';
-import { seedTenantData } from '@/lib/botMock';
 
 const REFERRAL_SOURCES = ['Website Widget', 'Instagram Bio Link', 'Google Business Profile', 'WhatsApp QR (in-store)'];
 
@@ -71,28 +74,16 @@ export async function POST(request) {
     waAccessToken: '',
     waVerifyToken: crypto.randomBytes(16).toString('base64url'),
     linkToHeseosLeads: false,
+    // Gate: no demo data, no working login, until a Heseos admin approves this request.
+    approvalStatus: 'pending',
+    seeded: false,
     active: true,
     createdAt: new Date().toISOString(),
   };
   await dbInsert('bot_tenants', id, tenant);
 
-  const { chats, messages } = seedTenantData(tenant);
-  await Promise.all([
-    ...chats.map((c) => dbInsert('bot_chats', c.id, c)),
-    ...messages.map((m) => dbInsert('bot_messages', m.id, m)),
-  ]);
-
-  let token;
-  try {
-    token = encodeBotSession(id);
-  } catch (e) {
-    console.error('[auth/bot/register] session signing failed:', e.message);
-    return NextResponse.json({ success: true, id, note: 'Account created — please log in.' });
-  }
-
-  const res = NextResponse.json({ success: true, tenant: { id, businessName, botName, loginId } });
-  res.cookies.set(BOT_COOKIE, token, {
-    httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', path: '/', maxAge: 60 * 60 * 24 * 30,
-  });
-  return res;
+  // No session cookie, no seeded demo Inbox — both happen on approval (see
+  // app/api/admin/bot-tenants/[id]/route.js) so a flood of unapproved signups never costs more
+  // than one tiny row each.
+  return NextResponse.json({ success: true, pending: true, businessName, botName, loginId });
 }

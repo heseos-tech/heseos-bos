@@ -1,21 +1,23 @@
 'use client';
 // The self-service onboarding wizard — "self service bot configuration so we can make bot live
-// on the go for anyone who wants our bot." Three short steps end with a working, populated bot
-// console (see app/api/auth/bot/register, which also seeds a demo Inbox via lib/botMock.js).
+// on the go for anyone who wants our bot." Three short steps end with a signup REQUEST, not an
+// instant working console: app/api/auth/bot/register puts every new tenant in a 'pending'
+// state (no session, no seeded data) until a Heseos admin approves it from Admin -> Settings ->
+// Bot Signups — see that route's comment for why. This wizard's last screen reflects that: no
+// redirect into the console, just a "we'll be in touch" confirmation.
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { INDUSTRIES, LANGUAGES, industryByKey, fillTemplate } from '@/lib/botPresets';
-import { IconArrowLeft, IconCheck } from './icons';
+import { IconArrowLeft, IconCheck, IconClock } from './icons';
 
 const BRAND_COLORS = ['#D9481E', '#0f172a', '#2563eb', '#7c3aed', '#16a34a', '#dc2626', '#14b8a6'];
 const STEP_LABELS = ['Business & Contact', 'Bot Persona & Voice', 'Create Your Login'];
 
 export default function SignupWizard() {
-  const router = useRouter();
   const [step, setStep] = useState(1);
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
 
   const [businessName, setBusinessName] = useState('');
   const [industry, setIndustry] = useState('home_automation');
@@ -81,8 +83,7 @@ export default function SignupWizard() {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || 'Could not create your account');
-      router.push('/bot/console/inbox');
-      router.refresh();
+      setSubmitted(true);
     } catch (e) {
       setError(e.message);
     } finally {
@@ -100,6 +101,21 @@ export default function SignupWizard() {
         <Link href="/bot" className="bc-link-accent" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginBottom: 18, fontSize: 13 }}>
           <IconArrowLeft size={16} /> Back to login
         </Link>
+        {submitted ? (
+          <div className="bc-wizard-card" style={{ textAlign: 'center', padding: '48px 32px' }}>
+            <div style={{ display: 'inline-flex', width: 56, height: 56, borderRadius: '50%', background: 'var(--bc-accent-dim, #fbe4d8)', alignItems: 'center', justifyContent: 'center', marginBottom: 18 }}>
+              <IconClock size={26} />
+            </div>
+            <div className="bc-wizard-h2">Thanks — your request is in!</div>
+            <div className="bc-wizard-sub" style={{ marginBottom: 4 }}>
+              We've received the signup for <strong>{businessName}</strong>. A Heseos admin reviews every new bot request
+              before it goes live — once approved, you'll be able to sign in at <strong>heseos.com/bot</strong> with the
+              login ID <strong>{loginId}</strong> and a fully populated console will be waiting for you.
+            </div>
+            <Link href="/bot" className="bc-btn bc-btn-outline" style={{ marginTop: 22, display: 'inline-flex' }}>Back to login</Link>
+          </div>
+        ) : (
+        <>
         <div className="bc-wizard-step-label">Step {step} of 3 · {STEP_LABELS[step - 1]}</div>
         <div className="bc-wizard-steps">
           {[1, 2, 3].map((n) => <div key={n} className={`bc-wizard-step${n <= step ? ' done' : ''}`} />)}
@@ -200,10 +216,12 @@ export default function SignupWizard() {
             {step < 3 ? (
               <button className="bc-btn bc-btn-primary" onClick={goNext}>Continue</button>
             ) : (
-              <button className="bc-btn bc-btn-primary" onClick={launch} disabled={submitting}>{submitting ? 'Launching…' : 'Launch my bot 🚀'}</button>
+              <button className="bc-btn bc-btn-primary" onClick={launch} disabled={submitting}>{submitting ? 'Submitting…' : 'Submit for approval 🚀'}</button>
             )}
           </div>
         </div>
+        </>
+        )}
       </div>
     </div>
   );

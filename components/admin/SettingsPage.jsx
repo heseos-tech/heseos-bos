@@ -70,6 +70,8 @@ export default function SettingsPage() {
 
       {notice && <div className="adm-notice">{notice}</div>}
 
+      <BotSignupsCard />
+
       <CitiesCard />
 
       <div className="adm-card adm-meta-card">
@@ -221,6 +223,89 @@ function CitiesCard() {
             </span>
           ))}
         </div>
+      )}
+    </div>
+  );
+}
+
+
+function BotSignupsCard() {
+  const [tenants, setTenants] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [busyId, setBusyId] = useState(null);
+  const [error, setError] = useState('');
+  const [showAll, setShowAll] = useState(false);
+
+  const load = useCallback(async () => {
+    const res = await fetch('/api/admin/bot-tenants');
+    setTenants(res.ok ? await res.json() : []);
+    setLoading(false);
+  }, []);
+  useEffect(() => { load(); }, [load]);
+
+  async function decide(id, action) {
+    setBusyId(id); setError('');
+    try {
+      const res = await fetch(`/api/admin/bot-tenants/${id}`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) { setError(data.error || 'Could not update that signup.'); return; }
+      setTenants((prev) => prev.map((t) => (t.id === id ? data : t)));
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  const pending = tenants.filter((t) => (t.approvalStatus || 'approved') === 'pending');
+  const visible = showAll ? tenants : pending;
+
+  return (
+    <div className="adm-card adm-meta-card" style={{ marginBottom: 18 }}>
+      <div className="adm-card-title-row">
+        <div className="adm-card-title">Bot Signups</div>
+        {pending.length > 0 && <span className="adm-status-pill pending">{pending.length} pending</span>}
+      </div>
+      <p className="adm-card-sub">
+        Anyone can submit the self-service Bot Console signup form, but a new account can't log in or use any compute until
+        you approve it here — that's what keeps a flood of random signups from costing you anything beyond one small row
+        each. Approving seeds their demo Inbox and lets them sign in; rejecting keeps the account permanently locked out.
+      </p>
+
+      {error && <div className="adm-notice adm-notice--error">{error}</div>}
+
+      {loading ? (
+        <div className="adm-empty">Loading…</div>
+      ) : visible.length === 0 ? (
+        <div className="adm-empty">{showAll ? 'No bot signups yet.' : 'No signups waiting on approval.'}</div>
+      ) : (
+        <div className="adm-meta-forms">
+          {visible.map((t) => {
+            const status = t.approvalStatus || 'approved';
+            return (
+              <div className="adm-meta-form-row" key={t.id}>
+                <div>
+                  <div className="adm-lead-name">{t.businessName} <span className={`adm-status-pill${status === 'approved' ? ' active' : status === 'pending' ? ' pending' : ''}`} style={{ marginLeft: 8 }}>{status}</span></div>
+                  <div className="adm-lead-sub">{t.contactName} · {t.email || 'no email'} · {t.industry} · signed up {t.createdAt ? new Date(t.createdAt).toLocaleDateString() : ''}</div>
+                </div>
+                {status === 'pending' ? (
+                  <div className="adm-page-head-actions">
+                    <button className="adm-btn-outline" disabled={busyId === t.id} onClick={() => decide(t.id, 'reject')}>Reject</button>
+                    <button className="adm-btn-primary" disabled={busyId === t.id} onClick={() => decide(t.id, 'approve')}>{busyId === t.id ? 'Approving…' : 'Approve'}</button>
+                  </div>
+                ) : status === 'rejected' ? (
+                  <button className="adm-btn-outline" disabled={busyId === t.id} onClick={() => decide(t.id, 'approve')}>Approve anyway</button>
+                ) : null}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {tenants.length > pending.length && (
+        <button className="adm-btn-outline" style={{ marginTop: 14 }} onClick={() => setShowAll((s) => !s)}>
+          {showAll ? 'Show pending only' : `Show all ${tenants.length} signups`}
+        </button>
       )}
     </div>
   );
