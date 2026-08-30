@@ -8,17 +8,39 @@
 // app/api/admin/bot-tenants/[id]/route.js), which is also when the demo Inbox gets seeded
 // (lib/botMock.js) and the account can actually log in. Mirrors
 // app/api/auth/partner/register/route.js's shape otherwise (hashed password, uniqueness check).
+//
+// Two more layers here specifically because this route needs no login to hit: a per-IP rate
+// limit (lib/rateLimit.js — no external service, no API keys) checked FIRST so a blocked
+// request costs almost nothing, and a honeypot field (`hp_note` — see
+// components/bot/SignupWizard.jsx's hidden input) that real users never fill in but naive bots
+// often do; a filled honeypot gets a fake success response with no database write at all, so
+// the bot never learns it was caught.
 
 import { NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { dbList, dbInsert } from '@/lib/db';
 import { hashPassword } from '@/lib/auth';
 import { industryByKey } from '@/lib/botPresets';
+import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 
 const REFERRAL_SOURCES = ['Website Widget', 'Instagram Bio Link', 'Google Business Profile', 'WhatsApp QR (in-store)'];
+const SIGNUP_RATE_LIMIT = { max: 5, windowMs: 60 * 60 * 1000 }; // 5 attempts / IP / hour
 
 export async function POST(request) {
+  const ip = getClientIp(request);
+  const rl = await checkRateLimit(`bot_signup:${ip}`, SIGNUP_RATE_LIMIT);
+  if (!rl.allowed) {
+    return NextResponse.json({ error: 'Too many signup attempts from your network — please try again in a while.' }, { status: 429 });
+  }
+
   const body = await request.json().catch(() => ({}));
+
+  // Honeypot: a hidden field real users never see or fill. A bot that auto-fills every input on
+  // the page trips it — reply as if it worked, but never touch the database.
+  if (String(body.hp_note || '').trim()) {
+    return NextResponse.json({ success: true, pending: true, businessName: '', botName: '', loginId: '' });
+  }
+
   const businessName = String(body.businessName || '').trim();
   const contactName = String(body.contactName || '').trim();
   const email = String(body.email || '').trim().toLowerCase();

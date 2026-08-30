@@ -34,6 +34,10 @@ export default function SignupWizard() {
   const [loginId, setLoginId] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
+  // Honeypot — real people never see or fill this (see the off-screen field below); a bot that
+  // auto-fills every input on the page trips it. Checked server-side in
+  // app/api/auth/bot/register, which quietly no-ops instead of writing anything to the database.
+  const [website, setWebsite] = useState('');
 
   function applyIndustryDefaults(key) {
     const preset = industryByKey(key);
@@ -78,7 +82,7 @@ export default function SignupWizard() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           businessName, industry, contactName, email, phone, botName, brandColor, languages,
-          welcomeMessage, menuOptions, loginId, password,
+          welcomeMessage, menuOptions, loginId, password, hp_note: website,
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -94,6 +98,12 @@ export default function SignupWizard() {
   return (
     <div className="bc-root bc-wizard-shell">
       <div className="bc-wizard">
+        {/* Honeypot field — visually hidden from real users, but present in the DOM for a bot
+            that fills in every input to find. Never type into this. */}
+        <div style={{ position: 'absolute', left: '-9999px', top: 'auto', width: 1, height: 1, overflow: 'hidden' }} aria-hidden="true">
+          <label htmlFor="bc-hp-note">Website</label>
+          <input id="bc-hp-note" name="hp_note" type="text" tabIndex={-1} autoComplete="off" value={website} onChange={(e) => setWebsite(e.target.value)} />
+        </div>
         <div className="bc-wizard-logo">
           <img src="/brand/lockup-navy.png" alt="Heseos" className="bc-wizard-logo-img" />
           <span className="bc-wizard-logo-tag">Bot Platform</span>
