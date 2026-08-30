@@ -153,7 +153,12 @@
 .adm-table tr:hover td { background: var(--adm-bg); }
 .adm-lead-name { font-size: 13.5px; font-weight: 700; color: var(--adm-ink); }
 .adm-lead-sub { font-size: 11.5px; color: var(--adm-text-faint); margin-top: 2px; }
-.adm-row-actions { display: flex; align-items: center; gap: 4px; }
+.adm-row-actions { text-align: right; }
+/* A <td> needs to keep display: table-cell (border-collapse relies on it — setting
+   display: flex directly on the cell breaks its border-bottom into disconnected
+   fragments on some browsers, notably mobile WebKit); the flex layout for the eye/menu
+   icons lives on an inner wrapper div instead — see .adm-row-actions-inner below. */
+.adm-row-actions-inner { display: flex; align-items: center; justify-content: flex-end; gap: 4px; }
 
 /* Badges */
 .adm-badge { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; font-weight: 700; padding: 4px 10px; border-radius: 999px; }

@@ -177,18 +177,20 @@ export default function LeadsPage() {
                     <td>{action.label}</td>
                     <td>{fmtDate(l.createdAt)}</td>
                     <td className="adm-row-actions">
-                      <button className="adm-icon-btn" onClick={() => setModal({ type: 'view', lead: l })}><IconEye size={16} /></button>
-                      <div className="adm-menu-wrap">
-                        <button className="adm-icon-btn" onClick={() => setMenuFor(menuFor === l.id ? null : l.id)}><IconMore size={16} /></button>
-                        {menuFor === l.id && (
-                          <div className="adm-menu" onClick={(e) => e.stopPropagation()}>
-                            {l.demoScheduledAt && !l.quotationSentAt && <button onClick={() => markQuotationSent(l)}>Mark Quotation Sent</button>}
-                            <div className="adm-menu-label">Assign Sales Engineer</div>
-                            {engineers.map((e) => <button key={e.id} onClick={() => assignEngineer(l, e.id)}>{e.name}</button>)}
-                            <div className="adm-menu-label">Assign Pre-sales</div>
-                            {presalesTeam.map((e) => <button key={e.id} onClick={() => assignPresales(l, e.id)}>{e.name}</button>)}
-                          </div>
-                        )}
+                      <div className="adm-row-actions-inner">
+                        <button className="adm-icon-btn" onClick={() => setModal({ type: 'view', lead: l })}><IconEye size={16} /></button>
+                        <div className="adm-menu-wrap">
+                          <button className="adm-icon-btn" onClick={() => setMenuFor(menuFor === l.id ? null : l.id)}><IconMore size={16} /></button>
+                          {menuFor === l.id && (
+                            <div className="adm-menu" onClick={(e) => e.stopPropagation()}>
+                              {l.demoScheduledAt && !l.quotationSentAt && <button onClick={() => markQuotationSent(l)}>Mark Quotation Sent</button>}
+                              <div className="adm-menu-label">Assign Sales Engineer</div>
+                              {engineers.map((e) => <button key={e.id} onClick={() => assignEngineer(l, e.id)}>{e.name}</button>)}
+                              <div className="adm-menu-label">Assign Pre-sales</div>
+                              {presalesTeam.map((e) => <button key={e.id} onClick={() => assignPresales(l, e.id)}>{e.name}</button>)}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </td>
                   </tr>

@@ -107,8 +107,10 @@ export default function PartnersPage() {
                   <td>₹{p.stats.earnings.toLocaleString('en-IN')}</td>
                   <td><span className={`adm-status-pill${p.active !== false ? ' active' : ''}`}>{p.active !== false ? 'Active' : 'Inactive'}</span></td>
                   <td className="adm-row-actions">
-                    <button className="adm-icon-btn" onClick={() => setModal({ type: 'view', partner: p })}><IconEye size={16} /></button>
-                    <button className="adm-chip-btn" onClick={() => toggleActive(p)}>{p.active !== false ? 'Deactivate' : 'Activate'}</button>
+                    <div className="adm-row-actions-inner">
+                      <button className="adm-icon-btn" onClick={() => setModal({ type: 'view', partner: p })}><IconEye size={16} /></button>
+                      <button className="adm-chip-btn" onClick={() => toggleActive(p)}>{p.active !== false ? 'Deactivate' : 'Activate'}</button>
+                    </div>
                   </td>
                 </tr>
               ))}

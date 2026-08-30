@@ -97,7 +97,7 @@ export default function PresalesPage() {
                   <td>{e.stats.conversionRate}%</td>
                   <td><PerformanceTag tag={performanceTag(e.stats.conversionRate)} /></td>
                   <td><span className={`adm-status-pill${e.active !== false ? ' active' : ''}`}>{e.active !== false ? 'Active' : 'Inactive'}</span></td>
-                  <td className="adm-row-actions"><button className="adm-chip-btn" onClick={() => toggleActive(e)}>{e.active !== false ? 'Deactivate' : 'Activate'}</button></td>
+                  <td className="adm-row-actions"><div className="adm-row-actions-inner"><button className="adm-chip-btn" onClick={() => toggleActive(e)}>{e.active !== false ? 'Deactivate' : 'Activate'}</button></div></td>
                 </tr>
               ))}
             </tbody>
