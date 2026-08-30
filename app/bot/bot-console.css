@@ -18,11 +18,11 @@
   --bc-ink: #16202e;
   --bc-ink-soft: #5b6b81;
   --bc-ink-faint: #94a3b8;
-  --bc-navy: #1c3a5e;
-  --bc-teal: #14b8a6;
-  --bc-teal-dim: #e3f8f5;
-  --bc-accent: #14b8a6;
-  --bc-accent-dim: rgba(20, 184, 166, 0.12);
+  --bc-navy: #0A1628;
+  --bc-teal: #D9481E;
+  --bc-teal-dim: rgba(217, 72, 30, 0.10);
+  --bc-accent: #D9481E;
+  --bc-accent-dim: rgba(217, 72, 30, 0.12);
   --bc-green: #22c55e;
   --bc-green-dim: rgba(34, 197, 94, 0.12);
   --bc-amber: #d97706;
@@ -33,7 +33,7 @@
   --bc-bubble-out: #dcf8c6;
   --bc-r: 12px;
   --bc-r-sm: 8px;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   color: var(--bc-ink);
   background: var(--bc-bg);
 }
@@ -46,8 +46,8 @@
 
 .bc-sidebar { width: 240px; flex-shrink: 0; background: var(--bc-sidebar); display: flex; flex-direction: column; padding: 18px 12px; }
 .bc-sidebar-brand { display: flex; align-items: center; gap: 10px; padding: 6px 8px 20px; }
-.bc-sidebar-mark { width: 38px; height: 38px; border-radius: 10px; background: linear-gradient(155deg, var(--bc-accent), var(--bc-navy)); display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 800; font-size: 15px; flex-shrink: 0; }
-.bc-sidebar-title { font-size: 15px; font-weight: 800; color: #fff; line-height: 1.2; }
+.bc-sidebar-mark-img { height: 30px; width: auto; flex-shrink: 0; }
+.bc-sidebar-title { font-size: 15px; font-weight: 800; letter-spacing: -0.3px; color: #fff; line-height: 1.2; }
 .bc-sidebar-sub { font-size: 11px; color: rgba(255, 255, 255, 0.45); font-weight: 600; }
 
 .bc-nav { display: flex; flex-direction: column; gap: 2px; flex: 1; }
@@ -58,14 +58,15 @@
 .bc-nav-item.active svg { color: var(--bc-accent); opacity: 1; }
 
 .bc-sidebar-foot { border-top: 1px solid rgba(255, 255, 255, 0.08); padding-top: 12px; display: flex; align-items: center; gap: 10px; }
-.bc-sidebar-foot-name { font-size: 13px; font-weight: 700; color: #fff; }
-.bc-sidebar-foot-role { font-size: 10.5px; color: rgba(255, 255, 255, 0.4); }
+.bc-sidebar-foot-body { min-width: 0; }
+.bc-sidebar-foot-name { font-size: 13px; font-weight: 700; color: #fff; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bc-sidebar-foot-role { font-size: 10.5px; color: rgba(255, 255, 255, 0.4); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .bc-sidebar-logout { margin-left: auto; background: none; border: none; color: rgba(255, 255, 255, 0.45); cursor: pointer; padding: 6px; border-radius: 8px; display: flex; }
 .bc-sidebar-logout:hover { background: var(--bc-sidebar-hover); color: #fff; }
 
 .bc-main { flex: 1; min-width: 0; display: flex; flex-direction: column; overflow: hidden; }
 .bc-topbar { flex-shrink: 0; height: 72px; display: flex; align-items: center; justify-content: space-between; padding: 0 28px; border-bottom: 1px solid var(--bc-border); background: var(--bc-white); }
-.bc-topbar-title { font-size: 22px; font-weight: 800; color: var(--bc-ink); }
+.bc-topbar-title { font-size: 22px; font-weight: 700; letter-spacing: -0.3px; color: var(--bc-ink); }
 .bc-topbar-right { display: flex; align-items: center; gap: 14px; }
 .bc-icon-btn { width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--bc-border); background: var(--bc-white); display: flex; align-items: center; justify-content: center; color: var(--bc-ink-soft); cursor: pointer; }
 .bc-icon-btn:hover { background: var(--bc-bg); }
@@ -148,14 +149,14 @@
 .bc-info-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--bc-border); font-size: 13px; }
 .bc-info-row-key { color: var(--bc-ink-soft); }
 .bc-info-row-val { font-weight: 700; color: var(--bc-ink); text-align: right; }
-.bc-info-btn { width: 100%; margin-top: 20px; padding: 12px; border-radius: var(--bc-r-sm); background: var(--bc-navy); color: #fff; border: none; font-weight: 700; font-size: 13.5px; cursor: pointer; }
+.bc-info-btn { width: 100%; margin-top: 20px; padding: 12px; border-radius: var(--bc-r-sm); background: var(--bc-accent); color: #fff; border: none; font-weight: 700; font-size: 13.5px; cursor: pointer; }
 .bc-info-btn:hover { opacity: 0.92; }
 .bc-info-btn.bc-info-btn-ghost { background: var(--bc-white); color: var(--bc-red); border: 1px solid var(--bc-border); margin-top: 8px; }
 
 /* ── Shared form controls / buttons / cards used across Bot Configuration,
    Contacts, Leads, Referrals, and the signup wizard ─────────────────────── */
 .bc-card { background: var(--bc-white); border: 1px solid var(--bc-border); border-radius: var(--bc-r); padding: 22px 24px; margin-bottom: 18px; }
-.bc-card-title { font-size: 15.5px; font-weight: 800; margin-bottom: 3px; }
+.bc-card-title { font-size: 15.5px; font-weight: 700; letter-spacing: -0.2px; margin-bottom: 3px; }
 .bc-card-sub { font-size: 12.5px; color: var(--bc-ink-soft); margin-bottom: 18px; }
 
 .bc-field { margin-bottom: 16px; }
@@ -166,7 +167,7 @@
 .bc-hint { font-size: 11.5px; color: var(--bc-ink-faint); margin-top: 5px; }
 
 .bc-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 11px 20px; border-radius: var(--bc-r-sm); font-size: 13.5px; font-weight: 700; border: none; cursor: pointer; }
-.bc-btn-primary { background: var(--bc-navy); color: #fff; }
+.bc-btn-primary { background: var(--bc-accent); color: #fff; box-shadow: 0 6px 18px rgba(217, 72, 30, 0.28); }
 .bc-btn-primary:hover { opacity: 0.92; }
 .bc-btn-primary:disabled { opacity: 0.55; cursor: default; }
 .bc-btn-accent { background: var(--bc-accent); color: #fff; }
@@ -189,7 +190,7 @@
 
 .bc-stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; margin-bottom: 20px; }
 .bc-stat-card { background: var(--bc-white); border: 1px solid var(--bc-border); border-radius: var(--bc-r); padding: 18px; }
-.bc-stat-val { font-size: 26px; font-weight: 800; }
+.bc-stat-val { font-size: 26px; font-weight: 800; letter-spacing: -0.3px; }
 .bc-stat-label { font-size: 12.5px; color: var(--bc-ink-soft); margin-top: 2px; }
 
 /* ── Bot Configuration: toggle switch, language tabs, menu-option rows ──── */
@@ -229,13 +230,13 @@ html:has(.bc-root), body:has(.bc-root) { background: #f4f6f9; }
 .bc-marketing-left { background: linear-gradient(180deg, #eef4fb, #f7fafc); padding: 56px 64px; display: flex; flex-direction: column; justify-content: center; position: relative; overflow: hidden; }
 .bc-marketing-right { background: var(--bc-white); display: flex; align-items: center; justify-content: center; padding: 48px; }
 
-.bc-mkt-logo { display: flex; align-items: center; gap: 10px; margin-bottom: 36px; }
-.bc-mkt-logo-mark { width: 40px; height: 40px; border-radius: 11px; background: linear-gradient(155deg, var(--bc-teal), var(--bc-navy)); display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 800; font-size: 16px; }
-.bc-mkt-logo-text { font-size: 20px; font-weight: 800; color: var(--bc-navy); }
+.bc-mkt-logo { display: flex; align-items: baseline; gap: 10px; margin-bottom: 36px; }
+.bc-mkt-logo-img { height: 30px; width: auto; }
+.bc-mkt-logo-tag { font-size: 9.5px; font-weight: 700; letter-spacing: 1.6px; color: var(--bc-teal); text-transform: uppercase; }
 
-.bc-mkt-h1 { font-size: 34px; font-weight: 800; line-height: 1.2; color: var(--bc-ink); margin-bottom: 14px; max-width: 520px; }
+.bc-mkt-h1 { font-size: 34px; font-weight: 700; letter-spacing: -0.01em; line-height: 1.15; color: var(--bc-ink); margin-bottom: 14px; max-width: 520px; }
 .bc-mkt-h1 span { color: var(--bc-teal); }
-.bc-mkt-sub { font-size: 15px; color: var(--bc-ink-soft); line-height: 1.6; max-width: 460px; margin-bottom: 30px; }
+.bc-mkt-sub { font-size: 15px; color: var(--bc-ink-soft); line-height: 1.7; max-width: 460px; margin-bottom: 30px; }
 
 .bc-feature-row { display: flex; gap: 14px; align-items: flex-start; margin-bottom: 18px; max-width: 460px; }
 .bc-feature-icon { width: 38px; height: 38px; border-radius: 10px; background: var(--bc-white); border: 1px solid var(--bc-border); display: flex; align-items: center; justify-content: center; font-size: 17px; flex-shrink: 0; }
@@ -244,7 +245,7 @@ html:has(.bc-root), body:has(.bc-root) { background: #f4f6f9; }
 
 .bc-mkt-stats { display: flex; gap: 12px; margin-top: 28px; max-width: 520px; }
 .bc-mkt-stat { flex: 1; background: var(--bc-white); border: 1px solid var(--bc-border); border-radius: var(--bc-r); padding: 16px; text-align: center; }
-.bc-mkt-stat-val { font-size: 21px; font-weight: 800; color: var(--bc-navy); }
+.bc-mkt-stat-val { font-size: 21px; font-weight: 800; letter-spacing: -0.2px; color: var(--bc-navy); }
 .bc-mkt-stat-label { font-size: 11px; color: var(--bc-ink-soft); margin-top: 2px; }
 
 .bc-phone-mock { position: absolute; right: -30px; top: 50%; transform: translateY(-50%); width: 250px; background: #0b1420; border-radius: 34px; padding: 10px; box-shadow: 0 30px 60px rgba(15, 40, 60, 0.25); display: none; }
@@ -257,7 +258,7 @@ html:has(.bc-root), body:has(.bc-root) { background: #f4f6f9; }
 .bc-phone-bubble.out { align-self: flex-end; background: var(--bc-bubble-out); }
 
 .bc-login-card { width: 100%; max-width: 380px; }
-.bc-login-h1 { font-size: 25px; font-weight: 800; margin-bottom: 6px; }
+.bc-login-h1 { font-size: 25px; font-weight: 700; letter-spacing: -0.3px; margin-bottom: 6px; }
 .bc-login-sub { font-size: 13.5px; color: var(--bc-ink-soft); margin-bottom: 26px; }
 .bc-login-row { display: flex; align-items: center; justify-content: space-between; margin: 14px 0 20px; font-size: 12.5px; }
 .bc-checkbox-row { display: flex; align-items: center; gap: 7px; color: var(--bc-ink-soft); }
@@ -279,12 +280,15 @@ html:has(.bc-root), body:has(.bc-root) { background: #f4f6f9; }
 /* ── Signup wizard (app/bot/signup) ──────────────────────────────────────── */
 .bc-wizard-shell { min-height: 100dvh; background: var(--bc-bg); display: flex; align-items: flex-start; justify-content: center; padding: 48px 20px; }
 .bc-wizard { width: 100%; max-width: 640px; }
+.bc-wizard-logo { display: flex; align-items: baseline; gap: 8px; margin-bottom: 22px; }
+.bc-wizard-logo-img { height: 24px; width: auto; }
+.bc-wizard-logo-tag { font-size: 9px; font-weight: 700; letter-spacing: 1.4px; color: var(--bc-accent); text-transform: uppercase; }
 .bc-wizard-steps { display: flex; align-items: center; gap: 8px; margin-bottom: 28px; }
 .bc-wizard-step { flex: 1; height: 5px; border-radius: 3px; background: var(--bc-border); }
 .bc-wizard-step.done, .bc-wizard-step.active { background: var(--bc-accent); }
 .bc-wizard-step-label { font-size: 12px; font-weight: 700; color: var(--bc-ink-faint); margin-bottom: 10px; }
 .bc-wizard-card { background: var(--bc-white); border: 1px solid var(--bc-border); border-radius: 16px; padding: 32px; }
-.bc-wizard-h2 { font-size: 21px; font-weight: 800; margin-bottom: 4px; }
+.bc-wizard-h2 { font-size: 21px; font-weight: 700; letter-spacing: -0.3px; margin-bottom: 4px; }
 .bc-wizard-sub { font-size: 13px; color: var(--bc-ink-soft); margin-bottom: 24px; }
 .bc-wizard-row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 .bc-wizard-foot { display: flex; justify-content: space-between; align-items: center; margin-top: 26px; }

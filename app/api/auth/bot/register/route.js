@@ -53,7 +53,7 @@ export async function POST(request) {
     password: await hashPassword(password),
     industry,
     botName,
-    brandColor: String(body.brandColor || '#0f6e5f'),
+    brandColor: String(body.brandColor || '#D9481E'),
     whatsappNumber: `+91 ${70000 + (Date.now() % 9999)} ${10000 + Math.floor(Math.random() * 89999)}`,
     status: 'live',
     languages,

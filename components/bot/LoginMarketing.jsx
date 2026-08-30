@@ -51,8 +51,8 @@ export default function LoginMarketing() {
     <div className="bc-root bc-marketing">
       <div className="bc-marketing-left">
         <div className="bc-mkt-logo">
-          <div className="bc-mkt-logo-mark">H</div>
-          <div className="bc-mkt-logo-text">Heseos Bot</div>
+          <img src="/brand/lockup-navy.png" alt="Heseos" className="bc-mkt-logo-img" />
+          <span className="bc-mkt-logo-tag">Bot Platform</span>
         </div>
         <h1 className="bc-mkt-h1">WhatsApp AI Bot Platform for <span>Growing Businesses</span></h1>
         <p className="bc-mkt-sub">White-labeled WhatsApp AI bots that qualify customers, capture every lead, and grow your business — live in minutes, no developer required.</p>

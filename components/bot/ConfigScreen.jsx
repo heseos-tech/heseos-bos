@@ -9,13 +9,13 @@ import { Switch } from './ui';
 import { LANGUAGES } from '@/lib/botPresets';
 import { IconWhatsApp, IconCheck } from './icons';
 
-const BRAND_COLORS = ['#14b8a6', '#ff7a00', '#2563eb', '#dc2626', '#7c3aed', '#16a34a', '#0f172a'];
+const BRAND_COLORS = ['#D9481E', '#0f172a', '#2563eb', '#7c3aed', '#16a34a', '#dc2626', '#14b8a6'];
 
 export default function ConfigScreen({ tenant: initialTenant }) {
   const [tenant, setTenant] = useState(initialTenant);
   const [businessName, setBusinessName] = useState(initialTenant.businessName || '');
   const [botName, setBotName] = useState(initialTenant.botName || '');
-  const [brandColor, setBrandColor] = useState(initialTenant.brandColor || '#14b8a6');
+  const [brandColor, setBrandColor] = useState(initialTenant.brandColor || '#D9481E');
   const [languages, setLanguages] = useState(initialTenant.languages || ['en']);
   const [welcome, setWelcome] = useState(initialTenant.welcomeMessage || {});
   const [menu, setMenu] = useState(initialTenant.menuOptions || []);

@@ -8,7 +8,7 @@ import Link from 'next/link';
 import { INDUSTRIES, LANGUAGES, industryByKey, fillTemplate } from '@/lib/botPresets';
 import { IconArrowLeft, IconCheck } from './icons';
 
-const BRAND_COLORS = ['#14b8a6', '#ff7a00', '#2563eb', '#dc2626', '#7c3aed', '#16a34a', '#0f172a'];
+const BRAND_COLORS = ['#D9481E', '#0f172a', '#2563eb', '#7c3aed', '#16a34a', '#dc2626', '#14b8a6'];
 const STEP_LABELS = ['Business & Contact', 'Bot Persona & Voice', 'Create Your Login'];
 
 export default function SignupWizard() {
@@ -93,6 +93,10 @@ export default function SignupWizard() {
   return (
     <div className="bc-root bc-wizard-shell">
       <div className="bc-wizard">
+        <div className="bc-wizard-logo">
+          <img src="/brand/lockup-navy.png" alt="Heseos" className="bc-wizard-logo-img" />
+          <span className="bc-wizard-logo-tag">Bot Platform</span>
+        </div>
         <Link href="/bot" className="bc-link-accent" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginBottom: 18, fontSize: 13 }}>
           <IconArrowLeft size={16} /> Back to login
         </Link>

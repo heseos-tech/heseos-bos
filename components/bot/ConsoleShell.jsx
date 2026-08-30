@@ -23,12 +23,12 @@ export default function ConsoleShell({ tenant, children }) {
   }
 
   return (
-    <div className="bc-root bc-shell" style={{ '--bc-accent': tenant.brandColor || '#14b8a6' }}>
+    <div className="bc-root bc-shell" style={{ '--bc-accent': tenant.brandColor || '#D9481E' }}>
       <aside className="bc-sidebar">
         <div className="bc-sidebar-brand">
-          <div className="bc-sidebar-mark">{(tenant.businessName || 'H').charAt(0).toUpperCase()}</div>
+          <img src="/brand/icon.png" alt="Heseos" className="bc-sidebar-mark-img" />
           <div>
-            <div className="bc-sidebar-title">{tenant.businessName}</div>
+            <div className="bc-sidebar-title">Heseos Bot</div>
             <div className="bc-sidebar-sub">Bot Console</div>
           </div>
         </div>
@@ -48,9 +48,9 @@ export default function ConsoleShell({ tenant, children }) {
 
         <div className="bc-sidebar-foot">
           <Avatar name={tenant.contactName || tenant.businessName} size="sm" />
-          <div>
-            <div className="bc-sidebar-foot-name">{tenant.contactName || tenant.businessName}</div>
-            <div className="bc-sidebar-foot-role">{tenant.status === 'live' ? 'Bot is live' : 'Bot paused'}</div>
+          <div className="bc-sidebar-foot-body">
+            <div className="bc-sidebar-foot-name">{tenant.businessName}</div>
+            <div className="bc-sidebar-foot-role">{tenant.contactName ? `${tenant.contactName} · ` : ''}{tenant.status === 'live' ? 'Live' : 'Paused'}</div>
           </div>
           <button className="bc-sidebar-logout" onClick={logout} aria-label="Log out"><IconLogout size={17} /></button>
         </div>
