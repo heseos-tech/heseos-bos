@@ -6,6 +6,7 @@
 // of an empty one.
 
 import { NextResponse } from 'next/server';
+import crypto from 'crypto';
 import { dbList, dbInsert } from '@/lib/db';
 import { hashPassword, encodeBotSession, BOT_COOKIE } from '@/lib/auth';
 import { industryByKey } from '@/lib/botPresets';
@@ -60,6 +61,16 @@ export async function POST(request) {
     welcomeMessage: finalWelcome,
     menuOptions: finalMenu,
     referrals: REFERRAL_SOURCES.map((source, i) => ({ source, leads: 14 - i * 3, conversions: 5 - i })),
+    // Real WhatsApp connection (self-service — "Tenant pastes their own Meta credentials"):
+    // waPhoneNumberId + waAccessToken start empty until the tenant fills them in on the Bot
+    // Configuration screen; waVerifyToken is generated here so every tenant gets a unique
+    // value to paste into their own Meta App's webhook config (app/api/bot/webhook validates
+    // against it). linkToHeseosLeads is never tenant-editable — see app/api/bot/webhook's
+    // bridgeToHeseosLeads() — it's set manually, only for Heseos's own account.
+    waPhoneNumberId: '',
+    waAccessToken: '',
+    waVerifyToken: crypto.randomBytes(16).toString('base64url'),
+    linkToHeseosLeads: false,
     active: true,
     createdAt: new Date().toISOString(),
   };

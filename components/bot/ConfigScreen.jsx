@@ -3,9 +3,9 @@
 // bot live on the go for anyone who wants our bot." Every field a tenant set at signup
 // (app/bot/signup) is editable here, plus the Go Live / Pause switch that actually flips
 // whether the bot is presented as live in the sidebar/console.
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Topbar } from './ConsoleShell';
-import { Switch } from './ui';
+import { Switch, TextField, Badge } from './ui';
 import { LANGUAGES } from '@/lib/botPresets';
 import { IconWhatsApp, IconCheck } from './icons';
 
@@ -20,8 +20,21 @@ export default function ConfigScreen({ tenant: initialTenant }) {
   const [welcome, setWelcome] = useState(initialTenant.welcomeMessage || {});
   const [menu, setMenu] = useState(initialTenant.menuOptions || []);
   const [activeLang, setActiveLang] = useState((initialTenant.languages || ['en'])[0]);
+  const [waPhoneNumberId, setWaPhoneNumberId] = useState(initialTenant.waPhoneNumberId || '');
+  const [waAccessToken, setWaAccessToken] = useState(initialTenant.waAccessToken || '');
+  const [origin, setOrigin] = useState('');
+  const [copied, setCopied] = useState('');
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+
+  useEffect(() => { setOrigin(window.location.origin); }, []);
+
+  function copy(value, key) {
+    navigator.clipboard?.writeText(value).then(() => {
+      setCopied(key);
+      setTimeout(() => setCopied(''), 1800);
+    });
+  }
 
   function toggleLanguage(code) {
     setLanguages((prev) => {
@@ -45,7 +58,7 @@ export default function ConfigScreen({ tenant: initialTenant }) {
       const res = await fetch('/api/bot/config', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ businessName, botName, brandColor, languages, welcomeMessage: welcome, menuOptions: menu, ...extra }),
+        body: JSON.stringify({ businessName, botName, brandColor, languages, welcomeMessage: welcome, menuOptions: menu, waPhoneNumberId, waAccessToken, ...extra }),
       });
       if (res.ok) {
         const updated = await res.json();
@@ -59,6 +72,7 @@ export default function ConfigScreen({ tenant: initialTenant }) {
   }
 
   const isLive = tenant.status === 'live';
+  const waConnected = !!(waPhoneNumberId && waAccessToken);
 
   return (
     <>
@@ -87,7 +101,37 @@ export default function ConfigScreen({ tenant: initialTenant }) {
               ))}
             </div>
           </div>
-          <div className="bc-copy-row"><IconWhatsApp size={18} /> WhatsApp number connected: <code>{tenant.whatsappNumber}</code></div>
+        </div>
+
+        <div className="bc-card">
+          <div className="bc-card-title" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <IconWhatsApp size={18} /> WhatsApp Connection
+            {waConnected ? <Badge tone="green">Connected</Badge> : <Badge tone="amber">Not connected</Badge>}
+          </div>
+          <div className="bc-card-sub">
+            Connect your own WhatsApp number so this bot can actually send and receive messages. Generate a Phone Number ID
+            and a permanent Access Token in your Meta Business Manager (WhatsApp → API Setup), paste them below, then add the
+            webhook URL and verify token to your Meta App's Webhooks configuration.
+          </div>
+          <div className="bc-wizard-row2">
+            <TextField label="WhatsApp Phone Number ID" value={waPhoneNumberId} onChange={(e) => setWaPhoneNumberId(e.target.value)} placeholder="e.g. 109876543210987" />
+            <TextField label="Access Token" type="password" value={waAccessToken} onChange={(e) => setWaAccessToken(e.target.value)} placeholder="Permanent access token from Meta" />
+          </div>
+          <div className="bc-field">
+            <label>Webhook URL — paste into your Meta App's Webhooks config</label>
+            <div className="bc-copy-row">
+              <code style={{ flex: 1, wordBreak: 'break-all' }}>{origin ? `${origin}/api/bot/webhook` : '/api/bot/webhook'}</code>
+              <button type="button" className="bc-btn bc-btn-outline bc-btn-sm" onClick={() => copy(`${origin}/api/bot/webhook`, 'url')}>{copied === 'url' ? 'Copied' : 'Copy'}</button>
+            </div>
+          </div>
+          <div className="bc-field">
+            <label>Verify token — enter this as the "Verify token" alongside the URL above</label>
+            <div className="bc-copy-row">
+              <code style={{ flex: 1, wordBreak: 'break-all' }}>{tenant.waVerifyToken}</code>
+              <button type="button" className="bc-btn bc-btn-outline bc-btn-sm" onClick={() => copy(tenant.waVerifyToken, 'token')}>{copied === 'token' ? 'Copied' : 'Copy'}</button>
+            </div>
+          </div>
+          <div className="bc-hint">Until this is connected, your bot's messages are recorded here but won't actually reach customers on WhatsApp.</div>
         </div>
 
         <div className="bc-card">

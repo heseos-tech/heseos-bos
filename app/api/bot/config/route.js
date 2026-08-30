@@ -3,16 +3,27 @@
 // "self service bot configuration so we can make bot live on the go" ask: every field here is
 // editable by the tenant themselves, no developer involved.
 
+import crypto from 'crypto';
 import { dbPatch } from '@/lib/db';
 import { getBotTenant } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
-const EDITABLE_FIELDS = ['businessName', 'botName', 'brandColor', 'status', 'languages', 'welcomeMessage', 'menuOptions', 'whatsappNumber'];
+// waPhoneNumberId/waAccessToken are the tenant's own Meta-generated credentials (self-service
+// WhatsApp connect — see components/bot/ConfigScreen.jsx's "WhatsApp Connection" card). Note
+// what is deliberately NOT here: waVerifyToken (generated once at signup, never re-editable —
+// changing it would break the tenant's already-configured Meta webhook) and linkToHeseosLeads
+// (a manual, trust-based grant — see app/api/bot/webhook/route.js — never tenant-settable).
+const EDITABLE_FIELDS = ['businessName', 'botName', 'brandColor', 'status', 'languages', 'welcomeMessage', 'menuOptions', 'whatsappNumber', 'waPhoneNumberId', 'waAccessToken'];
 
 export async function GET() {
-  const tenant = await getBotTenant();
+  let tenant = await getBotTenant();
   if (!tenant) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+  // Backfill for tenants created before WhatsApp connect existed — every tenant needs their own
+  // waVerifyToken to paste into their Meta App's webhook config (app/api/bot/webhook checks it).
+  if (!tenant.waVerifyToken) {
+    tenant = await dbPatch('bot_tenants', tenant.id, { waVerifyToken: crypto.randomBytes(16).toString('base64url') });
+  }
   const { password, ...safe } = tenant;
   return Response.json(safe);
 }

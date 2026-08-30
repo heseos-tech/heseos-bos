@@ -4,6 +4,7 @@
 
 import { dbWhere, dbInsert, dbPatch, dbGetById } from '@/lib/db';
 import { getBotTenant } from '@/lib/auth';
+import { botSendText } from '@/lib/botWhatsapp';
 
 export const dynamic = 'force-dynamic';
 
@@ -40,8 +41,17 @@ export async function POST(request, { params }) {
   const now = new Date().toISOString();
   const msgId = `${chatId}_M${Date.now()}`;
   const sender = tenant.contactName || tenant.businessName || 'Agent';
-  await dbInsert('bot_messages', msgId, { id: msgId, tenantId: tenant.id, chatId, direction: 'out', body, ts: now, sender });
+
+  // Actually deliver it over WhatsApp using this tenant's own connected number — falls back to
+  // recording the message with status 'failed' (visible in the thread, never silently dropped)
+  // when the tenant hasn't connected a WhatsApp number yet, same as any other send failure.
+  const sent = await botSendText({ phoneNumberId: tenant.waPhoneNumberId, token: tenant.waAccessToken }, chatId, body);
+
+  await dbInsert('bot_messages', msgId, {
+    id: msgId, tenantId: tenant.id, chatId, direction: 'out', body, ts: now, sender,
+    status: sent.ok ? 'sent' : 'failed', error: sent.ok ? null : sent.error,
+  });
   await dbPatch('bot_chats', chatId, { lastText: body, lastAt: now, unread: 0, assignedTo: chat.assignedTo || sender });
 
-  return Response.json({ success: true, id: msgId });
+  return Response.json({ success: true, id: msgId, delivered: sent.ok, error: sent.ok ? null : sent.error });
 }
