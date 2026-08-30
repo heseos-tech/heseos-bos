@@ -2,9 +2,11 @@
 // Team-app-only chrome: bottom nav + shell. Everything else (buttons, fields, badges, avatar,
 // screen header, section head) is generic and shared straight from the Partner app's
 // components/partner/ui.jsx — no need to fork it.
+import { useRef } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { IconHome, IconLeads, IconUser } from '@/components/partner/icons';
+import { useNavHeightVar } from '@/components/partner/ui';
 
 // All three point at the SAME route (/team/home) with a different ?tab= — see
 // components/team/TeamHome.jsx. `tab` here must match TeamHome's switch cases exactly.
@@ -14,11 +16,17 @@ const NAV_ITEMS = [
   { tab: 'profile', href: '/team/home?tab=profile', label: 'Profile', icon: IconUser },
 ];
 
+// Fixed-positioned (not a flex sibling of the scroll area) so it's pinned to the literal
+// bottom of the viewport like a native tab bar — see .hp-bottom-nav in partner-app.css.
+// useNavHeightVar publishes its real rendered height as --hp-nav-h so .hp-shell-scroll can
+// reserve exactly enough space for it (shared with the Partner app's BottomNav).
 export function TeamBottomNav() {
   const searchParams = useSearchParams();
   const activeTab = searchParams.get('tab') || 'home';
+  const navRef = useRef(null);
+  useNavHeightVar(navRef);
   return (
-    <nav className="hp-bottom-nav">
+    <nav ref={navRef} className="hp-bottom-nav">
       {NAV_ITEMS.map((item) => {
         const Icon = item.icon;
         const active = item.tab === activeTab;

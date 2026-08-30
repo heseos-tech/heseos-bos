@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
@@ -130,10 +130,33 @@ export function SectionHead({ title, viewAllHref }) {
   );
 }
 
+// Measures the actual rendered bottom-nav height (icons/labels/safe-area padding vary a little
+// by content and device) and publishes it as --hp-nav-h on <html>, so .hp-shell-scroll can
+// reserve exactly that much space instead of a guessed fixed number — see BottomNav below and
+// .hp-shell-scroll's padding-bottom in partner-app.css. Shared by the Team app too (its
+// TeamBottomNav imports this from here).
+export function useNavHeightVar(ref) {
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || typeof ResizeObserver === 'undefined') return undefined;
+    const setH = () => {
+      document.documentElement.style.setProperty('--hp-nav-h', `${el.offsetHeight}px`);
+    };
+    setH();
+    const ro = new ResizeObserver(setH);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [ref]);
+}
+
 // ── Bottom navigation — consistent across all authenticated tab screens ───
 // Home/Leads/Rewards/Profile all point at the SAME route (/partner/home) with a different
 // ?tab= — see components/partner/PartnerHome.jsx. `tab` here must match PartnerHome's switch
 // cases exactly. Add Lead stays its own real route (a wizard, not a dashboard tab).
+//
+// Fixed-positioned (not a flex sibling of the scroll area) so it's pinned to the literal
+// bottom of the viewport like a native tab bar, regardless of any flex/height-rounding quirk
+// in .hp-shell — see partner-app.css for the .hp-bottom-nav position:fixed rule.
 const NAV_ITEMS = [
   { tab: 'home', href: '/partner/home', label: 'Home', icon: IconHome },
   { tab: 'leads', href: '/partner/home?tab=leads', label: 'Leads', icon: IconLeads },
@@ -144,8 +167,10 @@ const NAV_ITEMS = [
 export function BottomNav() {
   const searchParams = useSearchParams();
   const activeTab = searchParams.get('tab') || 'home';
+  const navRef = useRef(null);
+  useNavHeightVar(navRef);
   return (
-    <nav className="hp-bottom-nav">
+    <nav ref={navRef} className="hp-bottom-nav">
       {NAV_ITEMS.map((item) => {
         const Icon = item.icon;
         if (item.center) {

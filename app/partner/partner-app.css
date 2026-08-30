@@ -82,7 +82,11 @@ html:has(.hp-root), body:has(.hp-root) {
    the page, and there's no gap below it since the shell always exactly fills the
    viewport regardless of content length. */
 .hp-shell { display: flex; flex-direction: column; height: 100%; overflow: hidden; background: var(--hp-bg); }
-.hp-shell-scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden; overscroll-behavior-y: contain; -webkit-overflow-scrolling: touch; padding-bottom: 28px; }
+/* padding-bottom reserves space for the now-fixed .hp-bottom-nav (--hp-nav-h is set by
+   useNavHeightVar from the nav's own real rendered height; 90px is a sane guess for the
+   first paint / no-ResizeObserver fallback) so scrolled content never ends up hidden
+   behind it. */
+.hp-shell-scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden; overscroll-behavior-y: contain; -webkit-overflow-scrolling: touch; padding-bottom: calc(var(--hp-nav-h, 90px) + 16px); }
 
 /* ── Plain page (no bottom nav) ─────────────────────────────────────────── */
 .hp-page { min-height: 100%; background: var(--hp-bg); display: flex; flex-direction: column; }
@@ -245,7 +249,13 @@ html:has(.hp-root), body:has(.hp-root) {
 .hp-cta-block { padding: 18px 20px 6px; }
 
 /* ── Bottom nav ──────────────────────────────────────────────────────── */
-.hp-bottom-nav { flex-shrink: 0; display: flex; align-items: flex-end; justify-content: space-around; background: var(--hp-bg2); border-top: 1px solid var(--hp-border); padding: 9px 6px calc(9px + env(safe-area-inset-bottom, 0px)); }
+/* position:fixed pins this to the literal bottom of the viewport like a native tab bar —
+   independent of any flex/height rounding in .hp-shell, which is what was leaving an
+   uncovered sliver of .hp-shell's own (darker) background visible below the nav before.
+   left:50%/translateX centers it under .hp-root's own max-width:480px card on wide
+   screens the same way .hp-root centers itself. Padding trimmed slightly for a more
+   compact, native tab-bar height. */
+.hp-bottom-nav { position: fixed; left: 50%; bottom: 0; transform: translateX(-50%); width: 100%; max-width: 480px; z-index: 40; flex-shrink: 0; display: flex; align-items: flex-end; justify-content: space-around; background: var(--hp-bg2); border-top: 1px solid var(--hp-border); padding: 7px 6px calc(6px + env(safe-area-inset-bottom, 0px)); }
 .hp-nav-item { display: flex; flex-direction: column; align-items: center; gap: 4px; background: none; border: none; color: var(--hp-text-faint); font-size: 10.5px; font-weight: 600; padding: 4px 8px; flex: 1; cursor: pointer; }
 .hp-nav-item.active { color: var(--hp-orange); }
 .hp-nav-center { display: flex; flex-direction: column; align-items: center; gap: 4px; margin-top: -26px; }
