@@ -1,10 +1,18 @@
-// Approve or reject one Bot Console signup. Approving is the moment a pending tenant actually
-// becomes usable: it flips approvalStatus so the login route (app/api/auth/bot/route.js) will
-// issue a session, and — only the first time, guarded by `seeded` — seeds the same demo Inbox
-// (lib/botMock.js) self-service signups used to get instantly, so an approved tenant still
-// lands on a populated console rather than an empty one.
-import { getEmployee } from '@/lib/auth';
-import { dbGetById, dbPatch, dbInsert } from '@/lib/db';
+// Manage one Bot Console tenant from Admin -> Settings -> Bot Signups:
+//   - approve / reject   — the signup approval gate (see app/api/auth/bot/register/route.js)
+//   - activate / deactivate — the same kill-switch the login route and getBotTenant() already
+//     honor for every account type (acct.active === false), so this instantly takes a tenant's
+//     bot offline without deleting anything.
+//   - reset_password     — generates a fresh temporary password, hashes and stores it, and
+//     returns the PLAINTEXT once in this response only (never stored, never logged) so the
+//     admin can hand it to the tenant. There's no email/notify flow yet — this is the same
+//     "type a temporary password" pattern Partners/Employees use at creation time, just usable
+//     after the fact.
+//   - DELETE              — permanently removes the tenant AND cascades to their bot_chats /
+//     bot_messages, so nothing orphaned is left costing storage.
+import crypto from 'crypto';
+import { getEmployee, hashPassword } from '@/lib/auth';
+import { dbGetById, dbPatch, dbInsert, dbWhere, dbDelete } from '@/lib/db';
 import { seedTenantData } from '@/lib/botMock';
 
 export const dynamic = 'force-dynamic';
@@ -13,6 +21,16 @@ async function requireAdmin() {
   const employee = await getEmployee();
   if (!employee || employee.role !== 'admin') return null;
   return employee;
+}
+
+// Avoids visually-ambiguous characters (0/O, 1/l/I) since an admin has to read this aloud or
+// retype it to hand off to the tenant.
+function generateTempPassword() {
+  const alphabet = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+  const bytes = crypto.randomBytes(12);
+  let out = '';
+  for (let i = 0; i < 12; i++) out += alphabet[bytes[i] % alphabet.length];
+  return out;
 }
 
 export async function PATCH(request, { params }) {
@@ -24,7 +42,8 @@ export async function PATCH(request, { params }) {
   if (!tenant) return Response.json({ error: 'Not found' }, { status: 404 });
 
   const { action } = await request.json().catch(() => ({}));
-  if (!['approve', 'reject'].includes(action)) return Response.json({ error: "action must be 'approve' or 'reject'" }, { status: 400 });
+  const VALID = ['approve', 'reject', 'activate', 'deactivate', 'reset_password'];
+  if (!VALID.includes(action)) return Response.json({ error: `action must be one of: ${VALID.join(', ')}` }, { status: 400 });
 
   if (action === 'reject') {
     const updated = await dbPatch('bot_tenants', id, { approvalStatus: 'rejected' });
@@ -32,6 +51,21 @@ export async function PATCH(request, { params }) {
     return Response.json(safe);
   }
 
+  if (action === 'activate' || action === 'deactivate') {
+    const updated = await dbPatch('bot_tenants', id, { active: action === 'activate' });
+    const { password, waAccessToken, ...safe } = updated;
+    return Response.json(safe);
+  }
+
+  if (action === 'reset_password') {
+    const tempPassword = generateTempPassword();
+    const updated = await dbPatch('bot_tenants', id, { password: await hashPassword(tempPassword) });
+    const { password, waAccessToken, ...safe } = updated;
+    // tempPassword is returned ONCE, here, and nowhere else — it isn't stored in plaintext.
+    return Response.json({ ...safe, tempPassword });
+  }
+
+  // action === 'approve'
   const patch = { approvalStatus: 'approved' };
   let updated = await dbPatch('bot_tenants', id, patch);
 
@@ -46,4 +80,25 @@ export async function PATCH(request, { params }) {
 
   const { password, waAccessToken, ...safe } = updated;
   return Response.json(safe);
+}
+
+export async function DELETE(request, { params }) {
+  const admin = await requireAdmin();
+  if (!admin) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+
+  const { id } = await params;
+  const tenant = await dbGetById('bot_tenants', id);
+  if (!tenant) return Response.json({ error: 'Not found' }, { status: 404 });
+
+  const [chats, messages] = await Promise.all([
+    dbWhere('bot_chats', 'tenantId', id),
+    dbWhere('bot_messages', 'tenantId', id),
+  ]);
+  await Promise.all([
+    ...chats.map((c) => dbDelete('bot_chats', c.id)),
+    ...messages.map((m) => dbDelete('bot_messages', m.id)),
+  ]);
+  await dbDelete('bot_tenants', id);
+
+  return Response.json({ success: true });
 }

@@ -229,12 +229,16 @@ function CitiesCard() {
 }
 
 
+const DANGER_BTN_STYLE = { color: '#c0392b', borderColor: '#f3c6c6' };
+
 function BotSignupsCard() {
   const [tenants, setTenants] = useState([]);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState(null);
   const [error, setError] = useState('');
   const [showAll, setShowAll] = useState(false);
+  const [reveal, setReveal] = useState({}); // { [tenantId]: freshly-generated plaintext password }
+  const [copiedId, setCopiedId] = useState('');
 
   const load = useCallback(async () => {
     const res = await fetch('/api/admin/bot-tenants');
@@ -243,7 +247,8 @@ function BotSignupsCard() {
   }, []);
   useEffect(() => { load(); }, [load]);
 
-  async function decide(id, action) {
+  async function decide(id, action, confirmMsg) {
+    if (confirmMsg && !confirm(confirmMsg)) return;
     setBusyId(id); setError('');
     try {
       const res = await fetch(`/api/admin/bot-tenants/${id}`, {
@@ -251,7 +256,34 @@ function BotSignupsCard() {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) { setError(data.error || 'Could not update that signup.'); return; }
-      setTenants((prev) => prev.map((t) => (t.id === id ? data : t)));
+      const { tempPassword, ...tenant } = data;
+      setTenants((prev) => prev.map((t) => (t.id === id ? tenant : t)));
+      if (tempPassword) setReveal((prev) => ({ ...prev, [id]: tempPassword }));
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  function dismissReveal(id) {
+    setReveal((prev) => { const next = { ...prev }; delete next[id]; return next; });
+  }
+
+  function copyPassword(id, value) {
+    navigator.clipboard?.writeText(value).then(() => {
+      setCopiedId(id);
+      setTimeout(() => setCopiedId(''), 1800);
+    });
+  }
+
+  async function removeTenant(id, businessName) {
+    if (!confirm(`Permanently delete ${businessName || 'this account'} and all of their bot data (conversations, messages)? This cannot be undone.`)) return;
+    setBusyId(id); setError('');
+    try {
+      const res = await fetch(`/api/admin/bot-tenants/${id}`, { method: 'DELETE' });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) { setError(data.error || 'Could not delete that account.'); return; }
+      setTenants((prev) => prev.filter((t) => t.id !== id));
+      dismissReveal(id);
     } finally {
       setBusyId(null);
     }
@@ -270,6 +302,7 @@ function BotSignupsCard() {
         Anyone can submit the self-service Bot Console signup form, but a new account can't log in or use any compute until
         you approve it here — that's what keeps a flood of random signups from costing you anything beyond one small row
         each. Approving seeds their demo Inbox and lets them sign in; rejecting keeps the account permanently locked out.
+        Once approved, you can deactivate, reset the password for, or permanently delete an account at any time.
       </p>
 
       {error && <div className="adm-notice adm-notice--error">{error}</div>}
@@ -282,20 +315,58 @@ function BotSignupsCard() {
         <div className="adm-meta-forms">
           {visible.map((t) => {
             const status = t.approvalStatus || 'approved';
+            const isActive = t.active !== false;
+            const busy = busyId === t.id;
+            const deleteBtn = (
+              <button className="adm-btn-outline" style={DANGER_BTN_STYLE} disabled={busy} onClick={() => removeTenant(t.id, t.businessName)}>Delete</button>
+            );
             return (
-              <div className="adm-meta-form-row" key={t.id}>
-                <div>
-                  <div className="adm-lead-name">{t.businessName} <span className={`adm-status-pill${status === 'approved' ? ' active' : status === 'pending' ? ' pending' : ''}`} style={{ marginLeft: 8 }}>{status}</span></div>
-                  <div className="adm-lead-sub">{t.contactName} · {t.email || 'no email'} · {t.industry} · signed up {t.createdAt ? new Date(t.createdAt).toLocaleDateString() : ''}</div>
-                </div>
-                {status === 'pending' ? (
-                  <div className="adm-page-head-actions">
-                    <button className="adm-btn-outline" disabled={busyId === t.id} onClick={() => decide(t.id, 'reject')}>Reject</button>
-                    <button className="adm-btn-primary" disabled={busyId === t.id} onClick={() => decide(t.id, 'approve')}>{busyId === t.id ? 'Approving…' : 'Approve'}</button>
+              <div key={t.id}>
+                <div className="adm-meta-form-row">
+                  <div>
+                    <div className="adm-lead-name">
+                      {t.businessName}
+                      <span className={`adm-status-pill${status === 'approved' ? ' active' : status === 'pending' ? ' pending' : ''}`} style={{ marginLeft: 8 }}>{status}</span>
+                      {status !== 'pending' && !isActive && <span className="adm-status-pill" style={{ marginLeft: 6 }}>deactivated</span>}
+                    </div>
+                    <div className="adm-lead-sub">
+                      {t.contactName} · {t.email || 'no email'} · {t.industry} · login ID <strong>{t.loginId}</strong> · signed up {t.createdAt ? new Date(t.createdAt).toLocaleDateString() : ''}
+                    </div>
                   </div>
-                ) : status === 'rejected' ? (
-                  <button className="adm-btn-outline" disabled={busyId === t.id} onClick={() => decide(t.id, 'approve')}>Approve anyway</button>
-                ) : null}
+
+                  {status === 'pending' ? (
+                    <div className="adm-page-head-actions">
+                      <button className="adm-btn-outline" disabled={busy} onClick={() => decide(t.id, 'reject')}>Reject</button>
+                      <button className="adm-btn-primary" disabled={busy} onClick={() => decide(t.id, 'approve')}>{busy ? 'Approving…' : 'Approve'}</button>
+                      {deleteBtn}
+                    </div>
+                  ) : status === 'rejected' ? (
+                    <div className="adm-page-head-actions">
+                      <button className="adm-btn-outline" disabled={busy} onClick={() => decide(t.id, 'approve')}>Approve anyway</button>
+                      {deleteBtn}
+                    </div>
+                  ) : (
+                    <div className="adm-page-head-actions">
+                      {isActive ? (
+                        <button className="adm-btn-outline" disabled={busy} onClick={() => decide(t.id, 'deactivate', `Deactivate ${t.businessName}'s bot? It will stop responding on WhatsApp and they won't be able to sign in until you reactivate them.`)}>Deactivate</button>
+                      ) : (
+                        <button className="adm-btn-primary" disabled={busy} onClick={() => decide(t.id, 'activate')}>Activate</button>
+                      )}
+                      <button className="adm-btn-outline" disabled={busy} onClick={() => decide(t.id, 'reset_password', `Generate a new password for ${t.businessName}? Their current password stops working immediately.`)}>Reset Password</button>
+                      {deleteBtn}
+                    </div>
+                  )}
+                </div>
+
+                {reveal[t.id] && (
+                  <div className="adm-reveal-row">
+                    <span>New password for <strong>{t.businessName}</strong>:</span>
+                    <code>{reveal[t.id]}</code>
+                    <button className="adm-btn-outline" onClick={() => copyPassword(t.id, reveal[t.id])}>{copiedId === t.id ? 'Copied' : 'Copy'}</button>
+                    <button className="adm-btn-outline" onClick={() => dismissReveal(t.id)}>Done</button>
+                    <span style={{ flexBasis: '100%', fontSize: 11.5 }}>Shown once — copy it now and share it with them directly. It won't be shown again.</span>
+                  </div>
+                )}
               </div>
             );
           })}
