@@ -3,37 +3,25 @@
 // (New/Follow-ups/Demo Scheduled/Converted/Rejected for pre-sales; Available/Upcoming/Needs
 // Reschedule/Quoted/Converted/Lost for sales engineers), rendered as mobile cards instead of a
 // table. Tapping a card opens the Lead Detail screen, where all the actions live.
-import { useEffect, useMemo, useState, useCallback } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { Avatar } from "@/components/partner/ui";
 import { IconLeads } from "@/components/partner/icons";
 import { fmtDate, fmtDateTime } from "@/lib/date";
 import { stageOf, displayStatus, isFollowUpLead, needsReschedule } from "@/lib/leadStage";
 import { PROPERTY_TYPE } from "@/lib/formOptions";
+import { useApiResource } from "@/lib/useApiResource";
 
 const PT_LABEL = Object.fromEntries(PROPERTY_TYPE.map((p) => [p.v, p.l]));
 function norm(s) { return String(s || "").trim().toLowerCase(); }
 
 export default function TeamLeadsScreen({ employee }) {
   const isPresales = employee.role === "presales";
-  const [leads, setLeads] = useState([]);
-  const [loading, setLoading] = useState(true);
+  // Shared with HomeScreen (and, once visited, the desktop panels) via useApiResource
+  // (lib/useApiResource.js) — Home and Leads both stay mounted together in TeamHome, so this
+  // avoids two independent fetch-then-poll loops hitting /api/leads for the same data.
+  const { data: leads, loading } = useApiResource("/api/leads", { pollMs: isPresales ? 20000 : 15000 });
   const [tab, setTab] = useState(isPresales ? "new" : "available");
-
-  const fetchLeads = useCallback(async () => {
-    try {
-      const res = await fetch("/api/leads");
-      if (res.ok) setLeads(await res.json());
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchLeads();
-    const t = setInterval(fetchLeads, isPresales ? 20000 : 15000);
-    return () => clearInterval(t);
-  }, [fetchLeads, isPresales]);
 
   const myCity = norm(employee.location);
   const available = useMemo(

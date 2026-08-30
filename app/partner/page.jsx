@@ -9,7 +9,7 @@ export default async function PartnerOnboardingPage() {
   return (
     <div className="hp-root">
       <div className="hp-hero">
-        <div className="hp-hero-bg" style={{ backgroundImage: "url('/Home-Screen.png')" }} />
+        <div className="hp-hero-bg" style={{ backgroundImage: "url('/Home-Screen.webp')" }} />
         <div className="hp-hero-scrim" />
         <div className="hp-hero-content">
           <img src="/brand/lockup-white.png" alt="Heseos — Lighting Ahead" className="hp-brand-logo" />

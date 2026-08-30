@@ -1,22 +1,16 @@
 'use client';
-import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Avatar, StatusBadge } from './ui';
 import { IconBell, IconLeads, IconGift, IconCheck, IconPlus } from './icons';
 import { fmtDateTime } from '@/lib/date';
 import { partnerStatusOf, PROPERTY_TYPE_LABEL, earningsFor } from '@/lib/partnerMock';
+import { useApiResource } from '@/lib/useApiResource';
 
-// Fetches its own leads now (instead of a server-fetched prop) so it can stay mounted and
-// cached inside PartnerHome's tab switcher — see components/partner/PartnerHome.jsx.
+// Shared with MyLeadsScreen/RewardsScreen (they all stay mounted together in PartnerHome) via
+// useApiResource (lib/useApiResource.js), instead of each independently fetching the same
+// /api/leads on its own first visit.
 export default function DashboardScreen({ partner }) {
-  const [leads, setLeads] = useState([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    let alive = true;
-    fetch('/api/leads').then((r) => (r.ok ? r.json() : [])).then((l) => { if (alive) { setLeads(l); setLoading(false); } });
-    return () => { alive = false; };
-  }, []);
+  const { data: leads, loading } = useApiResource('/api/leads');
 
   const earnings = earningsFor(leads);
   const firstName = (partner.name || 'Partner').split(' ')[0];
@@ -53,7 +47,7 @@ export default function DashboardScreen({ partner }) {
       </div>
 
       <div className="hp-promo">
-        <div className="hp-promo-img" style={{ backgroundImage: "url('/User-home-screen.png')" }} />
+        <div className="hp-promo-img" style={{ backgroundImage: "url('/User-home-screen.webp')" }} />
         <div className="hp-promo-fade" />
         <div className="hp-promo-text">
           <div className="hp-h3">Smart homes.<br /><span className="hp-accent-text">Brighter futures.</span></div>

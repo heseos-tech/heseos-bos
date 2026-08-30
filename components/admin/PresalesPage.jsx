@@ -1,30 +1,26 @@
 'use client';
-import { useEffect, useState, useMemo, useCallback } from 'react';
+import { useState, useMemo } from 'react';
 import { presalesStats, performanceTag, windowDelta } from '@/lib/adminMetrics';
 import { StatCard, Pagination, PerformanceTag } from './ui';
 import { IconSearch, IconPlus, IconDownload, IconPresales, IconLeads, IconDemo, IconConversions } from './icons';
 import { AddEmployeeModal } from './SalesEngineersPage';
+import { useApiResource } from '@/lib/useApiResource';
 
 const PAGE_SIZE = 8;
 
 export default function PresalesPage() {
-  const [employees, setEmployees] = useState([]);
-  const [leads, setLeads] = useState([]);
-  const [loading, setLoading] = useState(true);
+  // Shared with every other Admin tab via useApiResource (lib/useApiResource.js) — see
+  // DashboardPage.jsx for why.
+  const { data: allEmployees, loading: employeesLoading, refresh: refreshEmployees } = useApiResource('/api/admin/employees');
+  const { data: leads, loading: leadsLoading, refresh: refreshLeads } = useApiResource('/api/leads');
+  const employees = useMemo(() => allEmployees.filter((x) => x.role === 'presales'), [allEmployees]);
+  const loading = employeesLoading || leadsLoading;
+  const load = () => { refreshEmployees(); refreshLeads(); };
   const [q, setQ] = useState('');
   const [status, setStatus] = useState('all');
   const [page, setPage] = useState(1);
   const [modal, setModal] = useState(null);
   const [notice, setNotice] = useState('');
-
-  const load = useCallback(async () => {
-    const [e, l] = await Promise.all([
-      fetch('/api/admin/employees').then((r) => (r.ok ? r.json() : [])),
-      fetch('/api/leads').then((r) => (r.ok ? r.json() : [])),
-    ]);
-    setEmployees(e.filter((x) => x.role === 'presales')); setLeads(l); setLoading(false);
-  }, []);
-  useEffect(() => { load(); }, [load]);
 
   function flash(msg) { setNotice(msg); setTimeout(() => setNotice(''), 3000); }
   async function toggleActive(e) {

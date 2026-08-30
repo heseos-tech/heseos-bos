@@ -41,7 +41,7 @@ export default function TeamLoginPage() {
   return (
     <div className="hp-root">
       <div className="hp-hero">
-        <div className="hp-hero-bg" style={{ backgroundImage: "url('/Login_screen.png')" }} />
+        <div className="hp-hero-bg" style={{ backgroundImage: "url('/Login_screen.webp')" }} />
         <div className="hp-hero-scrim-full" />
         <div className="hp-hero-content" style={{ justifyContent: "flex-end" }}>
           <img src="/brand/lockup-white.png" alt="Heseos — Lighting Ahead" className="hp-brand-logo" style={{ position: "absolute", top: 28, left: 22 }} />

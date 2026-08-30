@@ -3,12 +3,13 @@
 // quotationAmount, which is pipeline/potential value, not booked revenue). Everything here is
 // derived by lib/adminMetrics.js from the same /api/leads and /api/admin/employees data every
 // other admin page already uses — nothing fabricated.
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import {
   revenueOverview, revenueByMonth, revenueBySource, revenueByEngineer, revenueByCity, filterByRange,
 } from '@/lib/adminMetrics';
 import { StatCard, Donut, DonutLegend } from './ui';
 import { IconConversions, IconQuotation, IconSalesEngineer, IconLeads, IconDownload } from './icons';
+import { useApiResource } from '@/lib/useApiResource';
 
 const RANGES = [
   { key: 'all', label: 'All Time' },
@@ -23,19 +24,12 @@ function inr(n) {
 }
 
 export default function ReportsPage() {
-  const [leads, setLeads] = useState([]);
-  const [employees, setEmployees] = useState([]);
-  const [loading, setLoading] = useState(true);
+  // Shared with every other Admin tab via useApiResource (lib/useApiResource.js) — see
+  // DashboardPage.jsx for why.
+  const { data: leads, loading: leadsLoading } = useApiResource('/api/leads');
+  const { data: employees, loading: employeesLoading } = useApiResource('/api/admin/employees');
+  const loading = leadsLoading || employeesLoading;
   const [range, setRange] = useState('all');
-
-  const load = useCallback(async () => {
-    const [l, e] = await Promise.all([
-      fetch('/api/leads').then((r) => (r.ok ? r.json() : [])),
-      fetch('/api/admin/employees').then((r) => (r.ok ? r.json() : [])),
-    ]);
-    setLeads(l); setEmployees(e); setLoading(false);
-  }, []);
-  useEffect(() => { load(); }, [load]);
 
   const scoped = useMemo(() => filterByRange(leads, range), [leads, range]);
   const overview = useMemo(() => revenueOverview(scoped), [scoped]);

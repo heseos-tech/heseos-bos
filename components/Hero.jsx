@@ -21,10 +21,10 @@ export default function Hero() {
 
         <div className="bos-hero-visual">
           <Image
-            src="/hero-device-mockup.png"
+            src="/hero-device-mockup.webp"
             alt="HESEOS BOS dashboard on a laptop, showing the Leads list, next to a phone punching in a new lead"
-            width={1536}
-            height={1024}
+            width={1200}
+            height={800}
             priority
             className="bos-hero-device"
           />

@@ -1,31 +1,26 @@
 'use client';
-import { useEffect, useState, useMemo, useCallback } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { PARTNER_CATEGORY, partnerCategoryLabel } from '@/lib/formOptions';
 import { partnerStats, windowDelta } from '@/lib/adminMetrics';
 import { StatCard, Pagination, Modal } from './ui';
 import { IconSearch, IconPlus, IconDownload, IconPartners, IconLeads, IconConversions, IconEye } from './icons';
+import { useApiResource } from '@/lib/useApiResource';
 
 const PAGE_SIZE = 8;
 
 export default function PartnersPage() {
-  const [partners, setPartners] = useState([]);
-  const [leads, setLeads] = useState([]);
-  const [loading, setLoading] = useState(true);
+  // Shared with every other Admin tab via useApiResource (lib/useApiResource.js) — see
+  // DashboardPage.jsx for why.
+  const { data: partners, loading: partnersLoading, refresh: refreshPartners } = useApiResource('/api/admin/partners');
+  const { data: leads, loading: leadsLoading, refresh: refreshLeads } = useApiResource('/api/leads');
+  const loading = partnersLoading || leadsLoading;
+  const load = () => { refreshPartners(); refreshLeads(); };
   const [q, setQ] = useState('');
   const [status, setStatus] = useState('all');
   const [category, setCategory] = useState('all');
   const [page, setPage] = useState(1);
   const [modal, setModal] = useState(null);
   const [notice, setNotice] = useState('');
-
-  const load = useCallback(async () => {
-    const [p, l] = await Promise.all([
-      fetch('/api/admin/partners').then((r) => (r.ok ? r.json() : [])),
-      fetch('/api/leads').then((r) => (r.ok ? r.json() : [])),
-    ]);
-    setPartners(p); setLeads(l); setLoading(false);
-  }, []);
-  useEffect(() => { load(); }, [load]);
 
   function flash(msg) { setNotice(msg); setTimeout(() => setNotice(''), 3000); }
 

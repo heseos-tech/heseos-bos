@@ -3,12 +3,13 @@
 // engineer's city that nobody has claimed yet — first to accept gets it, everyone else stops
 // seeing it) and everything already claimed/assigned to them ("mine"). Their job: claim,
 // visit, send a quotation, and log the final demo outcome.
-import { useEffect, useMemo, useState, useCallback } from 'react';
+import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { fmtDateTime, fmtDate } from '@/lib/date';
 import { stageOf, displayStatus, subUpdateOf, needsReschedule, DEMO_OUTCOMES } from '@/lib/leadStage';
 import { PRODUCT_INTEREST, PROPERTY_TYPE, LEAD_SOURCES } from '@/lib/formOptions';
+import { useApiResource } from '@/lib/useApiResource';
 
 const PI_LABEL = Object.fromEntries(PRODUCT_INTEREST.map((p) => [p.v, p.l]));
 const PT_LABEL = Object.fromEntries(PROPERTY_TYPE.map((p) => [p.v, p.l]));
@@ -17,27 +18,15 @@ function norm(s) { return String(s || '').trim().toLowerCase(); }
 
 export default function SalesEngineerPanel({ employee }) {
   const router = useRouter();
-  const [leads, setLeads] = useState([]);
-  const [loading, setLoading] = useState(true);
+  // Shared via useApiResource (lib/useApiResource.js) — refresh is aliased to fetchLeads so
+  // every existing call site below (claim, the modal's onDone) keeps working unchanged. Polls
+  // faster than Pre-sales (15s vs 20s) since open demos get claimed fast — first come first
+  // served.
+  const { data: leads, loading, refresh: fetchLeads } = useApiResource('/api/leads', { pollMs: 15000 });
   const [tab, setTab] = useState('available');
   const [modal, setModal] = useState(null); // { type: 'quotation'|'outcome'|'timeline', lead }
   const [claimingId, setClaimingId] = useState(null);
   const [notice, setNotice] = useState('');
-
-  const fetchLeads = useCallback(async () => {
-    try {
-      const res = await fetch('/api/leads');
-      if (res.ok) setLeads(await res.json());
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchLeads();
-    const t = setInterval(fetchLeads, 15000); // short poll — open demos get claimed fast
-    return () => clearInterval(t);
-  }, [fetchLeads]);
 
   async function logout() {
     await fetch('/api/auth/employee', { method: 'DELETE' });

@@ -3,36 +3,24 @@
 // a small coverage chip instead of a wallet, a 4-card stat grid, and a recent-leads list) but
 // backed by the SAME live-polling data model as the desktop PresalesPanel/SalesEngineerPanel,
 // since sales-engineer "Available Leads" counts need to stay fresh (first-come-first-served).
-import { useEffect, useMemo, useState, useCallback } from "react";
+import { useMemo } from "react";
 import Link from "next/link";
 import { Avatar } from "@/components/partner/ui";
 import { IconBell, IconLeads, IconGift, IconCheck, IconMapPin } from "@/components/partner/icons";
 import { fmtDateTime } from "@/lib/date";
 import { stageOf, displayStatus } from "@/lib/leadStage";
 import { PROPERTY_TYPE } from "@/lib/formOptions";
+import { useApiResource } from "@/lib/useApiResource";
 
 const PT_LABEL = Object.fromEntries(PROPERTY_TYPE.map((p) => [p.v, p.l]));
 function norm(s) { return String(s || "").trim().toLowerCase(); }
 
 export default function TeamHomeScreen({ employee }) {
   const isPresales = employee.role === "presales";
-  const [leads, setLeads] = useState([]);
-  const [loading, setLoading] = useState(true);
-
-  const fetchLeads = useCallback(async () => {
-    try {
-      const res = await fetch("/api/leads");
-      if (res.ok) setLeads(await res.json());
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchLeads();
-    const t = setInterval(fetchLeads, isPresales ? 20000 : 15000);
-    return () => clearInterval(t);
-  }, [fetchLeads, isPresales]);
+  // Shared with LeadsScreen (and, once visited, the desktop panels) via useApiResource
+  // (lib/useApiResource.js) — Home and Leads both stay mounted together in TeamHome, so this
+  // avoids two independent fetch-then-poll loops hitting /api/leads for the same data.
+  const { data: leads, loading } = useApiResource("/api/leads", { pollMs: isPresales ? 20000 : 15000 });
 
   const myCity = norm(employee.location);
   const available = useMemo(
@@ -106,7 +94,7 @@ export default function TeamHomeScreen({ employee }) {
       </div>
 
       <div className="hp-promo">
-        <div className="hp-promo-img" style={{ backgroundImage: "url('/User-home-screen.png')" }} />
+        <div className="hp-promo-img" style={{ backgroundImage: "url('/User-home-screen.webp')" }} />
         <div className="hp-promo-fade" />
         <div className="hp-promo-text">
           <div className="hp-h3">Smart homes.<br /><span className="hp-accent-text">Brighter results.</span></div>

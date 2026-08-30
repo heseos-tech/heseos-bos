@@ -1,18 +1,13 @@
 'use client';
-import { useEffect, useState } from 'react';
 import { IconWallet, IconGift, IconLeads, IconCheck, IconSpark } from './icons';
 import { MOCK_PAYOUTS, HOW_YOU_EARN, earningsFor } from '@/lib/partnerMock';
+import { useApiResource } from '@/lib/useApiResource';
 
-// Fetches its own leads now (instead of a server-fetched prop) so it can stay mounted and
-// cached inside PartnerHome's tab switcher — see components/partner/PartnerHome.jsx.
+// Shared with DashboardScreen/MyLeadsScreen (they all stay mounted together in PartnerHome) via
+// useApiResource (lib/useApiResource.js), instead of each independently fetching the same
+// /api/leads on its own first visit.
 export default function RewardsScreen() {
-  const [leads, setLeads] = useState([]);
-
-  useEffect(() => {
-    let alive = true;
-    fetch('/api/leads').then((r) => (r.ok ? r.json() : [])).then((l) => { if (alive) setLeads(l); });
-    return () => { alive = false; };
-  }, []);
+  const { data: leads } = useApiResource('/api/leads');
 
   const earnings = earningsFor(leads);
 

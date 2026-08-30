@@ -1,24 +1,20 @@
 'use client';
-import { useEffect, useState, useMemo } from 'react';
+import { useMemo } from 'react';
 import Link from 'next/link';
 import { fmtDateTime } from '@/lib/date';
 import { IconLeads, IconPresales, IconDemo, IconQuotation, IconPartners, IconConversions, IconArrowUp } from './icons';
 import { StatCard, Funnel, Donut, DonutLegend } from './ui';
 import { funnelData, sourceBreakdown, recentActivity, windowDelta } from '@/lib/adminMetrics';
+import { useApiResource } from '@/lib/useApiResource';
 
 export default function DashboardPage({ employee }) {
-  const [leads, setLeads] = useState([]);
-  const [partners, setPartners] = useState([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    let alive = true;
-    Promise.all([
-      fetch('/api/leads').then((r) => (r.ok ? r.json() : [])),
-      fetch('/api/admin/partners').then((r) => (r.ok ? r.json() : [])),
-    ]).then(([l, p]) => { if (alive) { setLeads(l); setPartners(p); setLoading(false); } });
-    return () => { alive = false; };
-  }, []);
+  // Shared with every other Admin tab via useApiResource (lib/useApiResource.js) — since
+  // Admin's tabs all stay mounted after their first visit (AdminHome), visiting Dashboard after
+  // Leads (or vice versa) now reuses the already-cached /api/leads response instead of
+  // re-fetching the whole table again.
+  const { data: leads, loading: leadsLoading } = useApiResource('/api/leads');
+  const { data: partners, loading: partnersLoading } = useApiResource('/api/admin/partners');
+  const loading = leadsLoading || partnersLoading;
 
   const funnel = useMemo(() => funnelData(leads), [leads]);
   const bySource = useMemo(() => sourceBreakdown(leads), [leads]);

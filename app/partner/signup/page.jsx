@@ -39,7 +39,7 @@ export default function PartnerSignupPage() {
   return (
     <div className="hp-root">
       <div className="hp-hero">
-        <div className="hp-hero-bg" style={{ backgroundImage: "url('/Signup-Screen.png')" }} />
+        <div className="hp-hero-bg" style={{ backgroundImage: "url('/Signup-Screen.webp')" }} />
         <div className="hp-hero-scrim-full" />
         <div className="hp-hero-content" style={{ justifyContent: 'flex-end' }}>
           <div style={{ position: 'absolute', top: 26, left: 22, fontSize: 22, fontWeight: 800, color: '#fff' }}>Sign Up</div>

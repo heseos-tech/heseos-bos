@@ -2,37 +2,25 @@
 // Pre-sales panel — shows ONLY the leads assigned to this exec (city auto-assigned, or handed
 // to them by an admin), not the whole pipeline. Their job: work New leads, log Follow-ups,
 // and Schedule Demo to hand a qualified lead over to a sales engineer.
-import { useEffect, useMemo, useState, useCallback } from 'react';
+import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { fmtDateTime, fmtDate } from '@/lib/date';
 import { stageOf, displayStatus, subUpdateOf, isFollowUpLead, CONTACT_STAGES } from '@/lib/leadStage';
 import { PRODUCT_INTEREST, PROPERTY_TYPE, LEAD_SOURCES } from '@/lib/formOptions';
+import { useApiResource } from '@/lib/useApiResource';
 
 const PI_LABEL = Object.fromEntries(PRODUCT_INTEREST.map((p) => [p.v, p.l]));
 const PT_LABEL = Object.fromEntries(PROPERTY_TYPE.map((p) => [p.v, p.l]));
 
 export default function PresalesPanel({ employee }) {
   const router = useRouter();
-  const [leads, setLeads] = useState([]);
-  const [loading, setLoading] = useState(true);
+  // Shared via useApiResource (lib/useApiResource.js) — refresh is aliased to fetchLeads so
+  // every existing call site below (the modal's onDone, the manual refresh button) keeps working
+  // unchanged.
+  const { data: leads, loading, refresh: fetchLeads } = useApiResource('/api/leads', { pollMs: 20000 });
   const [tab, setTab] = useState('new');
   const [modal, setModal] = useState(null); // { type: 'contact'|'schedule'|'timeline', lead }
-
-  const fetchLeads = useCallback(async () => {
-    try {
-      const res = await fetch('/api/leads');
-      if (res.ok) setLeads(await res.json());
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchLeads();
-    const t = setInterval(fetchLeads, 20000);
-    return () => clearInterval(t);
-  }, [fetchLeads]);
 
   async function logout() {
     await fetch('/api/auth/employee', { method: 'DELETE' });

@@ -1,10 +1,11 @@
 'use client';
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { Avatar, StatusBadge } from './ui';
 import { IconPlus, IconLeads } from './icons';
 import { fmtDateTime } from '@/lib/date';
 import { partnerStatusOf, PROPERTY_TYPE_LABEL } from '@/lib/partnerMock';
+import { useApiResource } from '@/lib/useApiResource';
 
 const TABS = [
   { key: 'all', label: 'All' },
@@ -13,18 +14,12 @@ const TABS = [
   { key: 'converted', label: 'Converted' },
 ];
 
-// Fetches its own leads now (instead of a server-fetched prop) so it can stay mounted and
-// cached inside PartnerHome's tab switcher — see components/partner/PartnerHome.jsx.
+// Shared with DashboardScreen/RewardsScreen (they all stay mounted together in PartnerHome) via
+// useApiResource (lib/useApiResource.js), instead of each independently fetching the same
+// /api/leads on its own first visit.
 export default function MyLeadsScreen() {
-  const [leads, setLeads] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { data: leads, loading } = useApiResource('/api/leads');
   const [tab, setTab] = useState('all');
-
-  useEffect(() => {
-    let alive = true;
-    fetch('/api/leads').then((r) => (r.ok ? r.json() : [])).then((l) => { if (alive) { setLeads(l); setLoading(false); } });
-    return () => { alive = false; };
-  }, []);
 
   const withStatus = useMemo(() => leads.map((l) => ({ ...l, _status: partnerStatusOf(l) })), [leads]);
 

@@ -1,21 +1,24 @@
 'use client';
-import { useEffect, useState, useMemo, useCallback } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { fmtDate } from '@/lib/date';
 import { LEAD_SOURCES, PROPERTY_TYPE } from '@/lib/formOptions';
 import { adminStatus, leadBucket, nextAction, LEAD_BUCKETS } from '@/lib/adminMetrics';
 import { StatusBadge, Pagination, Modal, StatCard } from './ui';
 import { IconSearch, IconFilter, IconPlus, IconChevronDown, IconMore, IconUpload, IconDownload, IconEye, IconLeads, IconDemo, IconQuotation, IconConversions } from './icons';
+import { useApiResource } from '@/lib/useApiResource';
 
 const PT_LABEL = Object.fromEntries(PROPERTY_TYPE.map((p) => [p.v, p.l]));
 const PAGE_SIZE = 10;
 
 export default function LeadsPage() {
   const searchParams = useSearchParams();
-  const [leads, setLeads] = useState([]);
-  const [partners, setPartners] = useState([]);
-  const [employees, setEmployees] = useState([]);
-  const [loading, setLoading] = useState(true);
+  // Shared with every other Admin tab via useApiResource (lib/useApiResource.js) — see
+  // DashboardPage.jsx for why.
+  const { data: leads, loading: leadsLoading, refresh: refreshLeads } = useApiResource('/api/leads');
+  const { data: partners, loading: partnersLoading, refresh: refreshPartners } = useApiResource('/api/admin/partners');
+  const { data: employees, loading: employeesLoading, refresh: refreshEmployees } = useApiResource('/api/admin/employees');
+  const loading = leadsLoading || partnersLoading || employeesLoading;
   const [q, setQ] = useState('');
   const [source, setSource] = useState('all');
   const [partnerId, setPartnerId] = useState('all');
@@ -35,16 +38,10 @@ export default function LeadsPage() {
     if (b) setBucket(b);
   }, [searchParams]);
 
-  const load = useCallback(async () => {
-    const [l, p, e] = await Promise.all([
-      fetch('/api/leads').then((r) => (r.ok ? r.json() : [])),
-      fetch('/api/admin/partners').then((r) => (r.ok ? r.json() : [])),
-      fetch('/api/admin/employees').then((r) => (r.ok ? r.json() : [])),
-    ]);
-    setLeads(l); setPartners(p); setEmployees(e); setLoading(false);
-  }, []);
-
-  useEffect(() => { load(); }, [load]);
+  // Mutations below call this instead of the old full re-fetch — it just re-pulls the three
+  // already-cached resources, so every other mounted Admin tab watching the same URLs (e.g.
+  // Dashboard, Pre-sales, Sales Engineers) picks up the change too, not just this tab.
+  const load = () => { refreshLeads(); refreshPartners(); refreshEmployees(); };
 
   const partnerName = (id) => partners.find((p) => p.id === id)?.businessName || '—';
   const engineerName = (id) => employees.find((e) => e.id === id)?.name || 'Unassigned';
