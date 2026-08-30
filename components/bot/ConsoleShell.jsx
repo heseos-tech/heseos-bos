@@ -39,7 +39,7 @@ export default function ConsoleShell({ tenant, children }) {
             const active = pathname === item.href || pathname.startsWith(item.href + '/');
             return (
               <Link key={item.href} href={item.href} className={`bc-nav-item${active ? ' active' : ''}`}>
-                <Icon size={18} />
+                <Icon size={21} />
                 <span>{item.label}</span>
               </Link>
             );
