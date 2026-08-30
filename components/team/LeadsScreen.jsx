@@ -3,8 +3,9 @@
 // (New/Follow-ups/Demo Scheduled/Converted/Rejected for pre-sales; Available/Upcoming/Needs
 // Reschedule/Quoted/Converted/Lost for sales engineers), rendered as mobile cards instead of a
 // table. Tapping a card opens the Lead Detail screen, where all the actions live.
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { Avatar } from "@/components/partner/ui";
 import { IconLeads } from "@/components/partner/icons";
 import { fmtDate, fmtDateTime } from "@/lib/date";
@@ -17,11 +18,21 @@ function norm(s) { return String(s || "").trim().toLowerCase(); }
 
 export default function TeamLeadsScreen({ employee }) {
   const isPresales = employee.role === "presales";
+  const searchParams = useSearchParams();
   // Shared with HomeScreen (and, once visited, the desktop panels) via useApiResource
   // (lib/useApiResource.js) — Home and Leads both stay mounted together in TeamHome, so this
   // avoids two independent fetch-then-poll loops hitting /api/leads for the same data.
   const { data: leads, loading } = useApiResource("/api/leads", { pollMs: isPresales ? 20000 : 15000 });
-  const [tab, setTab] = useState(isPresales ? "new" : "available");
+  const [tab, setTab] = useState(searchParams.get("status") || (isPresales ? "new" : "available"));
+
+  // LeadsScreen stays mounted after the first visit (see TeamHome), so a fresh navigation here —
+  // e.g. a Home stat-card linking to ?tab=leads&status=followup — no longer remounts this
+  // component. Without this, the tab filter above (set once from the URL at mount) would never
+  // pick up a later change. React to it explicitly instead (mirrors admin/LeadsPage.jsx's bucket sync).
+  useEffect(() => {
+    const s = searchParams.get("status");
+    if (s) setTab(s);
+  }, [searchParams]);
 
   const myCity = norm(employee.location);
   const available = useMemo(

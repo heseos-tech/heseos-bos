@@ -1,6 +1,7 @@
 'use client';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { Avatar, StatusBadge } from './ui';
 import { IconPlus, IconLeads } from './icons';
 import { fmtDateTime } from '@/lib/date';
@@ -18,8 +19,18 @@ const TABS = [
 // useApiResource (lib/useApiResource.js), instead of each independently fetching the same
 // /api/leads on its own first visit.
 export default function MyLeadsScreen() {
+  const searchParams = useSearchParams();
   const { data: leads, loading } = useApiResource('/api/leads');
-  const [tab, setTab] = useState('all');
+  const [tab, setTab] = useState(searchParams.get('status') || 'all');
+
+  // MyLeadsScreen stays mounted after the first visit (see PartnerHome), so a fresh navigation
+  // here — e.g. a Home stat-card linking to ?tab=leads&status=new — no longer remounts this
+  // component. Without this, the tab filter above (set once from the URL at mount) would never
+  // pick up a later change. React to it explicitly instead (mirrors admin/LeadsPage.jsx's bucket sync).
+  useEffect(() => {
+    const s = searchParams.get('status');
+    if (s) setTab(s);
+  }, [searchParams]);
 
   const withStatus = useMemo(() => leads.map((l) => ({ ...l, _status: partnerStatusOf(l) })), [leads]);
 

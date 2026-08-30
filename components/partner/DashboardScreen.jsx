@@ -56,10 +56,10 @@ export default function DashboardScreen({ partner }) {
       </div>
 
       <div className="hp-stat-grid">
-        <div className="hp-stat-card"><div className="hp-stat-icon"><IconLeads size={16} /></div><div className="hp-stat-val">{stats.total}</div><div className="hp-stat-label">Total Leads</div></div>
-        <div className="hp-stat-card"><div className="hp-stat-icon"><IconPlus size={16} /></div><div className="hp-stat-val">{stats.new}</div><div className="hp-stat-label">New Leads</div></div>
-        <div className="hp-stat-card"><div className="hp-stat-icon"><IconGift size={16} /></div><div className="hp-stat-val">{stats.progress}</div><div className="hp-stat-label">In Progress</div></div>
-        <div className="hp-stat-card"><div className="hp-stat-icon"><IconCheck size={16} /></div><div className="hp-stat-val">{stats.converted}</div><div className="hp-stat-label">Converted</div></div>
+        <Link href="/partner/home?tab=leads&status=all" className="hp-stat-card"><div className="hp-stat-icon"><IconLeads size={16} /></div><div className="hp-stat-val">{stats.total}</div><div className="hp-stat-label">Total Leads</div></Link>
+        <Link href="/partner/home?tab=leads&status=new" className="hp-stat-card"><div className="hp-stat-icon"><IconPlus size={16} /></div><div className="hp-stat-val">{stats.new}</div><div className="hp-stat-label">New Leads</div></Link>
+        <Link href="/partner/home?tab=leads&status=progress" className="hp-stat-card"><div className="hp-stat-icon"><IconGift size={16} /></div><div className="hp-stat-val">{stats.progress}</div><div className="hp-stat-label">In Progress</div></Link>
+        <Link href="/partner/home?tab=leads&status=converted" className="hp-stat-card"><div className="hp-stat-icon"><IconCheck size={16} /></div><div className="hp-stat-val">{stats.converted}</div><div className="hp-stat-label">Converted</div></Link>
       </div>
 
       <div className="hp-section-head" style={{ marginTop: 0 }}>

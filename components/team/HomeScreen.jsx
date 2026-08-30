@@ -43,10 +43,10 @@ export default function TeamHomeScreen({ employee }) {
         else if (st === "New Lead") newC++;
       }
       return [
-        { label: "New Leads", val: newC, icon: IconLeads },
-        { label: "Follow-ups", val: followupC, icon: IconGift },
-        { label: "Demo Scheduled", val: demoC, icon: IconGift },
-        { label: "Converted", val: convC, icon: IconCheck },
+        { key: "new", label: "New Leads", val: newC, icon: IconLeads },
+        { key: "followup", label: "Follow-ups", val: followupC, icon: IconGift },
+        { key: "demo", label: "Demo Scheduled", val: demoC, icon: IconGift },
+        { key: "converted", label: "Converted", val: convC, icon: IconCheck },
       ];
     }
     let upcomingC = 0, quotedC = 0, convC = 0;
@@ -57,10 +57,10 @@ export default function TeamHomeScreen({ employee }) {
       else if (l.demoScheduledAt) upcomingC++;
     }
     return [
-      { label: `Available in ${employee.location || "your city"}`, val: available.length, icon: IconLeads },
-      { label: "Upcoming Demos", val: upcomingC, icon: IconGift },
-      { label: "Quotation Sent", val: quotedC, icon: IconGift },
-      { label: "Converted", val: convC, icon: IconCheck },
+      { key: "available", label: `Available in ${employee.location || "your city"}`, val: available.length, icon: IconLeads },
+      { key: "upcoming", label: "Upcoming Demos", val: upcomingC, icon: IconGift },
+      { key: "quoted", label: "Quotation Sent", val: quotedC, icon: IconGift },
+      { key: "converted", label: "Converted", val: convC, icon: IconCheck },
     ];
   }, [isPresales, mine, available, employee.location]);
 
@@ -106,11 +106,11 @@ export default function TeamHomeScreen({ employee }) {
         {stats.map((s) => {
           const Icon = s.icon;
           return (
-            <div className="hp-stat-card" key={s.label}>
+            <Link href={`/team/home?tab=leads&status=${s.key}`} className="hp-stat-card" key={s.label}>
               <div className="hp-stat-icon"><Icon size={16} /></div>
               <div className="hp-stat-val">{s.val}</div>
               <div className="hp-stat-label">{s.label}</div>
-            </div>
+            </Link>
           );
         })}
       </div>
