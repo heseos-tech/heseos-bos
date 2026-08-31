@@ -10,15 +10,24 @@ import { ATTR_KIND_LABEL } from '@/lib/attributionConstants';
 import { StatCard, Modal } from './ui';
 import { IconQrCode, IconLink, IconLeads, IconConversions, IconSearch, IconPlus } from './icons';
 
+// Kind (the table's own column) only ever shows "QR Code" or "Referral Link" — which of the
+// four underlying kinds it is (qr_partner, qr_location, referral_partner, referral_customer)
+// shows instead as a Partner/Location/Customer tag next to the owner's name in the next
+// column, since that's the distinction admins actually care about at a glance.
 const KIND_FILTERS = [
   { v: 'all', l: 'All' },
-  { v: 'qr_partner', l: 'QR — Partner' },
-  { v: 'qr_location', l: 'QR — Location' },
-  { v: 'referral_partner', l: 'Referral — Partner' },
-  { v: 'referral_customer', l: 'Referral — Customer' },
+  { v: 'qr', l: 'QR Code' },
+  { v: 'referral', l: 'Referral Link' },
 ];
 
 function isQr(kind) { return kind === 'qr_partner' || kind === 'qr_location'; }
+
+// Partner / Location / Customer — whose link this is, shown as a small tag beside the name.
+function ownerTypeLabel(l) {
+  if (l.kind === 'qr_partner' || l.kind === 'referral_partner') return 'Partner';
+  if (l.kind === 'qr_location') return 'Location';
+  return 'Customer';
+}
 
 function ownerLabel(l) {
   if (l.kind === 'qr_partner' || l.kind === 'referral_partner') return l.partnerName || l.label || l.partnerId || '—';
@@ -36,7 +45,7 @@ export default function GrowthPage() {
   function flash(msg) { setNotice(msg); setTimeout(() => setNotice(''), 2500); }
 
   const filtered = useMemo(() => links.filter((l) => {
-    if (kind !== 'all' && l.kind !== kind) return false;
+    if (kind !== 'all' && isQr(l.kind) !== (kind === 'qr')) return false;
     if (q.trim()) {
       const s = q.trim().toLowerCase();
       if (!(`${l.id} ${ownerLabel(l)} ${l.customerPhone || ''}`.toLowerCase().includes(s))) return false;
@@ -83,7 +92,7 @@ export default function GrowthPage() {
 
         <div className="adm-table-scroll">
           <table className="adm-table">
-            <thead><tr><th>Code</th><th>Kind</th><th>Owner / Label</th><th>Scans / Clicks</th><th>Leads</th><th>Converted</th><th>Conv. Rate</th><th>Status</th><th></th></tr></thead>
+            <thead><tr><th>Code</th><th>Kind</th><th>Partner / Location</th><th>Scans / Clicks</th><th>Leads</th><th>Converted</th><th>Conv. Rate</th><th>Status</th><th></th></tr></thead>
             <tbody>
               {loading ? <tr><td colSpan={9} className="adm-empty">Loading…</td></tr> : filtered.length === 0 ? <tr><td colSpan={9} className="adm-empty">No links match these filters.</td></tr> : filtered.map((l) => {
                 const f = l.funnel || { visits: 0, leads: 0, converted: 0 };
@@ -91,8 +100,11 @@ export default function GrowthPage() {
                 return (
                   <tr key={l.id}>
                     <td><code>{l.id}</code></td>
-                    <td>{ATTR_KIND_LABEL[l.kind] || l.kind}</td>
-                    <td>{ownerLabel(l)}</td>
+                    <td>{isQr(l.kind) ? 'QR Code' : 'Referral Link'}</td>
+                    <td>
+                      <div className="adm-lead-name">{ownerLabel(l)}</div>
+                      <div className="adm-lead-sub">{ownerTypeLabel(l)}</div>
+                    </td>
                     <td>{f.visits}</td>
                     <td>{f.leads}</td>
                     <td>{f.converted}</td>
