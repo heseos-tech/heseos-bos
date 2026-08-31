@@ -19,7 +19,11 @@ export default function LeadsPage() {
   const { data: leads, loading: leadsLoading, refresh: refreshLeads } = useApiResource('/api/leads');
   const { data: partners, loading: partnersLoading, refresh: refreshPartners } = useApiResource('/api/admin/partners');
   const { data: employees, loading: employeesLoading, refresh: refreshEmployees } = useApiResource('/api/admin/employees');
-  const loading = leadsLoading || partnersLoading || employeesLoading;
+  // Only needed to resolve a "QR — Location" link's own label (e.g. "Viman Nagar") for the
+  // Partner column below — see attributionInfo(). Growth's own table already fetches this same
+  // endpoint for the identical reason.
+  const { data: attributionLinks, loading: attributionLoading } = useApiResource('/api/admin/attribution');
+  const loading = leadsLoading || partnersLoading || employeesLoading || attributionLoading;
   const [q, setQ] = useState('');
   const [source, setSource] = useState('all');
   const [partnerId, setPartnerId] = useState('all');
@@ -65,18 +69,29 @@ export default function LeadsPage() {
     .map(([k, l]) => ({ v: k, l }))
     .concat([{ v: 'qr', l: 'QR' }, { v: 'referral', l: 'Referral' }]);
 
-  // Partner column: the actual partner name when one is attached (Partner App, QR/Referral —
-  // Partner); "Location" for a placement QR with no partner; "Referred by <name>" for a
-  // customer referral link (resolved from the referring lead, already in this same list);
-  // "Direct" for every other source — no partner/location/referral attribution at all.
-  const attributionLabel = (l) => {
-    if (l.partnerId) return partnerName(l.partnerId);
-    if (l.attributionKind === 'qr_location') return 'Location';
+  const linkById = useMemo(
+    () => Object.fromEntries((attributionLinks || []).map((link) => [link.id, link])),
+    [attributionLinks]
+  );
+
+  // Partner column: same name-on-top / type-tag-below style as the Growth admin table's
+  // "Partner / Location" column — {name, tag}. Partner App / QR — Partner / Referral —
+  // Partner all resolve to the actual partner's name tagged "Partner"; a placement QR
+  // resolves to that link's own label (e.g. "Viman Nagar") tagged "Location"; a customer
+  // referral link resolves to the referring customer's name (looked up in this same leads
+  // list) tagged "Referred"; everything else — no partner/location/referral attribution at
+  // all — is plain "Direct" with no second line.
+  const attributionInfo = (l) => {
+    if (l.partnerId) return { name: partnerName(l.partnerId), tag: 'Partner' };
+    if (l.attributionKind === 'qr_location') {
+      const link = l.attributionLinkId ? linkById[l.attributionLinkId] : null;
+      return { name: (link && link.label) || 'Location', tag: 'Location' };
+    }
     if (l.attributionKind === 'referral_customer') {
       const ref = leads.find((x) => x.id === l.referredByLeadId);
-      return ref ? `Referred by ${ref.name}` : 'Referred by a customer';
+      return { name: ref ? ref.name : 'A customer', tag: 'Referred' };
     }
-    return 'Direct';
+    return { name: 'Direct', tag: null };
   };
   const engineerName = (id) => employees.find((e) => e.id === id)?.name || 'Unassigned';
   const presalesTeam = employees.filter((e) => e.role === 'presales');
@@ -203,6 +218,7 @@ export default function LeadsPage() {
               ) : pageRows.map((l) => {
                 const status = adminStatus(l);
                 const action = nextAction(l);
+                const attr = attributionInfo(l);
                 return (
                   <tr key={l.id}>
                     <td>
@@ -210,7 +226,10 @@ export default function LeadsPage() {
                       <div className="adm-lead-sub">{l.phone} • {l.city}{l.propertyType ? ` • ${PT_LABEL[l.propertyType] || l.propertyType}` : ''}</div>
                     </td>
                     <td>{sourceLabel(l)}</td>
-                    <td>{attributionLabel(l)}</td>
+                    <td>
+                      <div className="adm-lead-name">{attr.name}</div>
+                      {attr.tag && <div className="adm-lead-sub">{attr.tag}</div>}
+                    </td>
                     <td><StatusBadge status={status} /></td>
                     <td>{engineerName(l.salesEngineerId)}</td>
                     <td>{action.label}</td>
