@@ -54,8 +54,8 @@
    between rows, matching the reference (MARG) console's sidebar scale rather than a tight
    compact list. */
 .bc-nav { display: flex; flex-direction: column; gap: 10px; flex: 1; }
-.bc-nav-item { display: flex; align-items: center; gap: 14px; padding: 14px 16px; border-radius: 14px; color: rgba(255, 255, 255, 0.82); font-size: 16px; font-weight: 700; background: none; border: none; cursor: pointer; text-align: left; width: 100%; }
-.bc-nav-item svg { flex-shrink: 0; opacity: 0.92; color: rgba(255, 255, 255, 0.82); }
+.bc-nav-item { display: flex; align-items: center; gap: 14px; padding: 14px 16px; border-radius: 14px; color: rgba(255, 255, 255, 0.92); font-size: 14px; font-weight: 600; background: none; border: none; cursor: pointer; text-align: left; width: 100%; }
+.bc-nav-item svg { flex-shrink: 0; opacity: 1; color: rgba(255, 255, 255, 0.92); }
 .bc-nav-item:hover { background: var(--bc-sidebar-hover); color: #fff; }
 .bc-nav-item.active { background: var(--bc-sidebar-active); color: #fff; }
 .bc-nav-item.active svg { color: var(--bc-accent); opacity: 1; }
