@@ -60,7 +60,7 @@ export default function GrowthPage() {
       <div className="adm-page-head">
         <div><h1 className="adm-h1">QR Codes &amp; Referral Links</h1><p className="adm-page-sub">Partner QR codes, billboard/standee QR codes, and referral links — every scan and click, and every lead and conversion it drives</p></div>
         <div className="adm-page-head-actions">
-          <button className="adm-btn-primary" onClick={() => setModal({ type: 'create' })}><IconPlus size={15} /> Create Link</button>
+          <button className="adm-btn-primary" onClick={() => setModal({ type: 'create' })}><IconPlus size={15} /> Create QR Code</button>
         </div>
       </div>
 
@@ -157,37 +157,29 @@ function LinkDetailModal({ link, onClose, onCopied }) {
   );
 }
 
+// Referral links (partner and customer) are deliberately NOT creatable from here — partners
+// self-provision their own from the Partner App's "Share & Earn" page (app/api/partner/
+// attribution), and customer referral links will eventually be self-requested from the
+// WhatsApp bot once those flows exist. Only QR codes go through admin, since those need
+// printing/placing physically — qr_partner because a partner may want Heseos to print one for
+// them, qr_location because there's no partner/customer to self-serve it in the first place.
 const KIND_OPTIONS = [
   { v: 'qr_location', l: 'QR — Location', hint: 'A billboard, standee or shop window — tracked by placement' },
-  { v: 'referral_customer', l: 'Referral — Customer', hint: "A link for a paying customer to share, tracked (no auto-payout). Eventually customers request this straight from the WhatsApp bot — until that's built, create it here manually" },
-  { v: 'qr_partner', l: 'QR — Partner', hint: 'Normally self-provisioned by the partner in their app — create here only if needed' },
-  { v: 'referral_partner', l: 'Referral — Partner', hint: 'Normally self-provisioned by the partner in their app — create here only if needed' },
+  { v: 'qr_partner', l: 'QR — Partner', hint: "A partner's QR code — they already have one in their own app; use this only to print/hand one out yourself" },
 ];
 
 function CreateLinkModal({ onClose, onDone }) {
   const { data: partners } = useApiResource('/api/admin/partners');
-  const { data: leads } = useApiResource('/api/leads');
-  const convertedLeads = useMemo(() => leads.filter((l) => l.demoOutcome === 'converted'), [leads]);
 
   const [kind, setKind] = useState('qr_location');
   const [label, setLabel] = useState('');
   const [partnerId, setPartnerId] = useState('');
-  const [customerLeadId, setCustomerLeadId] = useState('');
-  const [customerName, setCustomerName] = useState('');
-  const [customerPhone, setCustomerPhone] = useState('');
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
 
-  function pickCustomerLead(id) {
-    setCustomerLeadId(id);
-    const lead = convertedLeads.find((l) => l.id === id);
-    if (lead) { setCustomerName(lead.name || ''); setCustomerPhone(lead.phone || ''); }
-  }
-
   const canSave = (
     (kind === 'qr_location' && label.trim()) ||
-    ((kind === 'qr_partner' || kind === 'referral_partner') && partnerId) ||
-    (kind === 'referral_customer' && (customerLeadId || customerName.trim()))
+    (kind === 'qr_partner' && partnerId)
   );
 
   async function submit() {
@@ -195,7 +187,7 @@ function CreateLinkModal({ onClose, onDone }) {
     try {
       const res = await fetch('/api/admin/attribution', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ kind, label, partnerId: partnerId || undefined, customerLeadId: customerLeadId || undefined, customerName, customerPhone }),
+        body: JSON.stringify({ kind, label, partnerId: partnerId || undefined }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed');
@@ -204,7 +196,7 @@ function CreateLinkModal({ onClose, onDone }) {
   }
 
   return (
-    <Modal title="Create a QR code or referral link" sub="Every scan or click routes into WhatsApp and the resulting chat becomes an attributed lead" onClose={onClose}>
+    <Modal title="Create a QR code" sub="Every scan routes into WhatsApp and the resulting chat becomes an attributed lead. Referral links are self-service — see the Partner App (and, soon, the WhatsApp bot for customers)." onClose={onClose}>
       <div className="lf-field">
         <label className="lf-label">Type</label>
         <div className="lf-pills">
@@ -219,7 +211,7 @@ function CreateLinkModal({ onClose, onDone }) {
         <div className="lf-field"><label className="lf-label">Location label</label><input className="lf-input" value={label} onChange={(e) => setLabel(e.target.value)} placeholder='e.g. "Koramangala Billboard" or "HSR Standee 2"' /></div>
       )}
 
-      {(kind === 'qr_partner' || kind === 'referral_partner') && (
+      {kind === 'qr_partner' && (
         <div className="lf-field">
           <label className="lf-label">Partner</label>
           <select className="lf-input" value={partnerId} onChange={(e) => setPartnerId(e.target.value)}>
@@ -227,20 +219,6 @@ function CreateLinkModal({ onClose, onDone }) {
             {partners.map((p) => <option key={p.id} value={p.id}>{p.businessName || p.name}</option>)}
           </select>
         </div>
-      )}
-
-      {kind === 'referral_customer' && (
-        <>
-          <div className="lf-field">
-            <label className="lf-label">Pick a converted customer (optional)</label>
-            <select className="lf-input" value={customerLeadId} onChange={(e) => pickCustomerLead(e.target.value)}>
-              <option value="">— Enter details manually instead —</option>
-              {convertedLeads.map((l) => <option key={l.id} value={l.id}>{l.name} • {l.phone}</option>)}
-            </select>
-          </div>
-          <div className="lf-field"><label className="lf-label">Customer name</label><input className="lf-input" value={customerName} onChange={(e) => setCustomerName(e.target.value)} /></div>
-          <div className="lf-field"><label className="lf-label">Customer phone</label><input className="lf-input" value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} /></div>
-        </>
       )}
 
       {error && <div className="lf-error">{error}</div>}
