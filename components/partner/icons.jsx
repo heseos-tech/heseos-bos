@@ -112,3 +112,6 @@ export const LogoWhatsApp = ({ size = 18 }) => (
 export const IconQrCode = ({ size = 20, ...p }) => (
   <svg {...base(size)} {...p}><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /><path d="M14 14h3v3h-3zM20 14v3M14 20h3M20 20v.01" /></svg>
 );
+export const IconLink = ({ size = 20, ...p }) => (
+  <svg {...base(size)} {...p}><path d="M9.5 14.5l5-5" /><path d="M8 16.5l-1.8 1.8a3.5 3.5 0 0 1-5-5L5 9.5a3.5 3.5 0 0 1 5-5" /><path d="M16 7.5l1.8-1.8a3.5 3.5 0 0 1 5 5L19 14.5a3.5 3.5 0 0 1-5 5" /></svg>
+);

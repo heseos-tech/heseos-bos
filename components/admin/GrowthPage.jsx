@@ -6,7 +6,7 @@
 // else in the app — lib/leadStage.js's stageOf).
 import { useMemo, useState } from 'react';
 import { useApiResource } from '@/lib/useApiResource';
-import { ATTR_KIND_LABEL } from '@/lib/attribution';
+import { ATTR_KIND_LABEL } from '@/lib/attributionConstants';
 import { StatCard, Modal } from './ui';
 import { IconQrCode, IconLink, IconLeads, IconConversions, IconSearch, IconPlus } from './icons';
 
