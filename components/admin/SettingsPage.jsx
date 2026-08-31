@@ -13,6 +13,7 @@ export default function SettingsPage() {
   const [busyFormId, setBusyFormId] = useState(null);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
+  const [registeringWebhook, setRegisteringWebhook] = useState(false);
 
   const load = useCallback(async () => {
     const res = await fetch('/api/admin/meta');
@@ -44,6 +45,16 @@ export default function SettingsPage() {
       if (!res.ok) { setError(data.error || 'Could not refresh forms.'); return; }
       setSettings(data); flash('Lead forms refreshed');
     } finally { setRefreshing(false); }
+  }
+
+  async function registerWebhook() {
+    setError(''); setRegisteringWebhook(true);
+    try {
+      const res = await fetch('/api/admin/meta', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'register_webhook' }) });
+      const data = await res.json();
+      if (!res.ok) { setError(data.error || 'Could not register the webhook.'); return; }
+      setSettings(data); flash('Webhook registered with Meta');
+    } finally { setRegisteringWebhook(false); }
   }
 
   async function toggleForm(form) {
@@ -83,6 +94,22 @@ export default function SettingsPage() {
           Pick exactly which Meta (Facebook &amp; Instagram) Instant Form ads should send leads into Heseos BOS. Only the forms you turn on below will create leads — everything else is ignored.
         </p>
 
+        {!loading && (
+          <div className="adm-meta-webhook-row">
+            <div>
+              <div className="adm-lead-name">Webhook {settings?.webhookRegistered ? '— registered with Meta' : '— not registered yet'}</div>
+              <div className="adm-lead-sub">
+                {settings?.webhookRegistered
+                  ? `Meta will call ${settings.webhookCallbackUrl || 'this app'} for new leads${settings.webhookRegisteredAt ? ` · set up ${new Date(settings.webhookRegisteredAt).toLocaleDateString()}` : ''}.`
+                  : 'One-time, app-wide setup — tells Meta where to send lead events. Needs META_APP_ID, META_APP_SECRET, META_LEAD_VERIFY_TOKEN and PUBLIC_BASE_URL set on the server.'}
+              </div>
+            </div>
+            <button className="adm-btn-outline" onClick={registerWebhook} disabled={registeringWebhook}>
+              {registeringWebhook ? 'Registering…' : settings?.webhookRegistered ? 'Re-register' : 'Register Webhook'}
+            </button>
+          </div>
+        )}
+
         {loading ? (
           <div className="adm-empty">Loading…</div>
         ) : error ? (
@@ -119,6 +146,9 @@ export default function SettingsPage() {
               <div>
                 <div className="adm-lead-name">{settings.pageName}</div>
                 <div className="adm-lead-sub">Page ID {settings.pageId}{settings.connectedAt ? ` · connected ${new Date(settings.connectedAt).toLocaleDateString()}` : ''}</div>
+                <div className={`adm-lead-sub${settings.subscribed ? '' : ' adm-lead-sub--warn'}`}>
+                  {settings.subscribed ? 'Page subscribed to leadgen events ✓' : `⚠ Page not subscribed yet${settings.subscribeError ? ` — ${settings.subscribeError}` : ''}. Try Refresh Forms.`}
+                </div>
               </div>
               <div className="adm-page-head-actions">
                 <button className="adm-btn-outline" onClick={refreshForms} disabled={refreshing}>{refreshing ? 'Refreshing…' : 'Refresh Forms'}</button>

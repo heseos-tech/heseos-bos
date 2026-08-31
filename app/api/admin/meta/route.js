@@ -1,7 +1,7 @@
 // Admin-only settings API for the self-service Meta Lead Ads connection: connect a Page,
 // list its Lead Ad forms, and toggle which forms are allowed to create leads. See lib/metaAds.js.
 import { getEmployee } from '@/lib/auth';
-import { getMetaSettings, saveMetaSettings, fetchPageInfo, fetchLeadForms } from '@/lib/metaAds';
+import { getMetaSettings, saveMetaSettings, fetchPageInfo, fetchLeadForms, subscribePageToApp, registerAppWebhook } from '@/lib/metaAds';
 
 export const dynamic = 'force-dynamic';
 
@@ -53,7 +53,7 @@ export async function POST(request) {
   const prevById = new Map((existing?.forms || []).map((f) => [f.id, f]));
   const mergedForms = forms.map((f) => ({ id: f.id, name: f.name, status: f.status, enabled: prevById.get(f.id)?.enabled ?? false }));
 
-  const settings = await saveMetaSettings({
+  let settings = await saveMetaSettings({
     pageAccessToken: token,
     pageId: page.id,
     pageName: page.name,
@@ -61,6 +61,12 @@ export async function POST(request) {
     connectedAt: existing?.connectedAt || new Date().toISOString(),
     connectedBy: admin.id,
   });
+
+  // Auto-subscribe the Page to this app's webhook — the step that otherwise has to be done
+  // by hand in Meta's dashboard every time a Page is (re)connected.
+  const { error: subError } = await subscribePageToApp(page.id, token);
+  settings = await saveMetaSettings({ subscribed: !subError, subscribeError: subError || null, subscribedAt: new Date().toISOString() });
+
   return Response.json(publicSettings(settings));
 }
 
@@ -70,19 +76,30 @@ export async function PATCH(request) {
   const admin = await requireAdmin();
   if (!admin) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
+  const body = await request.json().catch(() => ({}));
+
+  // App-level, one-time setup — doesn't need a Page connected yet, so this runs before the
+  // "connect a Page first" guard below.
+  if (body.action === 'register_webhook') {
+    const { data, error } = await registerAppWebhook();
+    if (error) return Response.json({ error }, { status: 400 });
+    const settings = await saveMetaSettings({ webhookRegistered: true, webhookRegisteredAt: new Date().toISOString(), webhookCallbackUrl: data.callbackUrl });
+    return Response.json(publicSettings(settings));
+  }
+
   const existing = await getMetaSettings();
   if (!existing || !existing.pageAccessToken) {
     return Response.json({ error: 'Connect a Meta Page first.' }, { status: 400 });
   }
-
-  const body = await request.json().catch(() => ({}));
 
   if (body.action === 'refresh') {
     const { data: forms, error } = await fetchLeadForms(existing.pageId, existing.pageAccessToken);
     if (error) return Response.json({ error }, { status: 400 });
     const prevById = new Map((existing.forms || []).map((f) => [f.id, f]));
     const mergedForms = forms.map((f) => ({ id: f.id, name: f.name, status: f.status, enabled: prevById.get(f.id)?.enabled ?? false }));
-    const settings = await saveMetaSettings({ forms: mergedForms });
+    // Re-confirm the Page subscription too — cheap, and catches the case where it lapsed.
+    const { error: subError } = await subscribePageToApp(existing.pageId, existing.pageAccessToken);
+    const settings = await saveMetaSettings({ forms: mergedForms, subscribed: !subError, subscribeError: subError || null, subscribedAt: new Date().toISOString() });
     return Response.json(publicSettings(settings));
   }
 
