@@ -207,7 +207,7 @@ export default function LeadsPage() {
           <table className="adm-table">
             <thead>
               <tr>
-                <th>Lead Details</th><th>Source</th><th>Partner</th><th>Status</th><th>Sales Engineer</th><th>Next Action</th><th>Created On</th><th></th>
+                <th>Lead Details</th><th>Source</th><th>Partner/Location</th><th>Status</th><th>Sales Engineer</th><th>Next Action</th><th>Created On</th><th></th>
               </tr>
             </thead>
             <tbody>
