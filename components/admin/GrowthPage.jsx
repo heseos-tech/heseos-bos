@@ -159,7 +159,7 @@ function LinkDetailModal({ link, onClose, onCopied }) {
 
 const KIND_OPTIONS = [
   { v: 'qr_location', l: 'QR — Location', hint: 'A billboard, standee or shop window — tracked by placement' },
-  { v: 'referral_customer', l: 'Referral — Customer', hint: 'A link for a paying customer to share, tracked (no auto-payout)' },
+  { v: 'referral_customer', l: 'Referral — Customer', hint: "A link for a paying customer to share, tracked (no auto-payout). Eventually customers request this straight from the WhatsApp bot — until that's built, create it here manually" },
   { v: 'qr_partner', l: 'QR — Partner', hint: 'Normally self-provisioned by the partner in their app — create here only if needed' },
   { v: 'referral_partner', l: 'Referral — Partner', hint: 'Normally self-provisioned by the partner in their app — create here only if needed' },
 ];
