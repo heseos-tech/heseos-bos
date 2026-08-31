@@ -195,6 +195,8 @@ export default function SettingsPage() {
           </div>
         )}
       </div>
+
+      <WebsiteLeadsCard />
     </>
   );
 }
@@ -277,6 +279,105 @@ function CitiesCard() {
   );
 }
 
+
+function WebsiteLeadsCard() {
+  const [settings, setSettings] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [generating, setGenerating] = useState(false);
+  const [regenerating, setRegenerating] = useState(false);
+  const [toggling, setToggling] = useState(false);
+  const [error, setError] = useState('');
+  const [copied, setCopied] = useState('');
+
+  const load = useCallback(async () => {
+    const res = await fetch('/api/admin/website-leads');
+    setSettings(res.ok ? await res.json() : null);
+    setLoading(false);
+  }, []);
+  useEffect(() => { load(); }, [load]);
+
+  function copy(label, value) {
+    navigator.clipboard?.writeText(value).then(() => {
+      setCopied(label);
+      setTimeout(() => setCopied(''), 1800);
+    });
+  }
+
+  async function generate() {
+    setError(''); setGenerating(true);
+    try {
+      const res = await fetch('/api/admin/website-leads', { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) { setError(data.error || 'Could not generate a key.'); return; }
+      setSettings(data);
+    } finally { setGenerating(false); }
+  }
+
+  async function regenerate() {
+    if (!confirm("Regenerate the API key? The old key stops working immediately \u2014 you'll need to update it wherever your website form uses it.")) return;
+    setError(''); setRegenerating(true);
+    try {
+      const res = await fetch('/api/admin/website-leads', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'regenerate' }) });
+      const data = await res.json();
+      if (!res.ok) { setError(data.error || 'Could not regenerate the key.'); return; }
+      setSettings(data);
+    } finally { setRegenerating(false); }
+  }
+
+  async function toggleEnabled() {
+    setError(''); setToggling(true);
+    try {
+      const res = await fetch('/api/admin/website-leads', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ enabled: !settings.enabled }) });
+      const data = await res.json();
+      if (!res.ok) { setError(data.error || 'Could not update that.'); return; }
+      setSettings(data);
+    } finally { setToggling(false); }
+  }
+
+  return (
+    <div className="adm-card adm-meta-card" style={{ marginBottom: 18 }}>
+      <div className="adm-card-title-row">
+        <div className="adm-card-title">Website Lead Form</div>
+        {settings?.connected && (
+          <span className={`adm-status-pill${settings.enabled ? ' active' : ' pending'}`}>{settings.enabled ? 'Enabled' : 'Disabled'}</span>
+        )}
+      </div>
+      <p className="adm-card-sub">
+        Generate an API key so your own website's contact/enquiry form can send leads straight into Heseos BOS — hand the key and endpoint below to whoever builds or maintains that form. No code changes here needed on your side.
+      </p>
+
+      {error && <div className="adm-notice adm-notice--error">{error}</div>}
+
+      {loading ? (
+        <div className="adm-empty">Loading…</div>
+      ) : !settings?.connected ? (
+        <button className="adm-btn-primary" onClick={generate} disabled={generating}>{generating ? 'Generating\u2026' : 'Generate API Key'}</button>
+      ) : (
+        <>
+          <div className="adm-reveal-row">
+            <span>Endpoint</span>
+            <code>{settings.endpointUrl}</code>
+            <button className="adm-btn-outline" onClick={() => copy('endpoint', settings.endpointUrl)}>{copied === 'endpoint' ? 'Copied' : 'Copy'}</button>
+          </div>
+          <div className="adm-reveal-row">
+            <span>API Key</span>
+            <code>{settings.apiKey}</code>
+            <button className="adm-btn-outline" onClick={() => copy('key', settings.apiKey)}>{copied === 'key' ? 'Copied' : 'Copy'}</button>
+          </div>
+
+          <p className="adm-meta-hint">
+            POST JSON to the endpoint above with header <code>X-Api-Key: &lt;the key&gt;</code> and a body of at least <code>{'{ "name": "…", "phone": "…" }'}</code> — <code>email</code>, <code>city</code> and <code>message</code> are optional. Every submission lands in Leads tagged "Website (API)", auto-assigned by city same as any other channel.
+          </p>
+
+          <div className="adm-page-head-actions">
+            <button className="adm-btn-outline" onClick={toggleEnabled} disabled={toggling}>{toggling ? 'Updating\u2026' : settings.enabled ? 'Disable Capture' : 'Enable Capture'}</button>
+            <button className="adm-btn-outline" onClick={regenerate} disabled={regenerating}>{regenerating ? 'Regenerating\u2026' : 'Regenerate Key'}</button>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
 
 const DANGER_BTN_STYLE = { color: '#c0392b', borderColor: '#f3c6c6' };
 
