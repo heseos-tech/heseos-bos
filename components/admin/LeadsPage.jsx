@@ -56,6 +56,15 @@ export default function LeadsPage() {
     return LEAD_SOURCES[l.source] || l.source;
   };
 
+  // Source filter dropdown: same QR/Referral collapse as sourceLabel above, so the filter
+  // options match what the column actually shows. 'qr' and 'referral' here are synthetic
+  // filter values (not real source keys) — the filter predicate below expands each to the
+  // pair of real kinds it covers.
+  const SOURCE_FILTER_OPTIONS = Object.entries(LEAD_SOURCES)
+    .filter(([k]) => !['qr_partner', 'qr_location', 'referral_partner', 'referral_customer'].includes(k))
+    .map(([k, l]) => ({ v: k, l }))
+    .concat([{ v: 'qr', l: 'QR' }, { v: 'referral', l: 'Referral' }]);
+
   // Partner column: the actual partner name when one is attached (Partner App, QR/Referral —
   // Partner); "Location" for a placement QR with no partner; "Referred by <name>" for a
   // customer referral link (resolved from the referring lead, already in this same list);
@@ -83,7 +92,12 @@ export default function LeadsPage() {
   const filtered = useMemo(() => {
     return leads.filter((l) => {
       if (bucket !== 'all' && leadBucket(l) !== bucket) return false;
-      if (source !== 'all' && (l.source || 'manual_entry') !== source) return false;
+      if (source !== 'all') {
+        const s = l.source || 'manual_entry';
+        if (source === 'qr') { if (!isQrKind(s)) return false; }
+        else if (source === 'referral') { if (s !== 'referral_partner' && s !== 'referral_customer') return false; }
+        else if (s !== source) return false;
+      }
       if (partnerId !== 'all' && l.partnerId !== partnerId) return false;
       if (engineerId !== 'all' && l.salesEngineerId !== engineerId) return false;
       if (q.trim()) {
@@ -153,7 +167,7 @@ export default function LeadsPage() {
           <div className="adm-search adm-search--inline"><IconSearch size={16} /><input placeholder="Search by name, mobile number, location, partner…" value={q} onChange={(e) => { setQ(e.target.value); setPage(1); }} /></div>
           <select value={source} onChange={(e) => { setSource(e.target.value); setPage(1); }}>
             <option value="all">All Sources</option>
-            {Object.entries(LEAD_SOURCES).map(([k, l]) => <option key={k} value={k}>{l}</option>)}
+            {SOURCE_FILTER_OPTIONS.map(({ v, l }) => <option key={v} value={v}>{l}</option>)}
           </select>
           <select value={partnerId} onChange={(e) => { setPartnerId(e.target.value); setPage(1); }}>
             <option value="all">All Partners</option>
