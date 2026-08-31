@@ -52,7 +52,7 @@ export default function LeadsPage() {
 
   // Source column: QR Code (Partner)/(Location) collapse to "QR", Referral Link
   // (Partner)/(Customer) collapse to "Referral" — the Partner/Location/Customer distinction
-  // moves into the Partner column instead (attributionLabel below), same pattern used on the
+  // moves into the Partner column instead (attributionInfo below), same pattern used on the
   // Growth admin table's Kind column.
   const sourceLabel = (l) => {
     if (isQrKind(l.source)) return 'QR';
