@@ -3,6 +3,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { fmtDate } from '@/lib/date';
 import { LEAD_SOURCES, PROPERTY_TYPE } from '@/lib/formOptions';
+import { isQrKind } from '@/lib/attributionConstants';
 import { adminStatus, leadBucket, nextAction, LEAD_BUCKETS } from '@/lib/adminMetrics';
 import { StatusBadge, Pagination, Modal, StatCard } from './ui';
 import { IconSearch, IconFilter, IconPlus, IconChevronDown, IconMore, IconUpload, IconDownload, IconEye, IconLeads, IconDemo, IconQuotation, IconConversions } from './icons';
@@ -44,6 +45,30 @@ export default function LeadsPage() {
   const load = () => { refreshLeads(); refreshPartners(); refreshEmployees(); };
 
   const partnerName = (id) => partners.find((p) => p.id === id)?.businessName || '—';
+
+  // Source column: QR Code (Partner)/(Location) collapse to "QR", Referral Link
+  // (Partner)/(Customer) collapse to "Referral" — the Partner/Location/Customer distinction
+  // moves into the Partner column instead (attributionLabel below), same pattern used on the
+  // Growth admin table's Kind column.
+  const sourceLabel = (l) => {
+    if (isQrKind(l.source)) return 'QR';
+    if (l.source === 'referral_partner' || l.source === 'referral_customer') return 'Referral';
+    return LEAD_SOURCES[l.source] || l.source;
+  };
+
+  // Partner column: the actual partner name when one is attached (Partner App, QR/Referral —
+  // Partner); "Location" for a placement QR with no partner; "Referred by <name>" for a
+  // customer referral link (resolved from the referring lead, already in this same list);
+  // "Direct" for every other source — no partner/location/referral attribution at all.
+  const attributionLabel = (l) => {
+    if (l.partnerId) return partnerName(l.partnerId);
+    if (l.attributionKind === 'qr_location') return 'Location';
+    if (l.attributionKind === 'referral_customer') {
+      const ref = leads.find((x) => x.id === l.referredByLeadId);
+      return ref ? `Referred by ${ref.name}` : 'Referred by a customer';
+    }
+    return 'Direct';
+  };
   const engineerName = (id) => employees.find((e) => e.id === id)?.name || 'Unassigned';
   const presalesTeam = employees.filter((e) => e.role === 'presales');
   const engineers = employees.filter((e) => e.role === 'sales_engineer');
@@ -170,8 +195,8 @@ export default function LeadsPage() {
                       <div className="adm-lead-name">{l.name}</div>
                       <div className="adm-lead-sub">{l.phone} • {l.city}{l.propertyType ? ` • ${PT_LABEL[l.propertyType] || l.propertyType}` : ''}</div>
                     </td>
-                    <td>{LEAD_SOURCES[l.source] || l.source}</td>
-                    <td>{partnerName(l.partnerId)}</td>
+                    <td>{sourceLabel(l)}</td>
+                    <td>{attributionLabel(l)}</td>
                     <td><StatusBadge status={status} /></td>
                     <td>{engineerName(l.salesEngineerId)}</td>
                     <td>{action.label}</td>
