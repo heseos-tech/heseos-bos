@@ -56,8 +56,13 @@
 .bc-nav { display: flex; flex-direction: column; gap: 10px; flex: 1; }
 .bc-nav-item { display: flex; align-items: center; gap: 14px; padding: 14px 16px; border-radius: 14px; color: rgba(255, 255, 255, 0.92); font-size: 14px; font-weight: 600; background: none; border: none; cursor: pointer; text-align: left; width: 100%; }
 .bc-nav-item svg { flex-shrink: 0; opacity: 1; color: rgba(255, 255, 255, 0.92); }
+/* Direct rule on the label span itself — ".bc-root a { color: inherit }" above outranks
+   plain ".bc-nav-item" on specificity and was winning on the <a>, leaving the span inheriting
+   a dim ambient color instead of this. Setting it here bypasses that fight entirely. */
+.bc-nav-item span { color: rgba(255, 255, 255, 0.92); }
 .bc-nav-item:hover { background: var(--bc-sidebar-hover); color: #fff; }
 .bc-nav-item.active { background: var(--bc-sidebar-active); color: #fff; }
+.bc-nav-item:hover span, .bc-nav-item.active span { color: #fff; }
 .bc-nav-item.active svg { color: var(--bc-accent); opacity: 1; }
 
 .bc-sidebar-foot { border-top: 1px solid rgba(255, 255, 255, 0.08); padding-top: 12px; display: flex; align-items: center; gap: 10px; }
