@@ -197,6 +197,7 @@ export default function SettingsPage() {
       </div>
 
       <WebsiteLeadsCard />
+      <GoogleAdsLeadsCard />
     </>
   );
 }
@@ -368,6 +369,108 @@ function WebsiteLeadsCard() {
           <p className="adm-meta-hint">
             POST JSON to the endpoint above with header <code>X-Api-Key: &lt;the key&gt;</code> and a body of at least <code>{'{ "name": "…", "phone": "…" }'}</code> — <code>email</code>, <code>city</code> and <code>message</code> are optional. Every submission lands in Leads tagged "Website (API)", auto-assigned by city same as any other channel.
           </p>
+
+          <div className="adm-page-head-actions">
+            <button className="adm-btn-outline" onClick={toggleEnabled} disabled={toggling}>{toggling ? 'Updating\u2026' : settings.enabled ? 'Disable Capture' : 'Enable Capture'}</button>
+            <button className="adm-btn-outline" onClick={regenerate} disabled={regenerating}>{regenerating ? 'Regenerating\u2026' : 'Regenerate Key'}</button>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function GoogleAdsLeadsCard() {
+  const [settings, setSettings] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [generating, setGenerating] = useState(false);
+  const [regenerating, setRegenerating] = useState(false);
+  const [toggling, setToggling] = useState(false);
+  const [error, setError] = useState('');
+  const [copied, setCopied] = useState('');
+
+  const load = useCallback(async () => {
+    const res = await fetch('/api/admin/google-ads');
+    setSettings(res.ok ? await res.json() : null);
+    setLoading(false);
+  }, []);
+  useEffect(() => { load(); }, [load]);
+
+  function copy(label, value) {
+    navigator.clipboard?.writeText(value).then(() => {
+      setCopied(label);
+      setTimeout(() => setCopied(''), 1800);
+    });
+  }
+
+  async function generate() {
+    setError(''); setGenerating(true);
+    try {
+      const res = await fetch('/api/admin/google-ads', { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) { setError(data.error || 'Could not generate a key.'); return; }
+      setSettings(data);
+    } finally { setGenerating(false); }
+  }
+
+  async function regenerate() {
+    if (!confirm("Regenerate the webhook key? The old key stops working immediately \u2014 you'll need to update it in every Google Ads Lead Form asset's Delivery settings.")) return;
+    setError(''); setRegenerating(true);
+    try {
+      const res = await fetch('/api/admin/google-ads', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'regenerate' }) });
+      const data = await res.json();
+      if (!res.ok) { setError(data.error || 'Could not regenerate the key.'); return; }
+      setSettings(data);
+    } finally { setRegenerating(false); }
+  }
+
+  async function toggleEnabled() {
+    setError(''); setToggling(true);
+    try {
+      const res = await fetch('/api/admin/google-ads', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ enabled: !settings.enabled }) });
+      const data = await res.json();
+      if (!res.ok) { setError(data.error || 'Could not update that.'); return; }
+      setSettings(data);
+    } finally { setToggling(false); }
+  }
+
+  return (
+    <div className="adm-card adm-meta-card" style={{ marginBottom: 18 }}>
+      <div className="adm-card-title-row">
+        <div className="adm-card-title">Google Ads Lead Form</div>
+        {settings?.connected && (
+          <span className={`adm-status-pill${settings.enabled ? ' active' : ' pending'}`}>{settings.enabled ? 'Enabled' : 'Disabled'}</span>
+        )}
+      </div>
+      <p className="adm-card-sub">
+        Generate a webhook key, then paste the URL and key below into each Lead Form asset's Delivery settings in Google Ads (Assets → Lead form → Webhook integration). Unlike Meta, Google has no API for us to register this automatically — it's a one-time paste per form, done in Google Ads' own screens.
+      </p>
+
+      {error && <div className="adm-notice adm-notice--error">{error}</div>}
+
+      {loading ? (
+        <div className="adm-empty">Loading…</div>
+      ) : !settings?.connected ? (
+        <button className="adm-btn-primary" onClick={generate} disabled={generating}>{generating ? 'Generating\u2026' : 'Generate Webhook Key'}</button>
+      ) : (
+        <>
+          <div className="adm-reveal-row">
+            <span>Webhook URL</span>
+            <code>{settings.webhookUrl}</code>
+            <button className="adm-btn-outline" onClick={() => copy('url', settings.webhookUrl)}>{copied === 'url' ? 'Copied' : 'Copy'}</button>
+          </div>
+          <div className="adm-reveal-row">
+            <span>Key</span>
+            <code>{settings.webhookKey}</code>
+            <button className="adm-btn-outline" onClick={() => copy('key', settings.webhookKey)}>{copied === 'key' ? 'Copied' : 'Copy'}</button>
+          </div>
+
+          <p className="adm-meta-hint">
+            In Google Ads: open the Lead form asset → Delivery → add a Webhook integration → paste the URL and key above. Every submission lands in Leads tagged "Google Ads Lead Form", auto-assigned by city same as any other channel — test leads from Google's own Preview/Test tool are captured too, clearly marked so pre-sales can tell them apart.
+          </p>
+          {settings.leadsReceived > 0 && (
+            <p className="adm-meta-hint">{settings.leadsReceived} lead{settings.leadsReceived === 1 ? '' : 's'} received so far{settings.lastLeadAt ? ` · last at ${new Date(settings.lastLeadAt).toLocaleString()}` : ''}.</p>
+          )}
 
           <div className="adm-page-head-actions">
             <button className="adm-btn-outline" onClick={toggleEnabled} disabled={toggling}>{toggling ? 'Updating\u2026' : settings.enabled ? 'Disable Capture' : 'Enable Capture'}</button>
