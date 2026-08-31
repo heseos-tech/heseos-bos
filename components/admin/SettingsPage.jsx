@@ -4,6 +4,8 @@
 // Lead Ad (Instant Form) forms are allowed to create leads.
 import { useEffect, useState, useCallback } from 'react';
 
+const FORMS_PER_PAGE = 10;
+
 export default function SettingsPage() {
   const [settings, setSettings] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -14,6 +16,7 @@ export default function SettingsPage() {
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [registeringWebhook, setRegisteringWebhook] = useState(false);
+  const [formsPage, setFormsPage] = useState(1);
 
   const load = useCallback(async () => {
     const res = await fetch('/api/admin/meta');
@@ -72,6 +75,13 @@ export default function SettingsPage() {
     const res = await fetch('/api/admin/meta', { method: 'DELETE' });
     if (res.ok) { setSettings(await res.json()); flash('Disconnected from Meta'); }
   }
+
+  const allForms = settings?.forms || [];
+  const totalFormsPages = Math.max(1, Math.ceil(allForms.length / FORMS_PER_PAGE));
+  const safeFormsPage = Math.min(formsPage, totalFormsPages);
+  const pagedForms = allForms.slice((safeFormsPage - 1) * FORMS_PER_PAGE, safeFormsPage * FORMS_PER_PAGE);
+
+  useEffect(() => { if (formsPage !== safeFormsPage) setFormsPage(safeFormsPage); }, [safeFormsPage, formsPage]);
 
   return (
     <>
@@ -157,9 +167,9 @@ export default function SettingsPage() {
             </div>
 
             <div className="adm-meta-forms">
-              {(settings.forms || []).length === 0 ? (
+              {allForms.length === 0 ? (
                 <div className="adm-empty">No lead forms found on this Page yet. Create one in Meta Ads Manager, then hit Refresh Forms.</div>
-              ) : settings.forms.map((f) => (
+              ) : pagedForms.map((f) => (
                 <div className="adm-meta-form-row" key={f.id}>
                   <div>
                     <div className="adm-lead-name">{f.name}</div>
@@ -172,6 +182,15 @@ export default function SettingsPage() {
                 </div>
               ))}
             </div>
+
+            {totalFormsPages > 1 && (
+              <div className="adm-forms-pagination">
+                <button className="adm-btn-outline" onClick={() => setFormsPage((p) => Math.max(1, p - 1))} disabled={safeFormsPage === 1}>Prev</button>
+                <span className="adm-forms-pagination-label">Page {safeFormsPage} of {totalFormsPages} · {allForms.length} forms</span>
+                <button className="adm-btn-outline" onClick={() => setFormsPage((p) => Math.min(totalFormsPages, p + 1))} disabled={safeFormsPage === totalFormsPages}>Next</button>
+              </div>
+            )}
+
             <p className="adm-meta-hint">A submission from a form that isn't toggled on is ignored entirely — it won't appear in Leads.</p>
           </div>
         )}
