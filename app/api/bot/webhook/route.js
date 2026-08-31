@@ -9,6 +9,7 @@ import { dbGetById, dbInsert, dbPatch, dbWhere } from '@/lib/db';
 import { parseWebhookByPhone } from '@/lib/botWhatsapp';
 import { runBotTurn } from '@/lib/botEngine';
 import { createLeadFromWhatsApp } from '@/lib/waInbound';
+import { parseRefFromText } from '@/lib/attribution';
 
 export const dynamic = 'force-dynamic';
 
@@ -31,7 +32,33 @@ export async function GET(req) {
 // tenant can switch on themselves; it is deliberately left out of EDITABLE_FIELDS in
 // app/api/bot/config/route.js). When set, every lead this bot captures also lands in the real,
 // shared `leads` table so it shows up in Admin/Partner/Employee exactly like any other lead.
-async function bridgeToHeseosLeads(tenant, { phone, name }) {
+//
+// `text` is the customer's first inbound message — if it carries a `(ref:<code>)` tag (see
+// app/go/[code] and lib/attribution.js), this resolves it to an attribution_links row and
+// attributes the lead accordingly (partner QR/referral → partnerId set, so it shows up in that
+// partner's Partner App; location QR / customer referral → tracked without a partnerId). An
+// unrecognised or missing ref never blocks lead creation — it just falls back to the plain
+// 'whatsapp_bot' source, same as before this existed.
+async function bridgeToHeseosLeads(tenant, { phone, name, text }) {
+  const code = parseRefFromText(text);
+  if (code) {
+    try {
+      const link = await dbGetById('attribution_links', code);
+      if (link && link.active !== false) {
+        return createLeadFromWhatsApp({
+          phone, name,
+          source: link.kind,
+          note: `Heseos Bot via ${link.kind} (${link.label || link.id})`,
+          partnerId: link.partnerId || null,
+          attributionLinkId: link.id,
+          attributionKind: link.kind,
+          referredByLeadId: link.customerLeadId || null,
+        });
+      }
+    } catch (err) {
+      console.error('Attribution resolve error:', err);
+    }
+  }
   return createLeadFromWhatsApp({ phone, name, source: 'whatsapp_bot', note: `Heseos Bot (${tenant.businessName || tenant.id})` });
 }
 
@@ -67,7 +94,7 @@ export async function POST(req) {
           };
           await dbInsert('bot_chats', m.from, chat);
           if (tenant.linkToHeseosLeads === true) {
-            const lead = await bridgeToHeseosLeads(tenant, { phone: m.from, name: m.name });
+            const lead = await bridgeToHeseosLeads(tenant, { phone: m.from, name: m.name, text: m.text });
             chat = { ...chat, leadId: lead.id };
             await dbPatch('bot_chats', m.from, { leadId: lead.id });
           }

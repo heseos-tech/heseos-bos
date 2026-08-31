@@ -10,7 +10,7 @@ import {
   IconDashboard, IconLeads, IconPartners, IconSalesEngineer, IconPresales, IconDemo,
   IconQuotation, IconConversions, IconReports, IconPayouts, IconTasks, IconSettings,
   IconSearch, IconBell, IconChevronDown, IconChevronLeft, IconChevronRight, IconArrowUp,
-  IconArrowDown, IconX, IconLogout,
+  IconArrowDown, IconX, IconLogout, IconQrCode,
 } from './icons';
 
 // Every item points at the SAME route (/admin) with a different ?tab= — see
@@ -25,6 +25,7 @@ export const NAV_ITEMS = [
   { tab: 'quotations', href: '/admin?tab=quotations', label: 'Quotations', Icon: IconQuotation },
   { tab: 'conversions', href: '/admin?tab=conversions', label: 'Conversions', Icon: IconConversions },
   { tab: 'reports', href: '/admin?tab=reports', label: 'Reports', Icon: IconReports },
+  { tab: 'growth', href: '/admin?tab=growth', label: 'QR & Referrals', Icon: IconQrCode },
   { tab: 'payouts', href: '/admin?tab=payouts', label: 'Payouts', Icon: IconPayouts },
   { tab: 'tasks', href: '/admin?tab=tasks', label: 'Tasks', Icon: IconTasks },
   { tab: 'settings', href: '/admin?tab=settings', label: 'Settings', Icon: IconSettings },

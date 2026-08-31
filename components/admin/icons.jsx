@@ -34,3 +34,5 @@ export const IconCollapse = (p) => S(<><rect x="3" y="4" width="18" height="16" 
 export const IconClock = (p) => S(<><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3.5 2" /></>, p?.size);
 export const IconLogout = (p) => S(<><path d="M9 4H6a2 2 0 00-2 2v12a2 2 0 002 2h3" /><path d="M15 8l4 4-4 4M19 12H9" /></>, p?.size);
 export const IconWhatsApp = (p) => S(<path d="M7 3l1.5 4.5-2 2a10 10 0 004.5 4.5l2-2L17.5 13.5V17a1 1 0 01-1 1C10 18 4 12 4 6.5A1 1 0 015 5.5H7z" fill="currentColor" stroke="none" />, p?.size);
+export const IconQrCode = (p) => S(<><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /><path d="M14 14h3v3h-3zM20 14v3M14 20h3M20 20v.01" /></>, p?.size);
+export const IconLink = (p) => S(<><path d="M9.5 14.5l5-5" /><path d="M8 16.5l-1.8 1.8a3.5 3.5 0 01-5-5L5 9.5a3.5 3.5 0 015-5" /><path d="M16 7.5l1.8-1.8a3.5 3.5 0 015 5L19 14.5a3.5 3.5 0 01-5 5" /></>, p?.size);
