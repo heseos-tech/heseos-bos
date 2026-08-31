@@ -17,7 +17,7 @@ const emptyForm = {
   postcode: '',
 };
 
-export default function LeadForm({ source = 'website', partnerId = null, onSuccess = null }) {
+export default function LeadForm({ source = 'manual_entry', partnerId = null, onSuccess = null }) {
   const [step, setStep] = useState(0);
   const [form, setForm] = useState(emptyForm);
   const [submitting, setSubmitting] = useState(false);

@@ -6,12 +6,12 @@
 //
 // This route: look up the code → log a scan/click → redirect into WhatsApp, pre-filled with a
 // message tagging the code so the webhook can attribute it. It never creates a lead itself —
-// scanning a QR code isn't a lead, only the WhatsApp conversation that follows is (same
-// distinction the older app/wa/[ref] entry point draws).
+// scanning a QR code isn't a lead, only the WhatsApp conversation that follows is.
 //
-// This is Heseos's own QR/referral system, unrelated to app/wa/[ref] (the legacy single-number
-// shop-QR mechanism, which stays untouched) — this one always routes into the multi-tenant Bot
-// Console via Heseos's own tenant.
+// This is Heseos's own QR/referral system — always routes into the multi-tenant Bot Console via
+// Heseos's own tenant. (The legacy single-number shop-QR entry point, app/wa/[ref], has since
+// been retired — see app/get-started/route.js for the plain, untracked WhatsApp hand-off that
+// replaced it for ordinary site CTAs.)
 
 import { dbGetById } from '@/lib/db';
 import { getHeseosBotTenant, buildWaLink, recordVisit } from '@/lib/attribution';

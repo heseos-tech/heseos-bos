@@ -5,7 +5,6 @@ import SystemFlow from '@/components/bos/SystemFlow';
 import RolesGrid from '@/components/bos/RolesGrid';
 import PoweringCTA from '@/components/bos/PoweringCTA';
 import TrustBar from '@/components/bos/TrustBar';
-import EnquirySection from '@/components/EnquirySection';
 import Footer from '@/components/Footer';
 
 export default function HomePage() {
@@ -18,7 +17,6 @@ export default function HomePage() {
       <RolesGrid />
       <PoweringCTA />
       <TrustBar />
-      <EnquirySection />
       <Footer />
     </>
   );

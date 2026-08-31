@@ -44,7 +44,7 @@ export default function Navbar() {
           )}
         </div>
 
-        <a href="/#get-started" className="bos-nav-cta">
+        <a href="/get-started" className="bos-nav-cta">
           Request Demo
           <IconArrowRight size={14} />
         </a>
@@ -65,7 +65,7 @@ export default function Navbar() {
               <Link href={item.href} className="bos-nav-mobile-link" key={item.label} onClick={() => setMenuOpen(false)}>{item.label}</Link>
             )
           )}
-          <a href="/#get-started" className="bos-nav-cta bos-nav-cta--mobile" onClick={() => setMenuOpen(false)}>
+          <a href="/get-started" className="bos-nav-cta bos-nav-cta--mobile" onClick={() => setMenuOpen(false)}>
             Request Demo
             <IconArrowRight size={14} />
           </a>

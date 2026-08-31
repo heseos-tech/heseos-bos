@@ -6,7 +6,7 @@ const cols = [
     links: [
       ['How It Works', '/#how-it-works'],
       ['Products', '/#products'],
-      ['Book a Demo', '/#get-started'],
+      ['Book a Demo', '/get-started'],
     ],
   },
   {
@@ -20,7 +20,7 @@ const cols = [
     heading: 'Company',
     links: [
       ['Employee Login', '/employee/login'],
-      ['Contact Us', '/#get-started'],
+      ['Contact Us', '/get-started'],
     ],
   },
 ];

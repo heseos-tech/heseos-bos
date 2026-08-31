@@ -1,7 +1,9 @@
 // app/api/leads/route.js
-// Central lead intake — every channel (website form, partner app, Meta Instant Form, WhatsApp
-// QR) ultimately POSTs here, so `leads` stays the single source of truth. Mirrors MARG's
-// app/api/enquiry/route.js.
+// Central lead intake — the Partner App (source: 'partner_app') and Admin's own manual "Add
+// Lead" button (source: 'manual_entry') POST here directly; WhatsApp-sourced and Meta/Google
+// Ads leads are created straight into the `leads` table by their own webhooks instead (see
+// lib/waInbound.js and app/api/leads/meta-webhook, google-ads-webhook), so `leads` still stays
+// the single source of truth either way. Mirrors MARG's app/api/enquiry/route.js.
 
 import { dbInsert, dbList, dbWhere } from '@/lib/db';
 import { istDateStr } from '@/lib/date';
@@ -38,14 +40,14 @@ export async function POST(request) {
 
     // A lead submitted from the partner app is attributed to whichever partner is logged in —
     // never trust a client-supplied partnerId for that channel.
-    let source = body.source || 'website';
+    let source = body.source || 'manual_entry';
     let partnerId = null;
     if (source === 'partner_app') {
       const partner = await getPartner();
       if (!partner) return Response.json({ error: 'Partner login required' }, { status: 401 });
       partnerId = partner.id;
     } else if (!LEAD_SOURCES[source]) {
-      source = 'website';
+      source = 'manual_entry';
     }
 
     const now = new Date().toISOString();

@@ -19,7 +19,7 @@ export default function BecomePartnerPage() {
               Partner Login
               <svg width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
             </Link>
-            <a href="/#get-started" className="btn-ghost">Not a partner? Enquire here</a>
+            <a href="/get-started" className="btn-ghost">Not a partner? Enquire here</a>
           </div>
           <p style={{ marginTop: '28px', fontSize: '13px', color: 'var(--ink-soft)' }}>
             Don&rsquo;t have partner access yet? Ask your Heseos account manager to set up your login, or reach out via the enquiry form.

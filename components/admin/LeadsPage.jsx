@@ -83,7 +83,7 @@ export default function LeadsPage() {
   const filtered = useMemo(() => {
     return leads.filter((l) => {
       if (bucket !== 'all' && leadBucket(l) !== bucket) return false;
-      if (source !== 'all' && (l.source || 'website') !== source) return false;
+      if (source !== 'all' && (l.source || 'manual_entry') !== source) return false;
       if (partnerId !== 'all' && l.partnerId !== partnerId) return false;
       if (engineerId !== 'all' && l.salesEngineerId !== engineerId) return false;
       if (q.trim()) {
@@ -297,7 +297,7 @@ function AddLeadModal({ onClose, onDone }) {
   async function submit() {
     setError(''); setSaving(true);
     try {
-      const res = await fetch('/api/leads', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, phone, city, propertyType, source: 'website' }) });
+      const res = await fetch('/api/leads', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, phone, city, propertyType, source: 'manual_entry' }) });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to add lead');
       onDone();

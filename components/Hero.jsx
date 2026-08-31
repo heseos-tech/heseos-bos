@@ -13,7 +13,7 @@ export default function Hero() {
           <p className="bos-hero-sub">
             One system to capture, manage and convert more leads. Across every channel. Every team.
           </p>
-          <a href="/#get-started" className="bos-btn-primary">
+          <a href="/get-started" className="bos-btn-primary">
             Request Demo
             <IconArrowRight size={15} />
           </a>

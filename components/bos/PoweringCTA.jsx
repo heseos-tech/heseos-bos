@@ -12,7 +12,7 @@ export default function PoweringCTA() {
           <div className="bos-power-copy">
             <div className="bos-eyebrow">All in One. Always in Sync.</div>
             <h2 className="bos-power-title">Powering smart home businesses to grow smarter, together.</h2>
-            <a href="/#get-started" className="bos-btn-primary">
+            <a href="/get-started" className="bos-btn-primary">
               Request Demo
               <svg width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
             </a>
