@@ -6,7 +6,7 @@ import { LEAD_SOURCES, PROPERTY_TYPE } from '@/lib/formOptions';
 import { isQrKind } from '@/lib/attributionConstants';
 import { adminStatus, leadBucket, nextAction, LEAD_BUCKETS } from '@/lib/adminMetrics';
 import { StatusBadge, Pagination, Modal, StatCard } from './ui';
-import { IconSearch, IconFilter, IconPlus, IconChevronDown, IconMore, IconUpload, IconDownload, IconEye, IconLeads, IconDemo, IconQuotation, IconConversions } from './icons';
+import { IconSearch, IconFilter, IconPlus, IconChevronDown, IconMore, IconUpload, IconDownload, IconEye, IconLeads, IconDemo, IconQuotation, IconConversions, IconRefresh } from './icons';
 import { useApiResource } from '@/lib/useApiResource';
 
 const PT_LABEL = Object.fromEntries(PROPERTY_TYPE.map((p) => [p.v, p.l]));
@@ -33,6 +33,7 @@ export default function LeadsPage() {
   const [modal, setModal] = useState(null); // { type: 'view'|'add', lead? }
   const [menuFor, setMenuFor] = useState(null);
   const [notice, setNotice] = useState('');
+  const [syncing, setSyncing] = useState(false);
 
   // The Leads tab now stays mounted after the first visit (see AdminHome), so a fresh
   // navigation here — e.g. a Dashboard quick-tile linking to ?tab=leads&bucket=demo — no
@@ -129,6 +130,20 @@ export default function LeadsPage() {
   function resetFilters() { setQ(''); setSource('all'); setPartnerId('all'); setEngineerId('all'); setBucket('all'); setPage(1); }
   function flash(msg) { setNotice(msg); setTimeout(() => setNotice(''), 3000); }
 
+  // Small sync icon next to the page title — pulls in anything Meta's webhook missed, without
+  // sending anyone to Settings. Same underlying sync as the "Sync Leads Now" button there
+  // (and the one on the Pre-sales panel) — see app/api/leads/sync/route.js.
+  async function syncFromMeta() {
+    setSyncing(true);
+    try {
+      const res = await fetch('/api/leads/sync', { method: 'POST' });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) { flash(data.error || 'Could not sync leads from Meta.'); return; }
+      flash(data.inserted > 0 ? `Synced — ${data.inserted} new lead${data.inserted === 1 ? '' : 's'} pulled in` : 'Synced — nothing new, already up to date');
+      load();
+    } finally { setSyncing(false); }
+  }
+
   async function markQuotationSent(lead) {
     await fetch(`/api/leads/${lead.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'quotation' }) });
     setMenuFor(null); flash(`Quotation marked sent for ${lead.name}`); load();
@@ -161,6 +176,7 @@ export default function LeadsPage() {
           <p className="adm-page-sub">Manage and track all leads from different sources</p>
         </div>
         <div className="adm-page-head-actions">
+          <button className={`adm-icon-btn${syncing ? ' adm-spinning' : ''}`} title="Sync leads from Meta" onClick={syncFromMeta} disabled={syncing}><IconRefresh size={17} /></button>
           <button className="adm-btn-outline" onClick={() => flash('CSV import is coming soon — for now, leads flow in automatically from the website, WhatsApp, Meta ads and the partner app.')}><IconUpload size={15} /> Import Leads</button>
           <button className="adm-btn-outline" onClick={exportCsv}><IconDownload size={15} /> Export</button>
           <button className="adm-btn-primary" onClick={() => setModal({ type: 'add' })}><IconPlus size={15} /> Add Lead</button>

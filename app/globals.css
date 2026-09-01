@@ -325,6 +325,11 @@ footer { background: #011F2E; padding: 64px 0 28px; color: rgba(255, 255, 255, 0
 .dash-user-role { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; color: var(--ink-soft); background: var(--bg2); padding: 3px 9px; border-radius: var(--r-full); }
 .dash-logout { font-size: 12.5px; font-weight: 600; color: var(--ink-soft); background: none; border: 1px solid var(--border); border-radius: var(--r-full); padding: 7px 14px; }
 .dash-logout:hover { border-color: var(--p); color: var(--p); }
+.dash-icon-btn { width: 32px; height: 32px; border-radius: 999px; border: 1px solid var(--border); background: none; color: var(--ink-soft); display: flex; align-items: center; justify-content: center; cursor: pointer; }
+.dash-icon-btn:hover { border-color: var(--p); color: var(--p); }
+.dash-icon-btn:disabled { cursor: default; opacity: 0.7; }
+.dash-spinning svg { animation: dash-spin 0.8s linear infinite; }
+@keyframes dash-spin { to { transform: rotate(360deg); } }
 .dash-body { max-width: 1320px; margin: 0 auto; padding: 28px; }
 
 .dash-tabs { display: flex; gap: 6px; margin-bottom: 22px; flex-wrap: wrap; }

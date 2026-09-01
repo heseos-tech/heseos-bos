@@ -10,6 +10,15 @@ import { stageOf, displayStatus, subUpdateOf, isFollowUpLead, CONTACT_STAGES } f
 import { PRODUCT_INTEREST, PROPERTY_TYPE, LEAD_SOURCES } from '@/lib/formOptions';
 import { useApiResource } from '@/lib/useApiResource';
 
+// Small inline refresh glyph — same no-icon-library convention as this folder's siblings
+// (components/partner, components/admin each keep their own tiny icon set).
+const IconRefresh = (p) => (
+  <svg width={p?.size || 17} height={p?.size || 17} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+    <path d="M4 12a8 8 0 0114.5-4.5M20 12a8 8 0 01-14.5 4.5" />
+    <path d="M18.5 3v4.5H14M5.5 21v-4.5H10" />
+  </svg>
+);
+
 const PI_LABEL = Object.fromEntries(PRODUCT_INTEREST.map((p) => [p.v, p.l]));
 const PT_LABEL = Object.fromEntries(PROPERTY_TYPE.map((p) => [p.v, p.l]));
 
@@ -20,12 +29,31 @@ export default function PresalesPanel({ employee }) {
   // unchanged.
   const { data: leads, loading, refresh: fetchLeads } = useApiResource('/api/leads', { pollMs: 20000 });
   const [tab, setTab] = useState('new');
+  const [syncing, setSyncing] = useState(false);
+  const [syncMsg, setSyncMsg] = useState('');
   const [modal, setModal] = useState(null); // { type: 'contact'|'schedule'|'timeline', lead }
 
   async function logout() {
     await fetch('/api/auth/employee', { method: 'DELETE' });
     router.push('/employee/login');
     router.refresh();
+  }
+
+  // Pulls in any leads Meta's webhook missed — same underlying sync as Admin → Settings →
+  // Meta Lead Ads' "Sync Leads Now" button, just available right here so pre-sales don't need
+  // admin access to catch a gap. See app/api/leads/sync/route.js.
+  async function syncFromMeta() {
+    setSyncing(true); setSyncMsg('');
+    try {
+      const res = await fetch('/api/leads/sync', { method: 'POST' });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) { setSyncMsg(data.error || 'Could not sync leads.'); return; }
+      setSyncMsg(data.inserted > 0 ? `Synced — ${data.inserted} new lead${data.inserted === 1 ? '' : 's'}` : 'Synced — already up to date');
+      fetchLeads();
+    } finally {
+      setSyncing(false);
+      setTimeout(() => setSyncMsg(''), 3500);
+    }
   }
 
   // Only what's assigned to me — never the whole pipeline.
@@ -64,6 +92,8 @@ export default function PresalesPanel({ employee }) {
             <span style={{ fontWeight: 500, color: 'var(--ink-soft)', fontSize: 13 }}>Pre-sales</span>
           </div>
           <div className="dash-user">
+            {syncMsg && <span className="dash-user-role" style={{ background: 'none', textTransform: 'none', letterSpacing: 0, fontWeight: 600 }}>{syncMsg}</span>}
+            <button className={`dash-icon-btn${syncing ? ' dash-spinning' : ''}`} title="Sync leads from Meta" onClick={syncFromMeta} disabled={syncing}><IconRefresh /></button>
             <span className="dash-user-name">{employee.name || employee.email}</span>
             <span className="dash-user-role">{employee.location || 'pre-sales'}</span>
             <button className="dash-logout" onClick={logout}>Log out</button>
