@@ -573,6 +573,30 @@ function BotSignupsCard() {
     setReveal((prev) => { const next = { ...prev }; delete next[id]; return next; });
   }
 
+  // Heseos Bot = trusted to write into the shared Leads CRM and reuse Heseos's own QR/referral
+  // system; White Label = a client's own bot, isolated to their own bot_chats. Only one tenant
+  // can be Heseos's own at a time — promoting one here silently demotes whoever held it before,
+  // which the server reports back via demotedId so both rows stay in sync without a reload.
+  async function setBotKind(id, botKind, confirmMsg) {
+    if (confirmMsg && !confirm(confirmMsg)) return;
+    setBusyId(id); setError('');
+    try {
+      const res = await fetch(`/api/admin/bot-tenants/${id}`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'set_bot_kind', botKind }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) { setError(data.error || 'Could not change that bot type.'); return; }
+      const { demotedId, ...tenant } = data;
+      setTenants((prev) => prev.map((t) => {
+        if (t.id === id) return tenant;
+        if (demotedId && t.id === demotedId) return { ...t, botKind: 'white_label', linkToHeseosLeads: false };
+        return t;
+      }));
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   function copyPassword(id, value) {
     navigator.clipboard?.writeText(value).then(() => {
       setCopiedId(id);
@@ -637,6 +661,15 @@ function BotSignupsCard() {
                     <div className="adm-lead-sub">
                       {t.contactName} · {t.email || 'no email'} · {t.industry} · login ID <strong>{t.loginId}</strong> · signed up {t.createdAt ? new Date(t.createdAt).toLocaleDateString() : ''}
                     </div>
+                    {(() => {
+                      const kind = t.botKind === 'heseos' || t.linkToHeseosLeads === true ? 'heseos' : 'white_label';
+                      return (
+                        <div className="adm-botkind-toggle">
+                          <button type="button" className={`adm-botkind-btn${kind === 'heseos' ? ' active' : ''}`} disabled={busy} onClick={() => setBotKind(t.id, 'heseos', `Mark ${t.businessName} as Heseos's own in-house bot? It'll get access to the shared Leads CRM and Heseos's QR/referral system — and whichever account currently has that role will be switched back to White Label.`)}>Heseos Bot</button>
+                          <button type="button" className={`adm-botkind-btn${kind === 'white_label' ? ' active' : ''}`} disabled={busy} onClick={() => setBotKind(t.id, 'white_label')}>White Label</button>
+                        </div>
+                      );
+                    })()}
                   </div>
 
                   {status === 'pending' ? (

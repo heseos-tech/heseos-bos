@@ -8,11 +8,18 @@
 //     admin can hand it to the tenant. There's no email/notify flow yet — this is the same
 //     "type a temporary password" pattern Partners/Employees use at creation time, just usable
 //     after the fact.
+//   - set_bot_kind        — the Heseos Bot / White Label switch (components/admin/
+//     SettingsPage.jsx's BotSignupsCard). A Heseos bot is trusted to write into the shared
+//     Leads CRM and reuse Heseos's own QR/referral system (app/api/bot/webhook, lib/
+//     attribution.js); a White Label bot never touches either — its leads live only in its own
+//     bot_chats, self-service via the tenant's own Leads tab. Only one tenant can be 'heseos' at
+//     a time (lib/attribution.js's getHeseosBotTenant() assumes exactly one), so promoting a new
+//     one here automatically demotes whichever tenant held it before.
 //   - DELETE              — permanently removes the tenant AND cascades to their bot_chats /
 //     bot_messages, so nothing orphaned is left costing storage.
 import crypto from 'crypto';
 import { getEmployee, hashPassword } from '@/lib/auth';
-import { dbGetById, dbPatch, dbInsert, dbWhere, dbDelete } from '@/lib/db';
+import { dbGetById, dbPatch, dbInsert, dbWhere, dbList, dbDelete } from '@/lib/db';
 import { seedTenantData } from '@/lib/botMock';
 
 export const dynamic = 'force-dynamic';
@@ -41,9 +48,25 @@ export async function PATCH(request, { params }) {
   const tenant = await dbGetById('bot_tenants', id);
   if (!tenant) return Response.json({ error: 'Not found' }, { status: 404 });
 
-  const { action } = await request.json().catch(() => ({}));
-  const VALID = ['approve', 'reject', 'activate', 'deactivate', 'reset_password'];
+  const body = await request.json().catch(() => ({}));
+  const { action } = body;
+  const VALID = ['approve', 'reject', 'activate', 'deactivate', 'reset_password', 'set_bot_kind'];
   if (!VALID.includes(action)) return Response.json({ error: `action must be one of: ${VALID.join(', ')}` }, { status: 400 });
+
+  if (action === 'set_bot_kind') {
+    const botKind = body.botKind === 'heseos' ? 'heseos' : 'white_label';
+    let demotedId = null;
+    if (botKind === 'heseos') {
+      const currentHeseos = (await dbList('bot_tenants')).find((t) => t.id !== id && (t.botKind === 'heseos' || t.linkToHeseosLeads === true));
+      if (currentHeseos) {
+        await dbPatch('bot_tenants', currentHeseos.id, { botKind: 'white_label', linkToHeseosLeads: false });
+        demotedId = currentHeseos.id;
+      }
+    }
+    const updated = await dbPatch('bot_tenants', id, { botKind, linkToHeseosLeads: botKind === 'heseos' });
+    const { password, waAccessToken, ...safe } = updated;
+    return Response.json({ ...safe, demotedId });
+  }
 
   if (action === 'reject') {
     const updated = await dbPatch('bot_tenants', id, { approvalStatus: 'rejected' });

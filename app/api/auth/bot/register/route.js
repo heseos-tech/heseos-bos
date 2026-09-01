@@ -90,11 +90,15 @@ export async function POST(request) {
     // waPhoneNumberId + waAccessToken start empty until the tenant fills them in on the Bot
     // Configuration screen; waVerifyToken is generated here so every tenant gets a unique
     // value to paste into their own Meta App's webhook config (app/api/bot/webhook validates
-    // against it). linkToHeseosLeads is never tenant-editable — see app/api/bot/webhook's
-    // bridgeToHeseosLeads() — it's set manually, only for Heseos's own account.
+    // against it). Every self-service signup starts White Label — a public signup form can
+    // never make itself Heseos's own in-house bot; only a Heseos admin can promote an account
+    // to botKind 'heseos' from Admin -> Settings -> Bot Signups (see
+    // app/api/admin/bot-tenants/[id]'s set_bot_kind action). linkToHeseosLeads mirrors that
+    // same decision for older code that still checks it directly.
     waPhoneNumberId: '',
     waAccessToken: '',
     waVerifyToken: crypto.randomBytes(16).toString('base64url'),
+    botKind: 'white_label',
     linkToHeseosLeads: false,
     // Gate: no demo data, no working login, until a Heseos admin approves this request.
     approvalStatus: 'pending',

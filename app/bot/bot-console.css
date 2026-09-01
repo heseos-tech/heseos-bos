@@ -433,3 +433,12 @@ html:has(.bc-root), body:has(.bc-root) { background: #f4f6f9; }
 .fb-tag-input { margin-bottom: 14px; padding: 8px 10px; font-size: 12.5px; }
 .fb-check { display: flex; align-items: flex-start; gap: 8px; font-size: 12px; color: var(--bc-ink-soft); line-height: 1.4; margin-bottom: 10px; cursor: pointer; }
 .fb-check input { margin-top: 2px; flex-shrink: 0; }
+
+/* ── Leads: inline status edit + WhatsApp notify composer ────────────────── */
+.bc-card-toprow { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 16px 20px; border-bottom: 1px solid var(--bc-border); }
+.bc-select-sm { width: auto; padding: 6px 10px; font-size: 12.5px; }
+.bc-icon-btn-active { border-color: var(--bc-accent); color: var(--bc-accent); background: var(--bc-accent-dim); }
+.bc-notify-row { padding: 12px 20px 16px; background: var(--bc-bg); }
+.bc-notify-row .bc-textarea { min-height: 56px; }
+.bc-notify-actions { display: flex; align-items: center; justify-content: flex-end; gap: 10px; margin-top: 8px; }
+.bc-notify-error { font-size: 12px; color: var(--bc-red); font-weight: 600; margin-right: auto; }

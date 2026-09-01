@@ -120,7 +120,7 @@ export async function POST(req) {
             firstMessageAt: m.ts, createdAt: m.ts,
           };
           await dbInsert('bot_chats', m.from, chat);
-          if (tenant.linkToHeseosLeads === true) {
+          if (tenant.botKind === 'heseos' || tenant.linkToHeseosLeads === true) {
             const lead = await bridgeToHeseosLeads(tenant, { phone: m.from, name: m.name, link });
             chat = { ...chat, leadId: lead.id };
             await dbPatch('bot_chats', m.from, { leadId: lead.id });

@@ -109,3 +109,6 @@ export const IconTrash = ({ size = 20, ...p }) => (
 export const IconCopy = ({ size = 20, ...p }) => (
   <svg {...base(size)} {...p}><rect x="9" y="9" width="11" height="11" rx="1.5" /><path d="M15 5.5V5a1.5 1.5 0 00-1.5-1.5h-8A1.5 1.5 0 004 5v8A1.5 1.5 0 005.5 15H6" /></svg>
 );
+export const IconDownload = ({ size = 20, ...p }) => (
+  <svg {...base(size)} {...p}><path d="M12 3v12M7 10l5 5 5-5" /><path d="M4 19h16" /></svg>
+);
