@@ -57,7 +57,7 @@ export default function LeadsPage() {
   // Growth admin table's Kind column.
   const sourceLabel = (l) => {
     if (isQrKind(l.source)) return 'QR';
-    if (l.source === 'referral_partner' || l.source === 'referral_customer') return 'Referral';
+    if (l.source === 'referral_partner' || l.source === 'referral_customer') return 'Referral Link';
     return LEAD_SOURCES[l.source] || l.source;
   };
 
@@ -68,7 +68,7 @@ export default function LeadsPage() {
   const SOURCE_FILTER_OPTIONS = Object.entries(LEAD_SOURCES)
     .filter(([k]) => !['qr_partner', 'qr_location', 'referral_partner', 'referral_customer'].includes(k))
     .map(([k, l]) => ({ v: k, l }))
-    .concat([{ v: 'qr', l: 'QR' }, { v: 'referral', l: 'Referral' }]);
+    .concat([{ v: 'qr', l: 'QR' }, { v: 'referral', l: 'Referral Link' }]);
 
   const linkById = useMemo(
     () => Object.fromEntries((attributionLinks || []).map((link) => [link.id, link])),
