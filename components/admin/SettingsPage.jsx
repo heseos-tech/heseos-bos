@@ -3,6 +3,7 @@
 // integration the admin asked to make self-service: connect a Page, then pick exactly which
 // Lead Ad (Instant Form) forms are allowed to create leads.
 import { useEffect, useState, useCallback } from 'react';
+import { IconSearch } from './icons';
 
 const FORMS_PER_PAGE = 10;
 
@@ -17,6 +18,7 @@ export default function SettingsPage() {
   const [notice, setNotice] = useState('');
   const [registeringWebhook, setRegisteringWebhook] = useState(false);
   const [formsPage, setFormsPage] = useState(1);
+  const [formSearch, setFormSearch] = useState('');
 
   const load = useCallback(async () => {
     const res = await fetch('/api/admin/meta');
@@ -76,12 +78,17 @@ export default function SettingsPage() {
     if (res.ok) { setSettings(await res.json()); flash('Disconnected from Meta'); }
   }
 
-  const allForms = settings?.forms || [];
+  const rawForms = settings?.forms || [];
+  const formSearchTerm = formSearch.trim().toLowerCase();
+  const allForms = formSearchTerm
+    ? rawForms.filter((f) => (f.name || '').toLowerCase().includes(formSearchTerm) || String(f.id).includes(formSearchTerm))
+    : rawForms;
   const totalFormsPages = Math.max(1, Math.ceil(allForms.length / FORMS_PER_PAGE));
   const safeFormsPage = Math.min(formsPage, totalFormsPages);
   const pagedForms = allForms.slice((safeFormsPage - 1) * FORMS_PER_PAGE, safeFormsPage * FORMS_PER_PAGE);
 
   useEffect(() => { if (formsPage !== safeFormsPage) setFormsPage(safeFormsPage); }, [safeFormsPage, formsPage]);
+  useEffect(() => { setFormsPage(1); }, [formSearchTerm]);
 
   return (
     <>
@@ -166,9 +173,22 @@ export default function SettingsPage() {
               </div>
             </div>
 
+            {rawForms.length > 0 && (
+              <div className="adm-search adm-search--inline adm-meta-forms-search">
+                <IconSearch size={16} />
+                <input
+                  placeholder="Search forms by name or form ID…"
+                  value={formSearch}
+                  onChange={(e) => setFormSearch(e.target.value)}
+                />
+              </div>
+            )}
+
             <div className="adm-meta-forms">
-              {allForms.length === 0 ? (
+              {rawForms.length === 0 ? (
                 <div className="adm-empty">No lead forms found on this Page yet. Create one in Meta Ads Manager, then hit Refresh Forms.</div>
+              ) : allForms.length === 0 ? (
+                <div className="adm-empty">No forms match "{formSearch}".</div>
               ) : pagedForms.map((f) => (
                 <div className="adm-meta-form-row" key={f.id}>
                   <div>
