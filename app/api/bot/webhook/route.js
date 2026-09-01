@@ -28,36 +28,44 @@ export async function GET(req) {
   return new Response('Forbidden', { status: 403 });
 }
 
+// Resolves a customer's first inbound message to the attribution_links row it was tagged with
+// (a `(ref:<code>)` suffix — see app/go/[code] and lib/attribution.js), if any. Used both to
+// bridge Heseos's own leads (below) and, generically for every tenant, to know whether a brand
+// new chat started from a QR scan / partner link vs. a plain WhatsApp message — see where this
+// is called in POST, and lib/botEngine.js's welcomeText().
+async function resolveAttributionLink(text) {
+  const code = parseRefFromText(text);
+  if (!code) return null;
+  try {
+    const link = await dbGetById('attribution_links', code);
+    if (link && link.active !== false) return link;
+  } catch (err) {
+    console.error('Attribution resolve error:', err);
+  }
+  return null;
+}
+
 // Only Heseos's own tenant has this flag set (a manual, trust-based grant — never something a
 // tenant can switch on themselves; it is deliberately left out of EDITABLE_FIELDS in
 // app/api/bot/config/route.js). When set, every lead this bot captures also lands in the real,
 // shared `leads` table so it shows up in Admin/Partner/Employee exactly like any other lead.
 //
-// `text` is the customer's first inbound message — if it carries a `(ref:<code>)` tag (see
-// app/go/[code] and lib/attribution.js), this resolves it to an attribution_links row and
-// attributes the lead accordingly (partner QR/referral → partnerId set, so it shows up in that
-// partner's Partner App; location QR / customer referral → tracked without a partnerId). An
-// unrecognised or missing ref never blocks lead creation — it just falls back to the plain
-// 'whatsapp_bot' source, same as before this existed.
-async function bridgeToHeseosLeads(tenant, { phone, name, text }) {
-  const code = parseRefFromText(text);
-  if (code) {
-    try {
-      const link = await dbGetById('attribution_links', code);
-      if (link && link.active !== false) {
-        return createLeadFromWhatsApp({
-          phone, name,
-          source: link.kind,
-          note: `Heseos Bot via ${link.kind} (${link.label || link.id})`,
-          partnerId: link.partnerId || null,
-          attributionLinkId: link.id,
-          attributionKind: link.kind,
-          referredByLeadId: link.customerLeadId || null,
-        });
-      }
-    } catch (err) {
-      console.error('Attribution resolve error:', err);
-    }
+// `link` (already resolved by resolveAttributionLink, above, so it isn't looked up twice) is the
+// attribution_links row the customer's first message was tagged with, if any — partner QR/referral
+// gets partnerId set, so it shows up in that partner's Partner App; location QR / customer
+// referral is tracked without a partnerId. No link (untagged / unrecognised ref) just falls back
+// to the plain 'whatsapp_bot' source, same as before this existed.
+async function bridgeToHeseosLeads(tenant, { phone, name, link }) {
+  if (link) {
+    return createLeadFromWhatsApp({
+      phone, name,
+      source: link.kind,
+      note: `Heseos Bot via ${link.kind} (${link.label || link.id})`,
+      partnerId: link.partnerId || null,
+      attributionLinkId: link.id,
+      attributionKind: link.kind,
+      referredByLeadId: link.customerLeadId || null,
+    });
   }
   return createLeadFromWhatsApp({ phone, name, source: 'whatsapp_bot', note: `Heseos Bot (${tenant.businessName || tenant.id})` });
 }
@@ -86,15 +94,21 @@ export async function POST(req) {
 
         let chat = await dbGetById('bot_chats', m.from);
         if (!chat) {
+          // Resolved once here (not just for Heseos) so any tenant's first-ever message on a
+          // chat can carry a QR-vs-organic welcome trigger — see attributionKind below and
+          // lib/botEngine.js's welcomeText(). Today only Heseos's own QR/referral codes exist,
+          // so this only ever resolves for Heseos's tenant, but nothing here is Heseos-specific.
+          const link = await resolveAttributionLink(m.text);
           chat = {
             id: m.from, tenantId: tenant.id, phone: m.from, name: m.name || m.from,
             lastText: m.text, lastAt: m.ts, unread: 1, status: 'open', assignedTo: null,
             botOn: true, lead: null, stage: null, menuRetries: 0, city: '',
+            attributionKind: link?.kind || null,
             firstMessageAt: m.ts, createdAt: m.ts,
           };
           await dbInsert('bot_chats', m.from, chat);
           if (tenant.linkToHeseosLeads === true) {
-            const lead = await bridgeToHeseosLeads(tenant, { phone: m.from, name: m.name, text: m.text });
+            const lead = await bridgeToHeseosLeads(tenant, { phone: m.from, name: m.name, link });
             chat = { ...chat, leadId: lead.id };
             await dbPatch('bot_chats', m.from, { leadId: lead.id });
           }

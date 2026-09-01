@@ -18,8 +18,10 @@ export default function ConfigScreen({ tenant: initialTenant }) {
   const [brandColor, setBrandColor] = useState(initialTenant.brandColor || '#D9481E');
   const [languages, setLanguages] = useState(initialTenant.languages || ['en']);
   const [welcome, setWelcome] = useState(initialTenant.welcomeMessage || {});
+  const [qrWelcome, setQrWelcome] = useState(initialTenant.qrWelcomeMessage || {});
   const [menu, setMenu] = useState(initialTenant.menuOptions || []);
   const [activeLang, setActiveLang] = useState((initialTenant.languages || ['en'])[0]);
+  const [qrActiveLang, setQrActiveLang] = useState((initialTenant.languages || ['en'])[0]);
   const [waPhoneNumberId, setWaPhoneNumberId] = useState(initialTenant.waPhoneNumberId || '');
   const [waAccessToken, setWaAccessToken] = useState(initialTenant.waAccessToken || '');
   const [origin, setOrigin] = useState('');
@@ -43,6 +45,7 @@ export default function ConfigScreen({ tenant: initialTenant }) {
       if (!next.length) return prev; // always keep at least one
       if (!has) setWelcome((w) => ({ ...w, [code]: w[code] || '' }));
       if (activeLang === code && has) setActiveLang(next[0]);
+      if (qrActiveLang === code && has) setQrActiveLang(next[0]);
       return next;
     });
   }
@@ -58,7 +61,7 @@ export default function ConfigScreen({ tenant: initialTenant }) {
       const res = await fetch('/api/bot/config', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ businessName, botName, brandColor, languages, welcomeMessage: welcome, menuOptions: menu, waPhoneNumberId, waAccessToken, ...extra }),
+        body: JSON.stringify({ businessName, botName, brandColor, languages, welcomeMessage: welcome, qrWelcomeMessage: qrWelcome, menuOptions: menu, waPhoneNumberId, waAccessToken, ...extra }),
       });
       if (res.ok) {
         const updated = await res.json();
@@ -161,6 +164,25 @@ export default function ConfigScreen({ tenant: initialTenant }) {
             placeholder="Namaste 🙏 I'm your bot…"
           />
           <div className="bc-hint">Use *asterisks* for bold, just like WhatsApp formatting.</div>
+        </div>
+
+        <div className="bc-card">
+          <div className="bc-card-title">QR / Link Welcome Message <span style={{ fontWeight: 500, opacity: 0.6 }}>(optional)</span></div>
+          <div className="bc-card-sub">Sent instead of the welcome message above when someone starts chatting by scanning a QR code or tapping a partner/referral link — a chance to acknowledge where they came from. Leave a language blank to just use your regular welcome message there.</div>
+          <div className="bc-lang-tabs">
+            {languages.map((code) => (
+              <button key={code} type="button" className={`bc-lang-tab${qrActiveLang === code ? ' active' : ''}`} onClick={() => setQrActiveLang(code)}>
+                {(LANGUAGES.find((l) => l.code === code) || {}).label || code}
+              </button>
+            ))}
+          </div>
+          <textarea
+            className="bc-textarea"
+            value={qrWelcome[qrActiveLang] || ''}
+            onChange={(e) => setQrWelcome((w) => ({ ...w, [qrActiveLang]: e.target.value }))}
+            placeholder="Welcome! Thanks for scanning our QR code 🙌…"
+          />
+          <div className="bc-hint">Blank = falls back to your regular welcome message automatically.</div>
         </div>
 
         <div className="bc-card">

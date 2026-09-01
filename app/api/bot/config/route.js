@@ -14,7 +14,11 @@ export const dynamic = 'force-dynamic';
 // what is deliberately NOT here: waVerifyToken (generated once at signup, never re-editable —
 // changing it would break the tenant's already-configured Meta webhook) and linkToHeseosLeads
 // (a manual, trust-based grant — see app/api/bot/webhook/route.js — never tenant-settable).
-const EDITABLE_FIELDS = ['businessName', 'botName', 'brandColor', 'status', 'languages', 'welcomeMessage', 'menuOptions', 'whatsappNumber', 'waPhoneNumberId', 'waAccessToken'];
+//
+// qrWelcomeMessage is optional, per-language, same shape as welcomeMessage — sent instead of it
+// when a chat's first message came from a QR scan / partner link (see lib/botEngine.js's
+// welcomeText()). Blank for a given language just falls back to the regular welcomeMessage.
+const EDITABLE_FIELDS = ['businessName', 'botName', 'brandColor', 'status', 'languages', 'welcomeMessage', 'qrWelcomeMessage', 'menuOptions', 'whatsappNumber', 'waPhoneNumberId', 'waAccessToken'];
 
 export async function GET() {
   let tenant = await getBotTenant();
