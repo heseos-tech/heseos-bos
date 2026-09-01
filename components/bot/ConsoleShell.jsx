@@ -1,7 +1,7 @@
 'use client';
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { IconInbox, IconUsers, IconLeads, IconShare, IconSettings, IconBell, IconHelp, IconLogout } from './icons';
+import { IconInbox, IconUsers, IconLeads, IconShare, IconFlow, IconSettings, IconBell, IconHelp, IconLogout } from './icons';
 import { Avatar } from './ui';
 
 const NAV_ITEMS = [
@@ -9,6 +9,7 @@ const NAV_ITEMS = [
   { href: '/bot/console/contacts', label: 'Contacts', icon: IconUsers },
   { href: '/bot/console/leads', label: 'Leads', icon: IconLeads },
   { href: '/bot/console/referrals', label: 'Referrals', icon: IconShare },
+  { href: '/bot/console/flow-builder', label: 'Flow Builder', icon: IconFlow },
   { href: '/bot/console/bot-configuration', label: 'Bot Configuration', icon: IconSettings },
 ];
 

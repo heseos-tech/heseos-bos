@@ -8,6 +8,7 @@
 import { dbGetById, dbInsert, dbPatch, dbWhere } from '@/lib/db';
 import { parseWebhookByPhone } from '@/lib/botWhatsapp';
 import { runBotTurn } from '@/lib/botEngine';
+import { runFlowTurn } from '@/lib/botFlowEngine';
 import { createLeadFromWhatsApp } from '@/lib/waInbound';
 import { parseRefFromText } from '@/lib/attribution';
 
@@ -85,6 +86,13 @@ export async function POST(req) {
       // lib/auth.js's getBotTenant()), but skip explicitly rather than assume that holds forever.
       if (tenant.approvalStatus === 'pending' || tenant.approvalStatus === 'rejected') continue;
 
+      // A tenant only runs their self-built Flow Builder graph once they've actually switched it
+      // on (see components/bot/FlowBuilderScreen.jsx's "Use this flow" toggle) and it has
+      // somewhere to go — otherwise every chat keeps using the simpler, Bot-Configuration-driven
+      // lib/botEngine.js exactly as before this existed. Read once per batch, not per message.
+      const flow = await dbGetById('bot_flows', tenant.id);
+      const flowReady = !!(flow?.enabled && (flow.nodes || []).some((n) => n.type === 'start'));
+
       for (const m of g.messages) {
         if (await dbGetById('bot_messages', m.id)) continue; // de-dupe Meta's retries
         await dbInsert('bot_messages', m.id, {
@@ -103,7 +111,7 @@ export async function POST(req) {
             id: m.from, tenantId: tenant.id, phone: m.from, name: m.name || m.from,
             lastText: m.text, lastAt: m.ts, unread: 1, status: 'open', assignedTo: null,
             botOn: true, lead: null, stage: null, menuRetries: 0, city: '',
-            attributionKind: link?.kind || null,
+            attributionKind: link?.kind || null, flowNodeId: null, answers: {},
             firstMessageAt: m.ts, createdAt: m.ts,
           };
           await dbInsert('bot_chats', m.from, chat);
@@ -126,7 +134,8 @@ export async function POST(req) {
 
         if (chat.botOn !== false) {
           try {
-            await runBotTurn(tenant, chat, m.text);
+            if (flowReady) await runFlowTurn(tenant, flow, chat, m.text);
+            else await runBotTurn(tenant, chat, m.text);
           } catch (err) {
             console.error('Bot engine error:', err);
           }

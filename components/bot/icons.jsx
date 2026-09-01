@@ -85,3 +85,21 @@ export const IconMapPin = ({ size = 20, ...p }) => (
 export const IconEdit = ({ size = 20, ...p }) => (
   <svg {...base(size)} {...p}><path d="M4 20l1-4.5L15.5 5 19 8.5 8.5 19 4 20Z" /><path d="M13 7l4 4" /></svg>
 );
+export const IconFlow = ({ size = 20, ...p }) => (
+  <svg {...base(size)} {...p}><circle cx="5" cy="6" r="2.3" /><circle cx="5" cy="18" r="2.3" /><circle cx="18" cy="12" r="2.3" /><path d="M7.3 6h4.2a3 3 0 013 3v0M7.3 18h4.2a3 3 0 003-3v0" /></svg>
+);
+export const IconMessageNode = ({ size = 20, ...p }) => (
+  <svg {...base(size)} {...p}><path d="M4 5.5h16v10.5H9.5L5.5 19v-3H4Z" /><path d="M8 9.5h8M8 12.5h5" /></svg>
+);
+export const IconMenuNode = ({ size = 20, ...p }) => (
+  <svg {...base(size)} {...p}><circle cx="5" cy="6" r="1.3" fill="currentColor" stroke="none" /><circle cx="5" cy="12" r="1.3" fill="currentColor" stroke="none" /><circle cx="5" cy="18" r="1.3" fill="currentColor" stroke="none" /><path d="M9.5 6h10M9.5 12h10M9.5 18h10" /></svg>
+);
+export const IconHandoffNode = ({ size = 20, ...p }) => (
+  <svg {...base(size)} {...p}><path d="M4 18a5 5 0 0110 0" /><circle cx="9" cy="8" r="3" /><path d="M15 4.5a4.5 4.5 0 010 9M15 21v-2.3a2.7 2.7 0 00-2.7-2.7h-1" /></svg>
+);
+export const IconX = ({ size = 20, ...p }) => (
+  <svg {...base(size)} {...p}><path d="M6 6l12 12M18 6L6 18" /></svg>
+);
+export const IconMinus = ({ size = 20, ...p }) => (
+  <svg {...base(size)} {...p}><path d="M5 12h14" /></svg>
+);
