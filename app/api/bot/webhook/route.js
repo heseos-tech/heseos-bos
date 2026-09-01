@@ -10,7 +10,7 @@ import { parseWebhookByPhone } from '@/lib/botWhatsapp';
 import { runBotTurn } from '@/lib/botEngine';
 import { runFlowTurn, pickFlow } from '@/lib/botFlowEngine';
 import { createLeadFromWhatsApp } from '@/lib/waInbound';
-import { parseRefFromText } from '@/lib/attribution';
+import { parseRefFromText, referrerNoteFor } from '@/lib/attribution';
 
 export const dynamic = 'force-dynamic';
 
@@ -122,8 +122,12 @@ export async function POST(req) {
           await dbInsert('bot_chats', m.from, chat);
           if (tenant.botKind === 'heseos' || tenant.linkToHeseosLeads === true) {
             const lead = await bridgeToHeseosLeads(tenant, { phone: m.from, name: m.name, link });
-            chat = { ...chat, leadId: lead.id };
-            await dbPatch('bot_chats', m.from, { leadId: lead.id });
+            // Only ever computed for Heseos's own tenant — white-label tenants never reach this
+            // branch, so their chats simply have no referrerNote and {{referrerNote}} (if a
+            // tenant's own flow happens to use it) just renders blank. See lib/attribution.js.
+            const referrerNote = await referrerNoteFor(link);
+            chat = { ...chat, leadId: lead.id, referrerNote };
+            await dbPatch('bot_chats', m.from, { leadId: lead.id, referrerNote });
           }
           flow = picked;
         } else {

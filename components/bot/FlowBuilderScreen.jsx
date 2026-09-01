@@ -43,7 +43,7 @@ function uid(prefix) {
 
 function defaultDataFor(type) {
   if (type === 'message') return { text: '' };
-  if (type === 'menu') return { text: '', options: [{ id: uid('opt'), label: 'Option 1' }, { id: uid('opt'), label: 'Option 2' }] };
+  if (type === 'menu') return { text: '', fieldKey: '', options: [{ id: uid('opt'), label: 'Option 1' }, { id: uid('opt'), label: 'Option 2' }] };
   if (type === 'question') return { text: '', fieldKey: '' };
   if (type === 'handoff') return { text: '' };
   return {};
@@ -100,6 +100,7 @@ function NodeCard({ node, selected, onMouseDownHead, onStartConnect, onSelect, o
           {options.map((o) => (
             <div key={o.id} className="fb-node-option"><span>{o.label || 'Option'}</span></div>
           ))}
+          {node.data?.fieldKey && <div className="fb-node-savemeta">saves as "{node.data.fieldKey}"</div>}
         </>
       )}
 
@@ -494,6 +495,9 @@ export default function FlowBuilderScreen({ tenant, flow }) {
                   <button type="button" className="bc-btn bc-btn-outline bc-btn-sm" style={{ marginTop: 6 }} onClick={() => addOption(selectedNode.id)}><IconPlus size={13} /> Add option</button>
                 )}
                 <div className="bc-hint" style={{ marginTop: 12 }}>Drag from the dot beside an option to send that reply down its own path.</div>
+                <label className="fb-label" style={{ marginTop: 16 }}>Save the picked option as (optional)</label>
+                <input className="bc-input" value={selectedNode.data?.fieldKey || ''} onChange={(e) => updateNodeData(selectedNode.id, { fieldKey: e.target.value.replace(/[^a-zA-Z0-9_ ]/g, '') })} placeholder="e.g. propertyType, budget" />
+                <div className="bc-hint">Whichever option the customer picks gets stored under this name on their chat, same as a Collect Answer step.</div>
               </div>
             )}
             {selectedNode && selectedNode.type === 'question' && (
