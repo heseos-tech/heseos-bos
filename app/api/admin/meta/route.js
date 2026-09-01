@@ -1,12 +1,7 @@
 // Admin-only settings API for the self-service Meta Lead Ads connection: connect a Page,
 // list its Lead Ad forms, and toggle which forms are allowed to create leads. See lib/metaAds.js.
 import { getEmployee } from '@/lib/auth';
-import { getMetaSettings, saveMetaSettings, fetchPageInfo, fetchLeadForms, fetchFormLeads, subscribePageToApp, registerAppWebhook, activeAccessToken } from '@/lib/metaAds';
-import { dbInsert, dbGetById } from '@/lib/db';
-import { istDateStr } from '@/lib/date';
-import { pushHistory } from '@/lib/leadStage';
-import { mapMetaLead } from '@/lib/metaLeadMap';
-import { autoAssignByCity } from '@/lib/leadAssign';
+import { getMetaSettings, saveMetaSettings, fetchPageInfo, fetchLeadForms, subscribePageToApp, registerAppWebhook, syncAllLeads } from '@/lib/metaAds';
 
 export const dynamic = 'force-dynamic';
 
@@ -110,71 +105,13 @@ export async function PATCH(request) {
 
   // PATCH { action: 'sync_leads' } → pull every enabled form's full lead history straight from
   // Meta's Graph API and insert anything missing — the manual safety net for whatever the
-  // webhook hasn't (yet, or ever) captured on its own. Safe to run any time: every lead is
-  // looked up by its deterministic id before inserting, so nothing is ever duplicated.
+  // webhook hasn't (yet, or ever) captured on its own. Same shared logic the scheduled
+  // safety-net sync uses (see lib/metaAds.js syncAllLeads and app/api/cron/sync-meta-leads).
   if (body.action === 'sync_leads') {
-    const token = activeAccessToken(existing);
-    const enabledForms = (existing.forms || []).filter((f) => f && f.enabled);
-    if (!token) return Response.json({ error: 'No access token available to sync with.' }, { status: 400 });
-    if (enabledForms.length === 0) return Response.json({ error: 'No forms are toggled on — turn at least one on before syncing.' }, { status: 400 });
-
-    let inserted = 0;
-    let skipped = 0;
-    const formResults = [];
-    for (const form of enabledForms) {
-      const { leads, error: fetchError } = await fetchFormLeads(form.id, token);
-      if (fetchError) { formResults.push({ id: form.id, name: form.name, error: fetchError }); continue; }
-
-      let formInserted = 0;
-      for (const lead of leads) {
-        const id = `META${lead.id}`;
-        const already = await dbGetById('leads', id);
-        if (already) { skipped++; continue; }
-
-        const { mapped, rawMetaFields } = mapMetaLead(lead.field_data || []);
-        if (!mapped.name || !mapped.phone) { skipped++; continue; }
-
-        const createdAt = lead.created_time || new Date().toISOString();
-        const { assignedTo, salesEngineerId } = await autoAssignByCity(mapped.city);
-        const record = {
-          id,
-          createdAt,
-          date: istDateStr(createdAt),
-          status: 'new',
-          name: mapped.name,
-          phone: mapped.phone,
-          email: mapped.email,
-          city: mapped.city,
-          postcode: mapped.postcode,
-          productInterest: mapped.productInterest,
-          propertyType: mapped.propertyType,
-          budget: mapped.budget,
-          timeline: mapped.timeline,
-          persona: mapped.persona,
-          source: 'meta_lead_form',
-          partnerId: null,
-          metaLeadgenId: lead.id,
-          metaFormId: form.id,
-          metaAdId: lead.ad_id || null,
-          rawMetaFields,
-          contactStage: null,
-          demoOutcome: null,
-          assignedTo,
-          salesEngineerId,
-          history: [],
-        };
-        record.history = pushHistory(record, { event: 'Lead Submitted', by: 'meta_lead_form', note: 'Meta Instant Form' });
-        record.history = pushHistory(record, { event: 'Synced', by: 'admin', note: "Pulled directly from Meta's Graph API — wasn't captured by the webhook yet." });
-        if (assignedTo) record.history = pushHistory(record, { event: 'Auto-assigned by city', by: 'system', note: (mapped.city || '') + ' · pre-sales matched' });
-
-        await dbInsert('leads', id, record);
-        inserted++; formInserted++;
-      }
-      formResults.push({ id: form.id, name: form.name, total: leads.length, inserted: formInserted });
-    }
-
-    const settings = await saveMetaSettings({ lastSyncedAt: new Date().toISOString(), lastSyncInserted: inserted });
-    return Response.json({ ...publicSettings(settings), syncResult: { inserted, skipped, forms: formResults } });
+    const result = await syncAllLeads();
+    if (result.error) return Response.json({ error: result.error }, { status: 400 });
+    const settings = await getMetaSettings();
+    return Response.json({ ...publicSettings(settings), syncResult: result });
   }
 
   if (body.formId) {
