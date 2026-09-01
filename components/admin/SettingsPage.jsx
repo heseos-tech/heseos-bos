@@ -17,6 +17,8 @@ export default function SettingsPage() {
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [registeringWebhook, setRegisteringWebhook] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [syncResult, setSyncResult] = useState(null);
   const [formsPage, setFormsPage] = useState(1);
   const [formSearch, setFormSearch] = useState('');
 
@@ -60,6 +62,18 @@ export default function SettingsPage() {
       if (!res.ok) { setError(data.error || 'Could not register the webhook.'); return; }
       setSettings(data); flash('Webhook registered with Meta');
     } finally { setRegisteringWebhook(false); }
+  }
+
+  async function syncLeads() {
+    setError(''); setSyncResult(null); setSyncing(true);
+    try {
+      const res = await fetch('/api/admin/meta', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'sync_leads' }) });
+      const data = await res.json();
+      if (!res.ok) { setError(data.error || 'Could not sync leads.'); return; }
+      setSettings(data); setSyncResult(data.syncResult);
+      const { inserted } = data.syncResult || {};
+      flash(inserted > 0 ? `Sync complete — ${inserted} new lead${inserted === 1 ? '' : 's'} pulled in` : 'Sync complete — nothing new, you\'re already up to date');
+    } finally { setSyncing(false); }
   }
 
   async function toggleForm(form) {
@@ -169,9 +183,27 @@ export default function SettingsPage() {
               </div>
               <div className="adm-page-head-actions">
                 <button className="adm-btn-outline" onClick={refreshForms} disabled={refreshing}>{refreshing ? 'Refreshing…' : 'Refresh Forms'}</button>
+                <button className="adm-btn-outline" onClick={syncLeads} disabled={syncing}>{syncing ? 'Syncing…' : 'Sync Leads Now'}</button>
                 <button className="adm-btn-outline" onClick={disconnect}>Disconnect</button>
               </div>
             </div>
+
+            <div className="adm-lead-sub adm-meta-sync-note">
+              {settings.lastSyncedAt
+                ? `Last manual sync: ${new Date(settings.lastSyncedAt).toLocaleString()}${typeof settings.lastSyncInserted === 'number' ? ` · ${settings.lastSyncInserted} lead${settings.lastSyncInserted === 1 ? '' : 's'} pulled in that run` : ''}.`
+                : 'Never manually synced — pulls every enabled form\'s full lead history straight from Meta, in case the webhook missed anything.'}
+            </div>
+
+            {syncResult && (
+              <div className="adm-meta-sync-result">
+                <div className="adm-lead-name">Sync result: {syncResult.inserted} new lead{syncResult.inserted === 1 ? '' : 's'} inserted, {syncResult.skipped} already up to date</div>
+                {syncResult.forms.some((f) => f.error) && (
+                  <div className="adm-lead-sub adm-lead-sub--warn">
+                    {syncResult.forms.filter((f) => f.error).map((f) => `${f.name}: ${f.error}`).join(' · ')}
+                  </div>
+                )}
+              </div>
+            )}
 
             {rawForms.length > 0 && (
               <div className="adm-search adm-search--inline adm-meta-forms-search">
