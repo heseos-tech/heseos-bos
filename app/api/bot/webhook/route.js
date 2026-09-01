@@ -8,7 +8,7 @@
 import { dbGetById, dbInsert, dbPatch, dbWhere } from '@/lib/db';
 import { parseWebhookByPhone } from '@/lib/botWhatsapp';
 import { runBotTurn } from '@/lib/botEngine';
-import { runFlowTurn } from '@/lib/botFlowEngine';
+import { runFlowTurn, pickFlow } from '@/lib/botFlowEngine';
 import { createLeadFromWhatsApp } from '@/lib/waInbound';
 import { parseRefFromText } from '@/lib/attribution';
 
@@ -86,12 +86,14 @@ export async function POST(req) {
       // lib/auth.js's getBotTenant()), but skip explicitly rather than assume that holds forever.
       if (tenant.approvalStatus === 'pending' || tenant.approvalStatus === 'rejected') continue;
 
-      // A tenant only runs their self-built Flow Builder graph once they've actually switched it
-      // on (see components/bot/FlowBuilderScreen.jsx's "Use this flow" toggle) and it has
-      // somewhere to go — otherwise every chat keeps using the simpler, Bot-Configuration-driven
-      // lib/botEngine.js exactly as before this existed. Read once per batch, not per message.
-      const flow = await dbGetById('bot_flows', tenant.id);
-      const flowReady = !!(flow?.enabled && (flow.nodes || []).some((n) => n.type === 'start'));
+      // A tenant can build several flows (components/bot/FlowListScreen.jsx), each switched on
+      // and triggered independently — pickFlow (lib/botFlowEngine.js) matches a brand-new chat
+      // to whichever one applies (QR scan / referral / keyword / their marked default), and the
+      // chat then sticks with that same flow (chat.activeFlowId) for the rest of the
+      // conversation. No match at all — including no flows built, or none enabled — falls
+      // straight back to the simpler, Bot-Configuration-driven lib/botEngine.js exactly as
+      // before Flow Builder existed. Read once per batch, not per message.
+      const tenantFlows = await dbWhere('bot_flows', 'tenantId', tenant.id);
 
       for (const m of g.messages) {
         if (await dbGetById('bot_messages', m.id)) continue; // de-dupe Meta's retries
@@ -101,17 +103,20 @@ export async function POST(req) {
         });
 
         let chat = await dbGetById('bot_chats', m.from);
+        let flow = null;
         if (!chat) {
           // Resolved once here (not just for Heseos) so any tenant's first-ever message on a
-          // chat can carry a QR-vs-organic welcome trigger — see attributionKind below and
-          // lib/botEngine.js's welcomeText(). Today only Heseos's own QR/referral codes exist,
-          // so this only ever resolves for Heseos's tenant, but nothing here is Heseos-specific.
+          // chat can carry a QR-vs-organic signal — used both for pickFlow's attribution match
+          // below and lib/botEngine.js's welcomeText(). Today only Heseos's own QR/referral
+          // codes exist, so this only ever resolves for Heseos's tenant, but nothing here is
+          // Heseos-specific.
           const link = await resolveAttributionLink(m.text);
+          const picked = pickFlow(tenantFlows, { attributionKind: link?.kind || null, text: m.text });
           chat = {
             id: m.from, tenantId: tenant.id, phone: m.from, name: m.name || m.from,
             lastText: m.text, lastAt: m.ts, unread: 1, status: 'open', assignedTo: null,
             botOn: true, lead: null, stage: null, menuRetries: 0, city: '',
-            attributionKind: link?.kind || null, flowNodeId: null, answers: {},
+            attributionKind: link?.kind || null, flowNodeId: null, answers: {}, activeFlowId: picked?.id || null,
             firstMessageAt: m.ts, createdAt: m.ts,
           };
           await dbInsert('bot_chats', m.from, chat);
@@ -120,6 +125,7 @@ export async function POST(req) {
             chat = { ...chat, leadId: lead.id };
             await dbPatch('bot_chats', m.from, { leadId: lead.id });
           }
+          flow = picked;
         } else {
           const patch = {
             name: chat.name || m.name || m.from,
@@ -130,11 +136,18 @@ export async function POST(req) {
           };
           await dbPatch('bot_chats', m.from, patch);
           chat = { ...chat, ...patch };
+          // Once a chat has entered a flow it stays on that same one for its whole
+          // conversation — re-matching triggers on every reply would let an unrelated later
+          // message ("hi" mid-conversation, say) hijack the chat into a different flow.
+          if (chat.activeFlowId) {
+            const f = tenantFlows.find((tf) => tf.id === chat.activeFlowId) || null;
+            if (f && f.enabled && (f.nodes || []).some((n) => n.type === 'start')) flow = f;
+          }
         }
 
         if (chat.botOn !== false) {
           try {
-            if (flowReady) await runFlowTurn(tenant, flow, chat, m.text);
+            if (flow) await runFlowTurn(tenant, flow, chat, m.text);
             else await runBotTurn(tenant, chat, m.text);
           } catch (err) {
             console.error('Bot engine error:', err);

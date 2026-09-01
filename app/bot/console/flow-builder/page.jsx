@@ -1,16 +1,15 @@
 import { redirect } from 'next/navigation';
 import { getBotTenant } from '@/lib/auth';
-import { dbGetById } from '@/lib/db';
-import FlowBuilderScreen from '@/components/bot/FlowBuilderScreen';
+import { dbWhere } from '@/lib/db';
+import FlowListScreen from '@/components/bot/FlowListScreen';
 
 export const dynamic = 'force-dynamic';
 
-const STARTER_FLOW = { nodes: [{ id: 'start', type: 'start', x: 60, y: 180, data: {} }], edges: [], enabled: false };
-
-export default async function FlowBuilderPage() {
+export default async function FlowBuilderListPage() {
   const tenant = await getBotTenant();
   if (!tenant) redirect('/bot');
   const { password, ...safeTenant } = tenant;
-  const flow = (await dbGetById('bot_flows', tenant.id)) || { id: tenant.id, tenantId: tenant.id, ...STARTER_FLOW };
-  return <FlowBuilderScreen tenant={safeTenant} initialFlow={flow} />;
+  const flows = await dbWhere('bot_flows', 'tenantId', tenant.id);
+  flows.sort((a, b) => new Date(a.createdAt || 0) - new Date(b.createdAt || 0));
+  return <FlowListScreen tenant={safeTenant} flows={flows} />;
 }

@@ -1,14 +1,18 @@
 'use client';
 // Flow Builder — the self-service, drag-and-drop way for a tenant to build their own bot
-// conversation instead of (or beyond) the fixed Welcome Message + Quick Menu in Bot
-// Configuration. Everything here is just editing a graph of nodes + edges (saved via
-// PUT /api/bot/flow) that lib/botFlowEngine.js later walks, turn by turn, once the tenant
-// flips "Use this flow" on — see that file's header comment for exactly how a saved graph
-// drives a live conversation. Nothing here is Heseos-specific.
+// conversations instead of (or beyond) the fixed Welcome Message + Quick Menu in Bot
+// Configuration. A tenant can build several flows (see FlowListScreen, the screen that opens
+// before this one); each is just a graph of nodes + edges plus a set of trigger conditions,
+// saved via PUT /api/bot/flow/[id]. lib/botFlowEngine.js's pickFlow() decides which flow (if
+// any) a brand-new chat enters — QR scan, referral link, a keyword in the first message, or the
+// one flow a tenant has marked as their fallback — and then walks that flow's graph turn by
+// turn once it's switched on. Nothing here is Heseos-specific.
 import { useState, useRef, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { Topbar } from './ConsoleShell';
 import { Switch } from './ui';
-import { IconMessageNode, IconMenuNode, IconHandoffNode, IconHelp, IconFlow, IconPlus, IconMinus, IconX, IconCheck } from './icons';
+import { IconMessageNode, IconMenuNode, IconHandoffNode, IconHelp, IconFlow, IconPlus, IconMinus, IconX, IconCheck, IconArrowLeft, IconTrash } from './icons';
 
 const NODE_W = 240;
 const HEAD_H = 44;
@@ -16,6 +20,7 @@ const TEXT_PREVIEW_H = 40; // menu node's fixed message-preview strip — must m
 const OPTION_ROW_H = 34;   // menu node's per-option row height — must match the CSS
 const PORT_Y = 22;         // header-level port y for start/message/question/handoff nodes
 const MAX_OPTIONS = 9;     // keeps the numbered-emoji menu (1️⃣–9️⃣) unambiguous
+const MAX_KEYWORDS = 20;
 
 const NODE_META = {
   start: { title: 'Flow Start', icon: IconFlow },
@@ -125,11 +130,18 @@ function NodeCard({ node, selected, onMouseDownHead, onStartConnect, onSelect, o
   );
 }
 
-export default function FlowBuilderScreen({ tenant, initialFlow }) {
-  const seedNodes = initialFlow?.nodes && initialFlow.nodes.length ? initialFlow.nodes : [{ id: 'start', type: 'start', x: 60, y: 180, data: {} }];
+export default function FlowBuilderScreen({ tenant, flow }) {
+  const router = useRouter();
+  const seedNodes = flow?.nodes && flow.nodes.length ? flow.nodes : [{ id: 'start', type: 'start', x: 60, y: 180, data: {} }];
   const [nodes, setNodes] = useState(seedNodes);
-  const [edges, setEdges] = useState(initialFlow?.edges || []);
-  const [enabled, setEnabled] = useState(!!initialFlow?.enabled);
+  const [edges, setEdges] = useState(flow?.edges || []);
+  const [name, setName] = useState(flow?.name || 'Untitled Flow');
+  const [enabled, setEnabled] = useState(!!flow?.enabled);
+  const [keywords, setKeywords] = useState(flow?.triggers?.keywords || []);
+  const [keywordDraft, setKeywordDraft] = useState('');
+  const [attrQr, setAttrQr] = useState((flow?.triggers?.attribution || []).includes('qr'));
+  const [attrReferral, setAttrReferral] = useState((flow?.triggers?.attribution || []).includes('referral'));
+  const [isDefault, setIsDefault] = useState(!!flow?.triggers?.isDefault);
   const [selectedId, setSelectedId] = useState(null);
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 40, y: 20 });
@@ -138,6 +150,8 @@ export default function FlowBuilderScreen({ tenant, initialFlow }) {
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
   const [dirty, setDirty] = useState(false);
+  const [deleteArmed, setDeleteArmed] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const viewportRef = useRef(null);
   const dragRef = useRef(null);
@@ -145,6 +159,8 @@ export default function FlowBuilderScreen({ tenant, initialFlow }) {
   const zoomRef = useRef(zoom);
   useEffect(() => { panRef.current = pan; }, [pan]);
   useEffect(() => { zoomRef.current = zoom; }, [zoom]);
+
+  function touch() { setDirty(true); setSaved(false); }
 
   function toLocal(clientX, clientY) {
     const rect = viewportRef.current?.getBoundingClientRect();
@@ -182,13 +198,11 @@ export default function FlowBuilderScreen({ tenant, initialFlow }) {
             const exists = es.some((ed) => ed.source === d.fromNode && (ed.sourceHandle || 'default') === d.fromHandle && ed.target === targetId);
             return exists ? es : [...es, { id: uid('e'), source: d.fromNode, sourceHandle: d.fromHandle, target: targetId }];
           });
-          setDirty(true);
-          setSaved(false);
+          touch();
         }
         setTempLine(null);
       } else if (d && d.type === 'node') {
-        setDirty(true);
-        setSaved(false);
+        touch();
       }
       dragRef.current = null;
     }
@@ -208,8 +222,7 @@ export default function FlowBuilderScreen({ tenant, initialFlow }) {
     const id = uid('n');
     setNodes((ns) => [...ns, { id, type, x: Math.max(0, center.x - NODE_W / 2 + jitter), y: Math.max(0, center.y - 30 + jitter), data: defaultDataFor(type) }]);
     setSelectedId(id);
-    setDirty(true);
-    setSaved(false);
+    touch();
   }
 
   function deleteNode(id) {
@@ -217,20 +230,17 @@ export default function FlowBuilderScreen({ tenant, initialFlow }) {
     setNodes((ns) => ns.filter((n) => n.id !== id));
     setEdges((es) => es.filter((e) => e.source !== id && e.target !== id));
     setSelectedId((s) => (s === id ? null : s));
-    setDirty(true);
-    setSaved(false);
+    touch();
   }
 
   function deleteEdge(id) {
     setEdges((es) => es.filter((e) => e.id !== id));
-    setDirty(true);
-    setSaved(false);
+    touch();
   }
 
   function updateNodeData(id, patch) {
     setNodes((ns) => ns.map((n) => (n.id === id ? { ...n, data: { ...n.data, ...patch } } : n)));
-    setDirty(true);
-    setSaved(false);
+    touch();
   }
 
   function addOption(nodeId) {
@@ -240,19 +250,29 @@ export default function FlowBuilderScreen({ tenant, initialFlow }) {
       if (options.length >= MAX_OPTIONS) return n;
       return { ...n, data: { ...n.data, options: [...options, { id: uid('opt'), label: `Option ${options.length + 1}` }] } };
     }));
-    setDirty(true);
-    setSaved(false);
+    touch();
   }
   function updateOption(nodeId, optId, label) {
     setNodes((ns) => ns.map((n) => (n.id === nodeId ? { ...n, data: { ...n.data, options: (n.data.options || []).map((o) => (o.id === optId ? { ...o, label } : o)) } } : n)));
-    setDirty(true);
-    setSaved(false);
+    touch();
   }
   function removeOption(nodeId, optId) {
     setNodes((ns) => ns.map((n) => (n.id === nodeId ? { ...n, data: { ...n.data, options: (n.data.options || []).filter((o) => o.id !== optId) } } : n)));
     setEdges((es) => es.filter((e) => !(e.source === nodeId && e.sourceHandle === optId)));
-    setDirty(true);
-    setSaved(false);
+    touch();
+  }
+
+  function addKeyword() {
+    const val = keywordDraft.trim();
+    if (!val || keywords.length >= MAX_KEYWORDS) { setKeywordDraft(''); return; }
+    if (keywords.some((k) => k.toLowerCase() === val.toLowerCase())) { setKeywordDraft(''); return; }
+    setKeywords((ks) => [...ks, val]);
+    setKeywordDraft('');
+    touch();
+  }
+  function removeKeyword(val) {
+    setKeywords((ks) => ks.filter((k) => k !== val));
+    touch();
   }
 
   function startNodeDrag(e, node) {
@@ -288,10 +308,13 @@ export default function FlowBuilderScreen({ tenant, initialFlow }) {
     setSaving(true);
     setError('');
     try {
-      const res = await fetch('/api/bot/flow', {
+      const res = await fetch(`/api/bot/flow/${flow.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nodes, edges, enabled }),
+        body: JSON.stringify({
+          name, enabled, nodes, edges,
+          triggers: { keywords, attribution: [...(attrQr ? ['qr'] : []), ...(attrReferral ? ['referral'] : [])], isDefault },
+        }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) { setError(data.error || 'Could not save this flow.'); return; }
@@ -303,6 +326,18 @@ export default function FlowBuilderScreen({ tenant, initialFlow }) {
     }
   }
 
+  async function deleteFlow() {
+    if (!deleteArmed) { setDeleteArmed(true); setTimeout(() => setDeleteArmed(false), 3500); return; }
+    setDeleting(true);
+    try {
+      await fetch(`/api/bot/flow/${flow.id}`, { method: 'DELETE' });
+      router.push('/bot/console/flow-builder');
+      router.refresh();
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   const selectedNode = nodes.find((n) => n.id === selectedId) || null;
 
   return (
@@ -310,7 +345,9 @@ export default function FlowBuilderScreen({ tenant, initialFlow }) {
       <Topbar title="Flow Builder" />
       <div className="fb-shell">
         <div className="fb-toolbar">
-          <div className={`fb-status-pill ${enabled ? 'on' : 'off'}`}>{enabled ? 'Live — running your bot' : 'Draft — not running yet'}</div>
+          <Link href="/bot/console/flow-builder" className="fb-back"><IconArrowLeft size={16} /></Link>
+          <input className="fb-name-input" value={name} onChange={(e) => { setName(e.target.value); touch(); }} placeholder="Untitled Flow" />
+          <div className={`fb-status-pill ${enabled ? 'on' : 'off'}`}>{enabled ? 'Live' : 'Draft'}</div>
           <div style={{ flex: 1 }} />
           <div className="fb-zoom">
             <button type="button" className="bc-icon-btn" onClick={() => zoomBy(-0.15)} aria-label="Zoom out"><IconMinus size={14} /></button>
@@ -318,8 +355,11 @@ export default function FlowBuilderScreen({ tenant, initialFlow }) {
             <button type="button" className="bc-icon-btn" onClick={() => zoomBy(0.15)} aria-label="Zoom in"><IconPlus size={14} /></button>
           </div>
           <button type="button" className="bc-btn bc-btn-outline bc-btn-sm" onClick={resetView}>Reset view</button>
-          <Switch checked={enabled} onChange={(v) => { setEnabled(v); setDirty(true); setSaved(false); }} label="Use this flow for my bot" />
+          <Switch checked={enabled} onChange={(v) => { setEnabled(v); touch(); }} label="Use this flow" />
           <span className="fb-switch-label">Use this flow</span>
+          <button type="button" className={`bc-icon-btn${deleteArmed ? ' fb-danger' : ''}`} onClick={deleteFlow} disabled={deleting} aria-label="Delete flow" title={deleteArmed ? 'Click again to confirm delete' : 'Delete flow'}>
+            <IconTrash size={15} />
+          </button>
           {error && <span className="fb-error">{error}</span>}
           <button type="button" className="bc-btn bc-btn-primary bc-btn-sm" onClick={save} disabled={saving}>{saving ? 'Saving…' : dirty ? 'Save changes' : 'Save'}</button>
           {saved && <span className="fb-saved"><IconCheck size={14} /> Saved</span>}
@@ -327,7 +367,27 @@ export default function FlowBuilderScreen({ tenant, initialFlow }) {
 
         <div className="fb-body">
           <aside className="fb-palette">
-            <div className="fb-palette-title">Add a step</div>
+            <div className="fb-palette-title">Triggers</div>
+            <div className="fb-trigger-hint">When should this flow start?</div>
+            <div className="fb-tags">
+              {keywords.map((k) => (
+                <span key={k} className="fb-tag">{k}<button type="button" onClick={() => removeKeyword(k)} aria-label={`Remove ${k}`}><IconX size={10} /></button></span>
+              ))}
+            </div>
+            <input
+              className="bc-input fb-tag-input"
+              value={keywordDraft}
+              onChange={(e) => setKeywordDraft(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); addKeyword(); } }}
+              onBlur={addKeyword}
+              placeholder="Keyword, then Enter"
+              disabled={keywords.length >= MAX_KEYWORDS}
+            />
+            <label className="fb-check"><input type="checkbox" checked={attrQr} onChange={(e) => { setAttrQr(e.target.checked); touch(); }} /> Customer scanned a QR code</label>
+            <label className="fb-check"><input type="checkbox" checked={attrReferral} onChange={(e) => { setAttrReferral(e.target.checked); touch(); }} /> Customer came via a referral link</label>
+            <label className="fb-check"><input type="checkbox" checked={isDefault} onChange={(e) => { setIsDefault(e.target.checked); touch(); }} /> Use as fallback when nothing else matches</label>
+
+            <div className="fb-palette-title" style={{ marginTop: 18 }}>Add a step</div>
             {PALETTE.map((p) => {
               const Icon = p.icon;
               return (
@@ -407,7 +467,7 @@ export default function FlowBuilderScreen({ tenant, initialFlow }) {
             {selectedNode && selectedNode.type === 'start' && (
               <div className="fb-inspector-empty">
                 <div className="fb-inspector-empty-title">Flow Start</div>
-                <div className="fb-inspector-empty-sub">Every brand-new WhatsApp chat begins here. Drag a line from its dot to the first step you want the bot to take.</div>
+                <div className="fb-inspector-empty-sub">Every chat that enters this flow begins here (see Triggers on the left for when that happens). Drag a line from its dot to the first step you want the bot to take.</div>
               </div>
             )}
             {selectedNode && selectedNode.type === 'message' && (

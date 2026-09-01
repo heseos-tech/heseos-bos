@@ -1,36 +1,46 @@
-// Flow Builder's backend — GET the tenant's saved visual flow (or a starter template if they've
-// never opened the builder), PUT to save it. Every tenant only ever reads/writes their own row
-// (see lib/auth.js's getBotTenant()); nothing here is Heseos-specific — see lib/botFlowEngine.js
-// for how a saved flow actually drives a conversation.
-//
-// Saving does NOT turn the flow on by itself — `enabled` is a separate, explicit switch in the
-// request body (see components/bot/FlowBuilderScreen.jsx's "Use this flow for my bot" toggle) so
-// a tenant can build and iterate before their live bot switches over to it. Until enabled,
-// app/api/bot/webhook keeps using the simpler Bot Configuration-driven engine (lib/botEngine.js).
-import { dbGetById, dbInsert } from '@/lib/db';
+// Flow Builder's list backend — GET every flow the tenant has built, POST to create a new one
+// (optionally seeded from an existing flow's nodes/edges/triggers, for the "Duplicate" action in
+// components/bot/FlowListScreen.jsx). Editing, saving and deleting one specific flow lives in
+// app/api/bot/flow/[id]/route.js. Every tenant only ever touches their own rows (see
+// lib/auth.js's getBotTenant()); nothing here is Heseos-specific — see lib/botFlowEngine.js for
+// how a tenant's saved flows actually get chosen between and run.
+import { dbWhere, dbInsert } from '@/lib/db';
 import { getBotTenant } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
-const STARTER_FLOW = { nodes: [{ id: 'start', type: 'start', x: 60, y: 180, data: {} }], edges: [], enabled: false };
+function uid() {
+  return `flow_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
+}
 
 export async function GET() {
   const tenant = await getBotTenant();
   if (!tenant) return Response.json({ error: 'Unauthorized' }, { status: 401 });
-  const flow = await dbGetById('bot_flows', tenant.id);
-  return Response.json(flow || { id: tenant.id, tenantId: tenant.id, ...STARTER_FLOW });
+  const flows = await dbWhere('bot_flows', 'tenantId', tenant.id);
+  flows.sort((a, b) => new Date(a.createdAt || 0) - new Date(b.createdAt || 0));
+  return Response.json(flows);
 }
 
-export async function PUT(request) {
+export async function POST(request) {
   const tenant = await getBotTenant();
   if (!tenant) return Response.json({ error: 'Unauthorized' }, { status: 401 });
   const body = await request.json().catch(() => ({}));
-  const nodes = Array.isArray(body.nodes) ? body.nodes : [];
+
+  const nodes = Array.isArray(body.nodes) && body.nodes.some((n) => n && n.type === 'start')
+    ? body.nodes
+    : [{ id: 'start', type: 'start', x: 60, y: 180, data: {} }];
   const edges = Array.isArray(body.edges) ? body.edges : [];
-  if (!nodes.some((n) => n && n.type === 'start')) {
-    return Response.json({ error: 'Every flow needs a Start step to begin from.' }, { status: 400 });
-  }
-  const flow = { id: tenant.id, tenantId: tenant.id, nodes, edges, enabled: body.enabled === true, updatedAt: new Date().toISOString() };
-  await dbInsert('bot_flows', tenant.id, flow);
+  const triggers = {
+    keywords: Array.isArray(body.triggers?.keywords) ? body.triggers.keywords.slice(0, 20).map((k) => String(k).slice(0, 40)) : [],
+    attribution: Array.isArray(body.triggers?.attribution) ? body.triggers.attribution.filter((a) => a === 'qr' || a === 'referral') : [],
+    // Never carried over when duplicating a flow — two flows silently fighting to be the
+    // fallback is a confusing state a tenant should have to opt into deliberately, per flow.
+    isDefault: false,
+  };
+
+  const now = new Date().toISOString();
+  const id = uid();
+  const flow = { id, tenantId: tenant.id, name: String(body.name || 'Untitled Flow').slice(0, 80) || 'Untitled Flow', enabled: false, triggers, nodes, edges, createdAt: now, updatedAt: now };
+  await dbInsert('bot_flows', id, flow);
   return Response.json(flow);
 }
