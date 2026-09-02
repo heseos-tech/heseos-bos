@@ -3,8 +3,9 @@
 // integration the admin asked to make self-service: connect a Page, then pick exactly which
 // Lead Ad (Instant Form) forms are allowed to create leads.
 import { useEffect, useState, useCallback } from 'react';
-import { IconSearch } from './icons';
+import { IconSearch, IconPartners, IconPresales, IconLeads, IconTrash, IconInfo } from './icons';
 import { invalidate } from '@/lib/useApiResource';
+import { normalizeConfig, PAYOUT_CATEGORIES, PAYOUT_CATEGORY_META } from '@/lib/payout';
 
 const FORMS_PER_PAGE = 10;
 
@@ -257,9 +258,37 @@ export default function SettingsPage() {
   );
 }
 
+const CATEGORY_ICON = { partner: IconPartners, employee: IconPresales, customer: IconLeads };
+
+function emptyCategories() {
+  return Object.fromEntries(PAYOUT_CATEGORIES.map((k) => [k, { enabled: true, tiers: [] }]));
+}
+
+// Converts the numeric config (from normalizeConfig, or straight off a save response) into the
+// string-valued shape the tier inputs edit.
+function toEditState(categories) {
+  return Object.fromEntries(PAYOUT_CATEGORIES.map((k) => {
+    const cat = categories?.[k];
+    return [k, {
+      enabled: cat ? cat.enabled !== false : true,
+      tiers: (cat?.tiers || []).map((t) => ({ upTo: t.upTo == null ? '' : String(t.upTo), rate: String(t.rate) })),
+    }];
+  }));
+}
+
+// The lower bound of tier `i` is always "one more than the previous tier's upper bound" (₹0 for
+// the first tier) — never independently editable, so tiers can never end up with a gap or an
+// overlap. Purely a display computation.
+function tierFromLabel(tiers, i) {
+  if (i === 0) return '0';
+  const prevUpTo = tiers[i - 1]?.upTo;
+  const n = prevUpTo === '' || prevUpTo == null ? 0 : Number(prevUpTo) + 1;
+  return Number.isFinite(n) ? n.toLocaleString('en-IN') : '0';
+}
+
 function PayoutSettingsCard() {
   const [period, setPeriod] = useState('monthly');
-  const [tiers, setTiers] = useState([]);
+  const [categories, setCategories] = useState(emptyCategories);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -267,103 +296,151 @@ function PayoutSettingsCard() {
 
   const load = useCallback(async () => {
     const res = await fetch('/api/payout-settings');
-    const data = res.ok ? await res.json() : { period: 'monthly', tiers: [] };
-    setPeriod(data.period === 'quarterly' ? 'quarterly' : 'monthly');
-    setTiers((data.tiers || []).map((t) => ({ upTo: t.upTo == null ? '' : String(t.upTo), rate: String(t.rate) })));
+    const raw = res.ok ? await res.json() : null;
+    const config = normalizeConfig(raw);
+    setPeriod(config.period);
+    setCategories(toEditState(config.categories));
     setLoading(false);
   }, []);
   useEffect(() => { load(); }, [load]);
 
   function flash(msg) { setNotice(msg); setTimeout(() => setNotice(''), 3000); }
 
-  function addTier() {
-    setTiers((t) => [...t, { upTo: '', rate: '' }]);
+  function toggleCategory(key) {
+    setCategories((c) => ({ ...c, [key]: { ...c[key], enabled: !c[key].enabled } }));
   }
-  function removeTier(i) {
-    setTiers((t) => t.filter((_, idx) => idx !== i));
+  function addTier(key) {
+    setCategories((c) => ({ ...c, [key]: { ...c[key], tiers: [...c[key].tiers, { upTo: '', rate: '' }] } }));
   }
-  function updateTier(i, field, val) {
-    setTiers((t) => t.map((row, idx) => (idx === i ? { ...row, [field]: val } : row)));
+  function removeTier(key, i) {
+    setCategories((c) => ({ ...c, [key]: { ...c[key], tiers: c[key].tiers.filter((_, idx) => idx !== i) } }));
+  }
+  function updateTier(key, i, field, val) {
+    setCategories((c) => ({ ...c, [key]: { ...c[key], tiers: c[key].tiers.map((row, idx) => (idx === i ? { ...row, [field]: val } : row)) } }));
   }
 
   async function save() {
     setError(''); setSaving(true);
     try {
+      const payload = {
+        period,
+        categories: Object.fromEntries(PAYOUT_CATEGORIES.map((k) => [k, {
+          enabled: categories[k].enabled,
+          tiers: categories[k].tiers.map((t) => ({ upTo: t.upTo === '' ? null : Number(t.upTo), rate: Number(t.rate) || 0 })),
+        }])),
+      };
       const res = await fetch('/api/payout-settings', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ period, tiers: tiers.map((t) => ({ upTo: t.upTo === '' ? null : Number(t.upTo), rate: Number(t.rate) || 0 })) }),
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
       if (!res.ok) { setError(data.error || 'Could not save payout settings.'); return; }
-      setPeriod(data.period === 'quarterly' ? 'quarterly' : 'monthly');
-      setTiers((data.tiers || []).map((t) => ({ upTo: t.upTo == null ? '' : String(t.upTo), rate: String(t.rate) })));
+      const config = normalizeConfig(data);
+      setPeriod(config.period);
+      setCategories(toEditState(config.categories));
       invalidate('/api/payout-settings');
       flash('Payout settings saved');
     } finally { setSaving(false); }
   }
 
   return (
-    <div className="adm-card adm-meta-card" style={{ marginBottom: 18 }}>
-      <div className="adm-card-title-row">
-        <div className="adm-card-title">Lead Conversion Payout</div>
+    <div className="adm-card adm-meta-card" style={{ marginBottom: 18, maxWidth: 'none' }}>
+      <div className="adm-payout-head-row">
+        <div>
+          <div className="adm-card-title">Lead Conversion Payout</div>
+          <p className="adm-card-sub" style={{ marginBottom: 0 }}>
+            Set tier-wise payout % for conversion based on total converted sale value — independently for partner referrals, employee-added leads, and customer referrals. Changing this updates everyone's payout in that category immediately — there's no per-person override.
+          </p>
+        </div>
+        <div className="adm-payout-period">
+          <span className="adm-payout-period-label">Payout Period</span>
+          <div className="adm-botkind-toggle">
+            <button type="button" className={`adm-botkind-btn${period === 'monthly' ? ' active' : ''}`} onClick={() => setPeriod('monthly')}>Monthly</button>
+            <button type="button" className={`adm-botkind-btn${period === 'quarterly' ? ' active' : ''}`} onClick={() => setPeriod('quarterly')}>Quarterly</button>
+          </div>
+        </div>
       </div>
-      <p className="adm-card-sub">
-        One fixed payout structure, applied the same way to everyone who brings in a lead that converts \u2014 partner referrals, employee-added leads, and (once that flow exists) customer referrals. Set how much of a referrer's total converted sale value they earn back, based on how much they've closed this period. Changing this updates every partner's and employee's payout immediately \u2014 there's no per-person override.
-      </p>
 
       {notice && <div className="adm-notice">{notice}</div>}
       {error && <div className="adm-notice adm-notice--error">{error}</div>}
 
       {loading ? (
-        <div className="adm-empty">Loading\u2026</div>
+        <div className="adm-empty">Loading…</div>
       ) : (
         <>
-          <div className="lf-field">
-            <label className="lf-label">Payout period</label>
-            <div className="adm-botkind-toggle">
-              <button type="button" className={`adm-botkind-btn${period === 'monthly' ? ' active' : ''}`} onClick={() => setPeriod('monthly')}>Monthly</button>
-              <button type="button" className={`adm-botkind-btn${period === 'quarterly' ? ' active' : ''}`} onClick={() => setPeriod('quarterly')}>Quarterly</button>
-            </div>
-          </div>
+          <div className="adm-payout-grid">
+            {PAYOUT_CATEGORIES.map((key) => {
+              const cat = categories[key];
+              const meta = PAYOUT_CATEGORY_META[key];
+              const Icon = CATEGORY_ICON[key];
+              return (
+                <div className="adm-payout-card" key={key}>
+                  <div className={`adm-payout-card-head adm-payout-card-head--${key}`}>
+                    <div className="adm-payout-card-head-left">
+                      <div className={`adm-payout-icon adm-payout-icon--${key}`}><Icon size={20} /></div>
+                      <div>
+                        <div className="adm-payout-card-title">{meta.title}</div>
+                        <div className="adm-payout-card-sub">{meta.sub}</div>
+                      </div>
+                    </div>
+                    <label className={`adm-switch adm-switch--green${cat.enabled ? ' on' : ''}`}>
+                      <input type="checkbox" checked={cat.enabled} onChange={() => toggleCategory(key)} />
+                      <span className="adm-switch-track"><span className="adm-switch-thumb" /></span>
+                    </label>
+                  </div>
 
-          <div className="lf-field" style={{ marginTop: 18 }}>
-            <label className="lf-label">Tiers \u2014 total converted sale value this {period === 'quarterly' ? 'quarter' : 'month'} \u2192 payout %</label>
-            <div className="adm-payout-tiers">
-              {tiers.length === 0 && <div className="adm-empty" style={{ padding: '10px 0' }}>No tiers yet \u2014 payouts will be \u20b90 until you add at least one.</div>}
-              {tiers.map((t, i) => (
-                <div className="adm-tier-row" key={i}>
-                  <span className="adm-tier-label">Up to \u20b9</span>
-                  <input
-                    className="adm-tier-input"
-                    type="number"
-                    min="0"
-                    placeholder={i === tiers.length - 1 ? 'no limit' : 'e.g. 100000'}
-                    value={t.upTo}
-                    onChange={(e) => updateTier(i, 'upTo', e.target.value)}
-                  />
-                  <span className="adm-tier-label">\u2192</span>
-                  <input
-                    className="adm-tier-input adm-tier-input--rate"
-                    type="number"
-                    min="0"
-                    step="0.1"
-                    placeholder="e.g. 3"
-                    value={t.rate}
-                    onChange={(e) => updateTier(i, 'rate', e.target.value)}
-                  />
-                  <span className="adm-tier-label">%</span>
-                  <button type="button" className="adm-tier-remove" aria-label="Remove tier" onClick={() => removeTier(i)}>\u00d7</button>
+                  <div className="adm-payout-body">
+                    <div className="adm-payout-col-headers"><span>Tier (Sale Value)</span><span>Payout %</span></div>
+                    <div className="adm-payout-tiers">
+                      {cat.tiers.length === 0 && <div className="adm-empty" style={{ padding: '10px 0' }}>No tiers yet — payout will be ₹0 until you add at least one.</div>}
+                      {cat.tiers.map((t, i) => (
+                        <div className="adm-tier-row" key={i}>
+                          <span className="adm-tier-label">₹</span>
+                          <input className="adm-tier-input adm-tier-input--readonly" readOnly value={tierFromLabel(cat.tiers, i)} aria-label="Tier starts at" />
+                          <span className="adm-tier-label">to</span>
+                          <input
+                            className="adm-tier-input"
+                            type="number"
+                            min="0"
+                            placeholder={i === cat.tiers.length - 1 ? 'No Limit' : 'e.g. 50000'}
+                            value={t.upTo}
+                            onChange={(e) => updateTier(key, i, 'upTo', e.target.value)}
+                          />
+                          <input
+                            className="adm-tier-input adm-tier-input--rate"
+                            type="number"
+                            min="0"
+                            step="0.1"
+                            placeholder="e.g. 2.5"
+                            value={t.rate}
+                            onChange={(e) => updateTier(key, i, 'rate', e.target.value)}
+                          />
+                          <span className="adm-tier-label">%</span>
+                          <button type="button" className="adm-tier-remove" aria-label="Remove tier" onClick={() => removeTier(key, i)}><IconTrash size={14} /></button>
+                        </div>
+                      ))}
+                    </div>
+                    <button type="button" className="adm-payout-add-tier" onClick={() => addTier(key)}>+ Add Tier</button>
+                  </div>
+
+                  <div className={`adm-payout-card-note adm-payout-card-note--${key}`}>
+                    <IconInfo size={14} />
+                    <span>Payout % applies to the total converted sale value within the payout period.</span>
+                  </div>
                 </div>
-              ))}
-            </div>
-            <div className="adm-meta-hint" style={{ marginTop: 6 }}>
-              Leave "Up to" blank on a tier to make it open-ended (it then covers everything above the tier before it). Whichever tier a referrer's period total falls into, its % applies to their WHOLE total \u2014 not just the slice inside that tier.
-            </div>
-            <button type="button" className="adm-btn-outline" style={{ marginTop: 10 }} onClick={addTier}>+ Add Tier</button>
+              );
+            })}
           </div>
 
-          <button className="adm-btn-primary" style={{ marginTop: 18 }} onClick={save} disabled={saving}>{saving ? 'Saving\u2026' : 'Save Payout Settings'}</button>
+          <div className="adm-payout-foot-note">
+            <IconInfo size={16} />
+            <span>The payout is calculated on the total converted sale value within the selected payout period. There is no per-person override.</span>
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <button className="adm-btn-primary" onClick={save} disabled={saving}>{saving ? 'Saving…' : 'Save Payout Settings'}</button>
+          </div>
         </>
       )}
     </div>

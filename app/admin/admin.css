@@ -280,3 +280,49 @@
 .adm-tier-input--rate { width: 70px; }
 .adm-tier-remove { width: 26px; height: 26px; border-radius: 999px; border: 1px solid var(--adm-border); background: #fff; color: var(--adm-text-soft); font-size: 15px; line-height: 1; cursor: pointer; flex-shrink: 0; }
 .adm-tier-remove:hover { border-color: #c0392b; color: #c0392b; }
+
+/* Lead Conversion Payout — per-category cards (Settings, components/admin/SettingsPage.jsx's
+   PayoutSettingsCard). One card per referral category (partner/employee/customer), each with
+   its own on/off switch and independent tier ladder, sharing one Payout Period toggle. */
+.adm-payout-head-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 4px; }
+.adm-payout-head-row .adm-card-title { margin-bottom: 4px; }
+.adm-payout-period { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; flex-shrink: 0; }
+.adm-payout-period-label { font-size: 11.5px; font-weight: 700; color: var(--adm-text-soft); white-space: nowrap; }
+
+.adm-payout-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 18px; margin: 18px 0; }
+.adm-payout-card { border: 1px solid var(--adm-border); border-radius: 16px; overflow: hidden; background: #fff; display: flex; flex-direction: column; }
+
+.adm-payout-card-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 18px; }
+.adm-payout-card-head--partner { background: rgba(59, 130, 246, 0.07); }
+.adm-payout-card-head--employee { background: rgba(22, 163, 74, 0.07); }
+.adm-payout-card-head--customer { background: rgba(124, 58, 237, 0.07); }
+.adm-payout-card-head-left { display: flex; align-items: center; gap: 12px; min-width: 0; }
+
+.adm-payout-icon { width: 44px; height: 44px; border-radius: 999px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.adm-payout-icon--partner { background: rgba(59, 130, 246, 0.16); color: #3b82f6; }
+.adm-payout-icon--employee { background: rgba(22, 163, 74, 0.16); color: #16a34a; }
+.adm-payout-icon--customer { background: rgba(124, 58, 237, 0.16); color: #7c3aed; }
+
+.adm-payout-card-title { font-size: 14.5px; font-weight: 800; color: var(--adm-ink); }
+.adm-payout-card-sub { font-size: 12px; color: var(--adm-text-faint); margin-top: 2px; }
+
+.adm-payout-body { padding: 16px 18px 18px; }
+.adm-payout-col-headers { display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; color: var(--adm-text-faint); text-transform: uppercase; letter-spacing: 0.02em; padding-bottom: 8px; border-bottom: 1px solid var(--adm-border); margin-bottom: 10px; }
+.adm-payout-col-headers span:first-child { flex: 1; }
+.adm-payout-col-headers span:last-child { width: 92px; text-align: right; }
+
+.adm-tier-input--readonly { background: #f4f5f7; color: var(--adm-text-faint); cursor: default; }
+.adm-payout-add-tier { width: 100%; padding: 10px; border: 1.5px dashed #c7d2e0; border-radius: 10px; background: transparent; color: #2a78d6; font-size: 12.5px; font-weight: 700; cursor: pointer; margin-top: 4px; }
+.adm-payout-add-tier:hover { background: #f5f8ff; }
+
+.adm-payout-card-note { display: flex; align-items: flex-start; gap: 8px; font-size: 11.5px; line-height: 1.5; color: var(--adm-text-soft); padding: 12px 18px; border-top: 1px solid var(--adm-border); }
+.adm-payout-card-note svg { flex-shrink: 0; margin-top: 1px; }
+.adm-payout-card-note--partner { background: rgba(59, 130, 246, 0.04); color: #3b82f6; }
+.adm-payout-card-note--employee { background: rgba(22, 163, 74, 0.04); color: #16a34a; }
+.adm-payout-card-note--customer { background: rgba(124, 58, 237, 0.04); color: #7c3aed; }
+.adm-payout-card-note span { color: var(--adm-text-soft); }
+
+.adm-payout-foot-note { display: flex; align-items: flex-start; gap: 10px; font-size: 12.5px; line-height: 1.5; color: var(--adm-text-soft); background: #f4f6fb; border: 1px solid #e4e8f2; border-radius: 12px; padding: 14px 16px; margin-bottom: 4px; }
+.adm-payout-foot-note svg { flex-shrink: 0; margin-top: 1px; color: #5b6dc0; }
+
+.adm-switch--green.on .adm-switch-track { background: #16a34a; }

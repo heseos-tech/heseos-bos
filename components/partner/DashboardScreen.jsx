@@ -17,7 +17,7 @@ export default function DashboardScreen({ partner }) {
   // Real tiered payout (Settings → Lead Conversion Payout), same figure Rewards shows — this
   // hero used to show an invented "Wallet Balance" (20% of a flat mock rate); now it's this
   // period's actual computed payout instead, so the two screens never disagree.
-  const payout = payoutFor(leads, payoutConfig);
+  const payout = payoutFor(leads, payoutConfig, 'partner');
   const firstName = (partner.name || 'Partner').split(' ')[0];
   const withStatus = leads.map((l) => ({ ...l, _status: partnerStatusOf(l) }));
   const stats = {

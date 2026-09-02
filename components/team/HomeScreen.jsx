@@ -72,7 +72,7 @@ export default function TeamHomeScreen({ employee }) {
   // (assignedTo/salesEngineerId, used above for `mine`). Same shared tiered ladder as Partner
   // Rewards and Settings → Lead Conversion Payout — lib/payout.js.
   const myReferrals = useMemo(() => leads.filter((l) => l.addedByEmployeeId === employee.id), [leads, employee.id]);
-  const payout = useMemo(() => payoutFor(myReferrals, payoutConfig), [myReferrals, payoutConfig]);
+  const payout = useMemo(() => payoutFor(myReferrals, payoutConfig, 'employee'), [myReferrals, payoutConfig]);
   const firstName = (employee.name || "there").split(" ")[0];
   const coverage = isPresales
     ? (Array.isArray(employee.cities) && employee.cities[0] === "ALL" ? "All Cities" : (employee.cities || []).join(", ") || employee.location || "—")

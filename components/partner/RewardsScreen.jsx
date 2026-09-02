@@ -18,7 +18,7 @@ export default function RewardsScreen() {
   const { data: rawConfig } = useApiResource('/api/payout-settings');
 
   const config = normalizeConfig(rawConfig);
-  const payout = payoutFor(leads, config);
+  const payout = payoutFor(leads, config, 'partner');
   const periodWord = config.period === 'quarterly' ? 'Quarter' : 'Month';
 
   return (
@@ -36,7 +36,12 @@ export default function RewardsScreen() {
         </div>
       </div>
 
-      {!payout.hasTiers && (
+      {!payout.enabled && (
+        <div className="hp-card" style={{ background: 'var(--hp-warn-dim)', border: '1px solid var(--hp-warn)' }}>
+          <div className="hp-summary-label" style={{ color: 'var(--hp-warn)' }}>Partner payouts are currently turned off in Settings.</div>
+        </div>
+      )}
+      {payout.enabled && !payout.hasTiers && (
         <div className="hp-card" style={{ background: 'var(--hp-warn-dim)', border: '1px solid var(--hp-warn)' }}>
           <div className="hp-summary-label" style={{ color: 'var(--hp-warn)' }}>Payout tiers haven&rsquo;t been set up yet — check back once they are.</div>
         </div>
@@ -58,12 +63,12 @@ export default function RewardsScreen() {
         </div>
       )}
 
-      {config.tiers.length > 0 && (
+      {payout.tiers.length > 0 && (
         <div className="hp-card" style={{ marginBottom: 24 }}>
           <div className="hp-card-title">Payout Tiers</div>
-          {config.tiers.map((t, i) => (
+          {payout.tiers.map((t, i) => (
             <div key={i} className={`hp-tier-row${i === payout.tierIndex ? ' active' : ''}`}>
-              <span className="hp-tier-range">{t.upTo == null ? `Above ₹${(config.tiers[i - 1]?.upTo || 0).toLocaleString('en-IN')}` : `Up to ₹${t.upTo.toLocaleString('en-IN')}`}</span>
+              <span className="hp-tier-range">{t.upTo == null ? `Above ₹${(payout.tiers[i - 1]?.upTo || 0).toLocaleString('en-IN')}` : `Up to ₹${t.upTo.toLocaleString('en-IN')}`}</span>
               <span className="hp-tier-rate">{t.rate}%</span>
             </div>
           ))}
