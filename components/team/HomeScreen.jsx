@@ -6,11 +6,12 @@
 import { useMemo } from "react";
 import Link from "next/link";
 import { Avatar } from "@/components/partner/ui";
-import { IconBell, IconLeads, IconGift, IconCheck, IconMapPin } from "@/components/partner/icons";
+import { IconBell, IconLeads, IconGift, IconCheck, IconMapPin, IconWallet } from "@/components/partner/icons";
 import { fmtDateTime } from "@/lib/date";
 import { stageOf, displayStatus } from "@/lib/leadStage";
 import { PROPERTY_TYPE } from "@/lib/formOptions";
 import { useApiResource } from "@/lib/useApiResource";
+import { payoutFor } from "@/lib/payout";
 
 const PT_LABEL = Object.fromEntries(PROPERTY_TYPE.map((p) => [p.v, p.l]));
 function norm(s) { return String(s || "").trim().toLowerCase(); }
@@ -21,6 +22,7 @@ export default function TeamHomeScreen({ employee }) {
   // (lib/useApiResource.js) — Home and Leads both stay mounted together in TeamHome, so this
   // avoids two independent fetch-then-poll loops hitting /api/leads for the same data.
   const { data: leads, loading } = useApiResource("/api/leads", { pollMs: isPresales ? 20000 : 15000 });
+  const { data: payoutConfig } = useApiResource("/api/payout-settings");
 
   const myCity = norm(employee.location);
   const available = useMemo(
@@ -65,6 +67,12 @@ export default function TeamHomeScreen({ employee }) {
   }, [isPresales, mine, available, employee.location]);
 
   const recent = useMemo(() => mine.slice().sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0)).slice(0, 4), [mine]);
+  // Leads THIS employee personally added via the Team App's Add Lead wizard (addedByEmployeeId
+  // — see app/api/leads/route.js), not leads merely assigned/claimed for them to work
+  // (assignedTo/salesEngineerId, used above for `mine`). Same shared tiered ladder as Partner
+  // Rewards and Settings → Lead Conversion Payout — lib/payout.js.
+  const myReferrals = useMemo(() => leads.filter((l) => l.addedByEmployeeId === employee.id), [leads, employee.id]);
+  const payout = useMemo(() => payoutFor(myReferrals, payoutConfig), [myReferrals, payoutConfig]);
   const firstName = (employee.name || "there").split(" ")[0];
   const coverage = isPresales
     ? (Array.isArray(employee.cities) && employee.cities[0] === "ALL" ? "All Cities" : (employee.cities || []).join(", ") || employee.location || "—")
@@ -101,6 +109,17 @@ export default function TeamHomeScreen({ employee }) {
           <div className="hp-sub-sm">Let&rsquo;s close together.</div>
         </div>
       </div>
+
+      {(payout.hasTiers || myReferrals.length > 0) && (
+        <Link href="/team/leads/new" className="hp-earn-hero" style={{ display: "block" }}>
+          <div className="hp-earn-icon"><IconWallet size={20} /></div>
+          <div className="hp-earn-label">Your Leads&rsquo; Payout — This {payout.period === "quarterly" ? "Quarter" : "Month"}</div>
+          <div className="hp-earn-val">₹{payout.payout.toLocaleString("en-IN")}</div>
+          <div className="hp-earn-period">
+            {payout.hasTiers ? `${payout.rate}% of ₹${payout.totalValue.toLocaleString("en-IN")} converted · Add Lead →` : "Set up in Settings by an admin · Add Lead →"}
+          </div>
+        </Link>
+      )}
 
       <div className="hp-stat-grid">
         {stats.map((s) => {

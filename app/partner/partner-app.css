@@ -352,6 +352,14 @@ html:has(.hp-root), body:has(.hp-root) {
 .hp-payout-amt { font-size: 14px; font-weight: 700; color: #fff; margin-left: auto; margin-right: 12px; }
 .hp-payout-status { font-size: 10.5px; font-weight: 700; padding: 4px 10px; border-radius: var(--hp-r-full); color: var(--hp-success); background: var(--hp-success-dim); }
 
+/* ── Payout tier ladder (Partner Rewards + Team Home incentive card) ───────── */
+.hp-tier-row { display: flex; align-items: center; justify-content: space-between; padding: 11px 12px; border-radius: 10px; margin-bottom: 6px; background: transparent; }
+.hp-tier-row.active { background: var(--hp-orange-dim); }
+.hp-tier-range { font-size: 12.5px; color: var(--hp-text-soft); font-weight: 600; }
+.hp-tier-row.active .hp-tier-range { color: #fff; }
+.hp-tier-rate { font-size: 13.5px; font-weight: 800; color: var(--hp-text-soft); }
+.hp-tier-row.active .hp-tier-rate { color: var(--hp-orange); }
+
 /* ── Profile ─────────────────────────────────────────────────────────── */
 .hp-profile-head { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 20px 20px 22px; }
 .hp-profile-name { font-size: 19px; font-weight: 800; color: #fff; margin-top: 14px; }

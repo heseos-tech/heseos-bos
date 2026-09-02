@@ -271,3 +271,12 @@
 .adm-botkind-btn + .adm-botkind-btn { border-left: 1px solid var(--adm-border); }
 .adm-botkind-btn.active { background: var(--adm-orange); color: #fff; }
 .adm-botkind-btn:disabled { opacity: 0.6; cursor: default; }
+
+/* Payout tiers editor (Settings → Lead Conversion Payout) */
+.adm-payout-tiers { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+.adm-tier-row { display: flex; align-items: center; gap: 6px; }
+.adm-tier-label { font-size: 12.5px; color: var(--adm-text-soft); font-weight: 600; white-space: nowrap; }
+.adm-tier-input { width: 110px; padding: 7px 9px; font-size: 12.5px; border: 1px solid var(--adm-border); border-radius: 8px; color: var(--adm-ink); }
+.adm-tier-input--rate { width: 70px; }
+.adm-tier-remove { width: 26px; height: 26px; border-radius: 999px; border: 1px solid var(--adm-border); background: #fff; color: var(--adm-text-soft); font-size: 15px; line-height: 1; cursor: pointer; flex-shrink: 0; }
+.adm-tier-remove:hover { border-color: #c0392b; color: #c0392b; }

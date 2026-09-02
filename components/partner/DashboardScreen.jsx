@@ -3,16 +3,21 @@ import Link from 'next/link';
 import { Avatar, StatusBadge } from './ui';
 import { IconBell, IconLeads, IconGift, IconCheck, IconPlus, IconQrCode, IconChevronRight } from './icons';
 import { fmtDateTime } from '@/lib/date';
-import { partnerStatusOf, PROPERTY_TYPE_LABEL, earningsFor } from '@/lib/partnerMock';
+import { partnerStatusOf, PROPERTY_TYPE_LABEL } from '@/lib/partnerMock';
 import { useApiResource } from '@/lib/useApiResource';
+import { payoutFor } from '@/lib/payout';
 
 // Shared with MyLeadsScreen/RewardsScreen (they all stay mounted together in PartnerHome) via
 // useApiResource (lib/useApiResource.js), instead of each independently fetching the same
 // /api/leads on its own first visit.
 export default function DashboardScreen({ partner }) {
   const { data: leads, loading } = useApiResource('/api/leads');
+  const { data: payoutConfig } = useApiResource('/api/payout-settings');
 
-  const earnings = earningsFor(leads);
+  // Real tiered payout (Settings → Lead Conversion Payout), same figure Rewards shows — this
+  // hero used to show an invented "Wallet Balance" (20% of a flat mock rate); now it's this
+  // period's actual computed payout instead, so the two screens never disagree.
+  const payout = payoutFor(leads, payoutConfig);
   const firstName = (partner.name || 'Partner').split(' ')[0];
   const withStatus = leads.map((l) => ({ ...l, _status: partnerStatusOf(l) }));
   const stats = {
@@ -38,12 +43,12 @@ export default function DashboardScreen({ partner }) {
           <div className="hp-greet-title">Hi, {firstName}! 👋</div>
           <div className="hp-greet-sub">Here&rsquo;s your lead overview</div>
         </div>
-        <div className="hp-wallet-chip">
+        <Link href="/partner/home?tab=rewards" className="hp-wallet-chip">
           <div>
-            <div className="hp-wallet-label">Wallet Balance</div>
-            <div className="hp-wallet-val">₹{earnings.walletBalance.toLocaleString('en-IN')}</div>
+            <div className="hp-wallet-label">This {payout.period === 'quarterly' ? 'Quarter' : 'Month'}&rsquo;s Payout</div>
+            <div className="hp-wallet-val">₹{payout.payout.toLocaleString('en-IN')}</div>
           </div>
-        </div>
+        </Link>
       </div>
 
       <div className="hp-promo">

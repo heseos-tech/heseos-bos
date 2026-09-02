@@ -4,6 +4,7 @@
 // Lead Ad (Instant Form) forms are allowed to create leads.
 import { useEffect, useState, useCallback } from 'react';
 import { IconSearch } from './icons';
+import { invalidate } from '@/lib/useApiResource';
 
 const FORMS_PER_PAGE = 10;
 
@@ -113,6 +114,8 @@ export default function SettingsPage() {
       {notice && <div className="adm-notice">{notice}</div>}
 
       <BotSignupsCard />
+
+      <PayoutSettingsCard />
 
       <CitiesCard />
 
@@ -251,6 +254,119 @@ export default function SettingsPage() {
       <WebsiteLeadsCard />
       <GoogleAdsLeadsCard />
     </>
+  );
+}
+
+function PayoutSettingsCard() {
+  const [period, setPeriod] = useState('monthly');
+  const [tiers, setTiers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
+
+  const load = useCallback(async () => {
+    const res = await fetch('/api/payout-settings');
+    const data = res.ok ? await res.json() : { period: 'monthly', tiers: [] };
+    setPeriod(data.period === 'quarterly' ? 'quarterly' : 'monthly');
+    setTiers((data.tiers || []).map((t) => ({ upTo: t.upTo == null ? '' : String(t.upTo), rate: String(t.rate) })));
+    setLoading(false);
+  }, []);
+  useEffect(() => { load(); }, [load]);
+
+  function flash(msg) { setNotice(msg); setTimeout(() => setNotice(''), 3000); }
+
+  function addTier() {
+    setTiers((t) => [...t, { upTo: '', rate: '' }]);
+  }
+  function removeTier(i) {
+    setTiers((t) => t.filter((_, idx) => idx !== i));
+  }
+  function updateTier(i, field, val) {
+    setTiers((t) => t.map((row, idx) => (idx === i ? { ...row, [field]: val } : row)));
+  }
+
+  async function save() {
+    setError(''); setSaving(true);
+    try {
+      const res = await fetch('/api/payout-settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ period, tiers: tiers.map((t) => ({ upTo: t.upTo === '' ? null : Number(t.upTo), rate: Number(t.rate) || 0 })) }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setError(data.error || 'Could not save payout settings.'); return; }
+      setPeriod(data.period === 'quarterly' ? 'quarterly' : 'monthly');
+      setTiers((data.tiers || []).map((t) => ({ upTo: t.upTo == null ? '' : String(t.upTo), rate: String(t.rate) })));
+      invalidate('/api/payout-settings');
+      flash('Payout settings saved');
+    } finally { setSaving(false); }
+  }
+
+  return (
+    <div className="adm-card adm-meta-card" style={{ marginBottom: 18 }}>
+      <div className="adm-card-title-row">
+        <div className="adm-card-title">Lead Conversion Payout</div>
+      </div>
+      <p className="adm-card-sub">
+        One fixed payout structure, applied the same way to everyone who brings in a lead that converts \u2014 partner referrals, employee-added leads, and (once that flow exists) customer referrals. Set how much of a referrer's total converted sale value they earn back, based on how much they've closed this period. Changing this updates every partner's and employee's payout immediately \u2014 there's no per-person override.
+      </p>
+
+      {notice && <div className="adm-notice">{notice}</div>}
+      {error && <div className="adm-notice adm-notice--error">{error}</div>}
+
+      {loading ? (
+        <div className="adm-empty">Loading\u2026</div>
+      ) : (
+        <>
+          <div className="lf-field">
+            <label className="lf-label">Payout period</label>
+            <div className="adm-botkind-toggle">
+              <button type="button" className={`adm-botkind-btn${period === 'monthly' ? ' active' : ''}`} onClick={() => setPeriod('monthly')}>Monthly</button>
+              <button type="button" className={`adm-botkind-btn${period === 'quarterly' ? ' active' : ''}`} onClick={() => setPeriod('quarterly')}>Quarterly</button>
+            </div>
+          </div>
+
+          <div className="lf-field" style={{ marginTop: 18 }}>
+            <label className="lf-label">Tiers \u2014 total converted sale value this {period === 'quarterly' ? 'quarter' : 'month'} \u2192 payout %</label>
+            <div className="adm-payout-tiers">
+              {tiers.length === 0 && <div className="adm-empty" style={{ padding: '10px 0' }}>No tiers yet \u2014 payouts will be \u20b90 until you add at least one.</div>}
+              {tiers.map((t, i) => (
+                <div className="adm-tier-row" key={i}>
+                  <span className="adm-tier-label">Up to \u20b9</span>
+                  <input
+                    className="adm-tier-input"
+                    type="number"
+                    min="0"
+                    placeholder={i === tiers.length - 1 ? 'no limit' : 'e.g. 100000'}
+                    value={t.upTo}
+                    onChange={(e) => updateTier(i, 'upTo', e.target.value)}
+                  />
+                  <span className="adm-tier-label">\u2192</span>
+                  <input
+                    className="adm-tier-input adm-tier-input--rate"
+                    type="number"
+                    min="0"
+                    step="0.1"
+                    placeholder="e.g. 3"
+                    value={t.rate}
+                    onChange={(e) => updateTier(i, 'rate', e.target.value)}
+                  />
+                  <span className="adm-tier-label">%</span>
+                  <button type="button" className="adm-tier-remove" aria-label="Remove tier" onClick={() => removeTier(i)}>\u00d7</button>
+                </div>
+              ))}
+            </div>
+            <div className="adm-meta-hint" style={{ marginTop: 6 }}>
+              Leave "Up to" blank on a tier to make it open-ended (it then covers everything above the tier before it). Whichever tier a referrer's period total falls into, its % applies to their WHOLE total \u2014 not just the slice inside that tier.
+            </div>
+            <button type="button" className="adm-btn-outline" style={{ marginTop: 10 }} onClick={addTier}>+ Add Tier</button>
+          </div>
+
+          <button className="adm-btn-primary" style={{ marginTop: 18 }} onClick={save} disabled={saving}>{saving ? 'Saving\u2026' : 'Save Payout Settings'}</button>
+        </>
+      )}
+    </div>
   );
 }
 
