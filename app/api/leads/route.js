@@ -1,9 +1,12 @@
 // app/api/leads/route.js
-// Central lead intake — the Partner App (source: 'partner_app') and Admin's own manual "Add
-// Lead" button (source: 'manual_entry') POST here directly; WhatsApp-sourced and Meta/Google
-// Ads leads are created straight into the `leads` table by their own webhooks instead (see
-// lib/waInbound.js and app/api/leads/meta-webhook, google-ads-webhook), so `leads` still stays
-// the single source of truth either way. Mirrors MARG's app/api/enquiry/route.js.
+// Central lead intake — the Partner App (source: 'partner_app'), the Team App (source:
+// 'employee_app' — an employee punching in a lead they sourced themselves, e.g. a walk-in or
+// cold call, credited to them the same way a partner's leads are credited to that partner) and
+// Admin's own manual "Add Lead" button (source: 'manual_entry') POST here directly;
+// WhatsApp-sourced and Meta/Google Ads leads are created straight into the `leads` table by
+// their own webhooks instead (see lib/waInbound.js and app/api/leads/meta-webhook,
+// google-ads-webhook), so `leads` still stays the single source of truth either way. Mirrors
+// MARG's app/api/enquiry/route.js.
 
 import { dbInsert, dbList, dbWhere } from '@/lib/db';
 import { istDateStr } from '@/lib/date';
@@ -39,13 +42,21 @@ export async function POST(request) {
     }
 
     // A lead submitted from the partner app is attributed to whichever partner is logged in —
-    // never trust a client-supplied partnerId for that channel.
+    // never trust a client-supplied partnerId for that channel. Same idea for the Team App:
+    // addedByEmployeeId is only ever set from the employee's own session, never from the
+    // request body — see components/admin/LeadsPage.jsx's attributionInfo() for where this
+    // shows up as an "Employee" tag in the admin Leads table.
     let source = body.source || 'manual_entry';
     let partnerId = null;
+    let addedByEmployeeId = null;
     if (source === 'partner_app') {
       const partner = await getPartner();
       if (!partner) return Response.json({ error: 'Partner login required' }, { status: 401 });
       partnerId = partner.id;
+    } else if (source === 'employee_app') {
+      const employee = await getEmployee();
+      if (!employee) return Response.json({ error: 'Employee login required' }, { status: 401 });
+      addedByEmployeeId = employee.id;
     } else if (!LEAD_SOURCES[source]) {
       source = 'manual_entry';
     }
@@ -81,6 +92,7 @@ export async function POST(request) {
 
       source,
       partnerId,
+      addedByEmployeeId,
 
       contactStage: null,
       demoOutcome: null,
@@ -89,7 +101,7 @@ export async function POST(request) {
 
       history: [],
     };
-    lead.history = pushHistory(lead, { event: 'Lead Submitted', by: partnerId ? `partner:${partnerId}` : source, note: LEAD_SOURCES[source] });
+    lead.history = pushHistory(lead, { event: 'Lead Submitted', by: partnerId ? `partner:${partnerId}` : addedByEmployeeId ? `employee:${addedByEmployeeId}` : source, note: LEAD_SOURCES[source] });
     if (assignedTo) {
       lead.history = pushHistory(lead, { event: 'Auto-assigned by city', by: 'system', note: `${city} · pre-sales matched` });
     }

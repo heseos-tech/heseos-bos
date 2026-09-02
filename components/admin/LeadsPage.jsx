@@ -76,13 +76,16 @@ export default function LeadsPage() {
 
   // Partner column: same name-on-top / type-tag-below style as the Growth admin table's
   // "Partner / Location" column — {name, tag}. Partner App / QR — Partner / Referral —
-  // Partner all resolve to the actual partner's name tagged "Partner"; a placement QR
+  // Partner all resolve to the actual partner's name tagged "Partner"; the Team App (an
+  // employee punching in a lead they sourced themselves) resolves to that employee's own
+  // name tagged "Employee" — see app/api/leads/route.js's addedByEmployeeId; a placement QR
   // resolves to that link's own label (e.g. "Viman Nagar") tagged "Location"; a customer
   // referral link resolves to the referring customer's name (looked up in this same leads
-  // list) tagged "Referred"; everything else — no partner/location/referral attribution at
-  // all — is plain "Direct" with no second line.
+  // list) tagged "Referred"; everything else — no partner/location/referral/employee
+  // attribution at all — is plain "Direct" with no second line.
   const attributionInfo = (l) => {
     if (l.partnerId) return { name: partnerName(l.partnerId), tag: 'Partner' };
+    if (l.addedByEmployeeId) return { name: engineerName(l.addedByEmployeeId), tag: 'Employee' };
     if (l.attributionKind === 'qr_location') {
       const link = l.attributionLinkId ? linkById[l.attributionLinkId] : null;
       return { name: (link && link.label) || 'Location', tag: 'Location' };
