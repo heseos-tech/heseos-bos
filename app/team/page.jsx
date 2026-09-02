@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { getEmployee } from '@/lib/auth';
+import { InstallAppButton } from '@/components/partner/InstallApp';
 
 // Bare /team (also the PWA start_url) — a first-time hero screen, same shape as the Partner
 // app's app/partner/page.jsx, so opening the app for the first time (or installing the PWA)
@@ -28,6 +29,8 @@ export default async function TeamRootPage() {
 
           <div>
             <Link href="/team/login" className="hp-btn hp-btn-primary hp-btn-block">Login</Link>
+            <div style={{ height: 12 }} />
+            <InstallAppButton appName="Team App" />
           </div>
         </div>
       </div>

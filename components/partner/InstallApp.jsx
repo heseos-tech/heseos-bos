@@ -111,14 +111,13 @@ function InstallStepsSheet({ appName, isIOS, onClose }) {
   );
 }
 
-// Drop-in .hp-menu-item row for Profile screens (components/partner/ProfileScreen.jsx,
-// components/team/ProfileScreen.jsx). `appName` is just the display copy ("Partner App" /
-// "Team App") for the sheet's title. Renders nothing once the app is already installed.
-export default function InstallAppMenuItem({ appName = 'App' }) {
+// Shared behaviour behind both trigger shapes below: tapping either one either fires the
+// browser's native install prompt directly (Android/Chrome/Edge, once 'beforeinstallprompt' has
+// fired) or opens the manual-steps sheet (always on iOS; as a fallback everywhere else — see
+// this file's header comment for the full breakdown).
+function useInstallAction() {
   const { installed, isIOS, canPromptNative, promptInstall } = useInstallPrompt();
   const [showSheet, setShowSheet] = useState(false);
-
-  if (installed) return null;
 
   async function handleClick() {
     // A native prompt IS the complete flow — whether the user accepts or dismisses it, that's
@@ -131,11 +130,43 @@ export default function InstallAppMenuItem({ appName = 'App' }) {
     setShowSheet(true);
   }
 
+  return { installed, isIOS, showSheet, setShowSheet, handleClick };
+}
+
+// Drop-in .hp-menu-item row for Profile screens (components/partner/ProfileScreen.jsx,
+// components/team/ProfileScreen.jsx). `appName` is just the display copy ("Partner App" /
+// "Team App") for the sheet's title. Renders nothing once the app is already installed.
+export default function InstallAppMenuItem({ appName = 'App' }) {
+  const { installed, isIOS, showSheet, setShowSheet, handleClick } = useInstallAction();
+
+  if (installed) return null;
+
   return (
     <>
       <button className="hp-menu-item" onClick={handleClick}>
         <span className="hp-menu-icon"><IconDownload size={17} /></span>
         <span className="hp-menu-label">Install App</span>
+      </button>
+      {showSheet && <InstallStepsSheet appName={appName} isIOS={isIOS} onClose={() => setShowSheet(false)} />}
+    </>
+  );
+}
+
+// Standalone "Download App" CTA button — same install behaviour as InstallAppMenuItem above,
+// styled to sit alongside the Login/Sign Up buttons on the pre-login hero screens
+// (app/partner/page.jsx, app/team/page.jsx) so a visitor can grab the PWA before they even log
+// in, on both Android (native install dialog) and iPhone (manual Add to Home Screen steps).
+// Renders nothing once the app is already installed. A Server Component page can render this
+// directly — it's the 'use client' boundary itself.
+export function InstallAppButton({ appName = 'App', className = '' }) {
+  const { installed, isIOS, showSheet, setShowSheet, handleClick } = useInstallAction();
+
+  if (installed) return null;
+
+  return (
+    <>
+      <button type="button" className={`hp-btn hp-btn-ghost hp-btn-block hp-btn-sm ${className}`} onClick={handleClick}>
+        <IconDownload size={16} /> Download App
       </button>
       {showSheet && <InstallStepsSheet appName={appName} isIOS={isIOS} onClose={() => setShowSheet(false)} />}
     </>
