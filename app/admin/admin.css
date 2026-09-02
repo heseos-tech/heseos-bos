@@ -284,10 +284,6 @@
 /* Lead Conversion Payout — per-category cards (Settings, components/admin/SettingsPage.jsx's
    PayoutSettingsCard). One card per referral category (partner/employee/customer), each with
    its own on/off switch and independent tier ladder, sharing one Payout Period toggle. */
-.adm-payout-head-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 4px; }
-.adm-payout-head-row .adm-card-title { margin-bottom: 4px; }
-.adm-payout-period { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; flex-shrink: 0; }
-.adm-payout-period-label { font-size: 11.5px; font-weight: 700; color: var(--adm-text-soft); white-space: nowrap; }
 
 .adm-payout-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 18px; margin: 18px 0; }
 .adm-payout-card { border: 1px solid var(--adm-border); border-radius: 16px; overflow: hidden; background: #fff; display: flex; flex-direction: column; }

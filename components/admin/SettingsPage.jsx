@@ -286,8 +286,12 @@ function tierFromLabel(tiers, i) {
   return Number.isFinite(n) ? n.toLocaleString('en-IN') : '0';
 }
 
+// Payout period is fixed to monthly — there's no admin-facing choice here (Settings no longer
+// offers a Monthly/Quarterly toggle). lib/payout.js still supports a 'quarterly' period
+// internally (periodBounds/periodLabel), so nothing downstream breaks if this is ever revisited.
+const PAYOUT_PERIOD = 'monthly';
+
 function PayoutSettingsCard() {
-  const [period, setPeriod] = useState('monthly');
   const [categories, setCategories] = useState(emptyCategories);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -298,7 +302,6 @@ function PayoutSettingsCard() {
     const res = await fetch('/api/payout-settings');
     const raw = res.ok ? await res.json() : null;
     const config = normalizeConfig(raw);
-    setPeriod(config.period);
     setCategories(toEditState(config.categories));
     setLoading(false);
   }, []);
@@ -323,7 +326,7 @@ function PayoutSettingsCard() {
     setError(''); setSaving(true);
     try {
       const payload = {
-        period,
+        period: PAYOUT_PERIOD,
         categories: Object.fromEntries(PAYOUT_CATEGORIES.map((k) => [k, {
           enabled: categories[k].enabled,
           tiers: categories[k].tiers.map((t) => ({ upTo: t.upTo === '' ? null : Number(t.upTo), rate: Number(t.rate) || 0 })),
@@ -337,7 +340,6 @@ function PayoutSettingsCard() {
       const data = await res.json();
       if (!res.ok) { setError(data.error || 'Could not save payout settings.'); return; }
       const config = normalizeConfig(data);
-      setPeriod(config.period);
       setCategories(toEditState(config.categories));
       invalidate('/api/payout-settings');
       flash('Payout settings saved');
@@ -346,21 +348,12 @@ function PayoutSettingsCard() {
 
   return (
     <div className="adm-card adm-meta-card" style={{ marginBottom: 18, maxWidth: 'none' }}>
-      <div className="adm-payout-head-row">
-        <div>
-          <div className="adm-card-title">Lead Conversion Payout</div>
-          <p className="adm-card-sub" style={{ marginBottom: 0 }}>
-            Set tier-wise payout % for conversion based on total converted sale value — independently for partner referrals, employee-added leads, and customer referrals. Changing this updates everyone's payout in that category immediately — there's no per-person override.
-          </p>
-        </div>
-        <div className="adm-payout-period">
-          <span className="adm-payout-period-label">Payout Period</span>
-          <div className="adm-botkind-toggle">
-            <button type="button" className={`adm-botkind-btn${period === 'monthly' ? ' active' : ''}`} onClick={() => setPeriod('monthly')}>Monthly</button>
-            <button type="button" className={`adm-botkind-btn${period === 'quarterly' ? ' active' : ''}`} onClick={() => setPeriod('quarterly')}>Quarterly</button>
-          </div>
-        </div>
+      <div className="adm-card-title-row">
+        <div className="adm-card-title">Lead Conversion Payout</div>
       </div>
+      <p className="adm-card-sub">
+        Set tier-wise payout % for conversion based on total converted sale value this month — independently for partner referrals, employee-added leads, and customer referrals. Changing this updates everyone's payout in that category immediately — there's no per-person override.
+      </p>
 
       {notice && <div className="adm-notice">{notice}</div>}
       {error && <div className="adm-notice adm-notice--error">{error}</div>}
@@ -435,7 +428,7 @@ function PayoutSettingsCard() {
 
           <div className="adm-payout-foot-note">
             <IconInfo size={16} />
-            <span>The payout is calculated on the total converted sale value within the selected payout period. There is no per-person override.</span>
+            <span>The payout is calculated on the total converted sale value each calendar month. There is no per-person override.</span>
           </div>
 
           <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
