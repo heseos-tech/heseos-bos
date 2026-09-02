@@ -121,3 +121,9 @@ export const IconLink = ({ size = 20, ...p }) => (
 export const IconAlertTriangle = ({ size = 20, ...p }) => (
   <svg {...base(size)} {...p}><path d="M12 4.2 21 19H3L12 4.2Z" /><path d="M12 10v4" /><path d="M12 16.8v.1" /></svg>
 );
+
+// Download / install-app icon — used by InstallApp.jsx's "Install App" profile menu item and
+// its install-steps sheet, for both the Partner and Team apps.
+export const IconDownload = ({ size = 20, ...p }) => (
+  <svg {...base(size)} {...p}><path d="M12 3.5v11" /><path d="M7.5 10l4.5 4.5L16.5 10" /><path d="M5 17.5v1.8a1.7 1.7 0 0 0 1.7 1.7h10.6a1.7 1.7 0 0 0 1.7-1.7v-1.8" /></svg>
+);
