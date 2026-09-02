@@ -6,7 +6,7 @@ import { LEAD_SOURCES, PROPERTY_TYPE } from '@/lib/formOptions';
 import { isQrKind } from '@/lib/attributionConstants';
 import { adminStatus, leadBucket, nextAction, LEAD_BUCKETS } from '@/lib/adminMetrics';
 import { StatusBadge, Pagination, Modal, StatCard } from './ui';
-import { IconSearch, IconFilter, IconPlus, IconChevronDown, IconMore, IconUpload, IconDownload, IconEye, IconLeads, IconDemo, IconQuotation, IconConversions, IconRefresh } from './icons';
+import { IconSearch, IconFilter, IconPlus, IconChevronDown, IconUpload, IconDownload, IconEye, IconLeads, IconDemo, IconQuotation, IconConversions, IconRefresh } from './icons';
 import { useApiResource } from '@/lib/useApiResource';
 
 const PT_LABEL = Object.fromEntries(PROPERTY_TYPE.map((p) => [p.v, p.l]));
@@ -31,7 +31,6 @@ export default function LeadsPage() {
   const [bucket, setBucket] = useState(searchParams.get('bucket') || 'all');
   const [page, setPage] = useState(1);
   const [modal, setModal] = useState(null); // { type: 'view'|'add', lead? }
-  const [menuFor, setMenuFor] = useState(null);
   const [notice, setNotice] = useState('');
   const [syncing, setSyncing] = useState(false);
 
@@ -95,7 +94,6 @@ export default function LeadsPage() {
     return { name: 'Direct', tag: null };
   };
   const engineerName = (id) => employees.find((e) => e.id === id)?.name || 'Unassigned';
-  const presalesTeam = employees.filter((e) => e.role === 'presales');
   const engineers = employees.filter((e) => e.role === 'sales_engineer');
 
   const counts = useMemo(() => {
@@ -142,19 +140,6 @@ export default function LeadsPage() {
       flash(data.inserted > 0 ? `Synced — ${data.inserted} new lead${data.inserted === 1 ? '' : 's'} pulled in` : 'Synced — nothing new, already up to date');
       load();
     } finally { setSyncing(false); }
-  }
-
-  async function markQuotationSent(lead) {
-    await fetch(`/api/leads/${lead.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'quotation' }) });
-    setMenuFor(null); flash(`Quotation marked sent for ${lead.name}`); load();
-  }
-  async function assignEngineer(lead, id) {
-    await fetch(`/api/leads/${lead.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'assign', salesEngineerId: id || null }) });
-    setMenuFor(null); flash(`Sales engineer updated for ${lead.name}`); load();
-  }
-  async function assignPresales(lead, id) {
-    await fetch(`/api/leads/${lead.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'assign', assignedTo: id || null }) });
-    setMenuFor(null); flash(`Pre-sales owner updated for ${lead.name}`); load();
   }
 
   function exportCsv() {
@@ -253,18 +238,6 @@ export default function LeadsPage() {
                     <td className="adm-row-actions">
                       <div className="adm-row-actions-inner">
                         <button className="adm-icon-btn" onClick={() => setModal({ type: 'view', lead: l })}><IconEye size={16} /></button>
-                        <div className="adm-menu-wrap">
-                          <button className="adm-icon-btn" onClick={() => setMenuFor(menuFor === l.id ? null : l.id)}><IconMore size={16} /></button>
-                          {menuFor === l.id && (
-                            <div className="adm-menu" onClick={(e) => e.stopPropagation()}>
-                              {l.demoScheduledAt && !l.quotationSentAt && <button onClick={() => markQuotationSent(l)}>Mark Quotation Sent</button>}
-                              <div className="adm-menu-label">Assign Sales Engineer</div>
-                              {engineers.map((e) => <button key={e.id} onClick={() => assignEngineer(l, e.id)}>{e.name}</button>)}
-                              <div className="adm-menu-label">Assign Pre-sales</div>
-                              {presalesTeam.map((e) => <button key={e.id} onClick={() => assignPresales(l, e.id)}>{e.name}</button>)}
-                            </div>
-                          )}
-                        </div>
                       </div>
                     </td>
                   </tr>

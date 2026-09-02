@@ -175,12 +175,6 @@
 .adm-perf--warn { background: #fef3c7; color: #b7791f; }
 .adm-perf--bad { background: #fee2e2; color: #c0392b; }
 
-/* Menu (kebab) */
-.adm-menu-wrap { position: relative; display: inline-block; }
-.adm-menu { position: absolute; top: calc(100% + 6px); right: 0; background: #fff; border: 1px solid var(--adm-border); border-radius: 12px; box-shadow: 0 14px 34px rgba(11, 27, 46, 0.16); padding: 8px; min-width: 190px; z-index: 40; max-height: 280px; overflow-y: auto; }
-.adm-menu button { display: block; width: 100%; text-align: left; padding: 8px 10px; background: none; border: none; border-radius: 8px; font-size: 12.5px; font-weight: 600; color: var(--adm-ink); cursor: pointer; white-space: normal; }
-.adm-menu button:hover { background: var(--adm-bg); }
-.adm-menu-label { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--adm-text-faint); padding: 8px 10px 4px; }
 .adm-chip-btn { font-size: 11.5px; font-weight: 700; color: var(--adm-ink); background: #fff; border: 1px solid var(--adm-border); border-radius: 999px; padding: 5px 12px; cursor: pointer; white-space: nowrap; }
 .adm-chip-btn:hover { border-color: var(--adm-orange); color: var(--adm-orange); }
 
