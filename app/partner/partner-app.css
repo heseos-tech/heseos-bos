@@ -399,6 +399,17 @@ html:has(.hp-root), body:has(.hp-root) {
 .hp-sheet-actions { display: flex; gap: 10px; margin-top: 18px; }
 .hp-hint { font-size: 12px; color: var(--hp-text-faint); margin-top: -8px; margin-bottom: 12px; }
 
+/* Duplicate-lead notice — Add Lead wizards (Partner + Team apps), see
+   components/partner/LeadWizard.jsx / components/team/LeadWizard.jsx. Warns that a phone
+   number already exists in the system and names who brought it in earlier. */
+.hp-dupe-warn {
+  display: flex; align-items: flex-start; gap: 8px;
+  font-size: 12.5px; line-height: 1.4; color: var(--hp-warn);
+  background: var(--hp-warn-dim); border: 1px solid var(--hp-warn);
+  border-radius: var(--hp-r-sm); padding: 10px 12px; margin: -4px 0 14px;
+}
+.hp-dupe-warn svg { flex-shrink: 0; margin-top: 1px; }
+
 /* ── App-open splash (SplashScreen.jsx) ──────────────────────────────────────
    Plays once whenever AppShell/TeamAppShell actually mounts fresh (a real "open" of the app,
    not an in-app tab switch — see the component's own comment). Icon glows in first, then

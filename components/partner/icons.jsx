@@ -115,3 +115,9 @@ export const IconQrCode = ({ size = 20, ...p }) => (
 export const IconLink = ({ size = 20, ...p }) => (
   <svg {...base(size)} {...p}><path d="M9.5 14.5l5-5" /><path d="M8 16.5l-1.8 1.8a3.5 3.5 0 0 1-5-5L5 9.5a3.5 3.5 0 0 1 5-5" /><path d="M16 7.5l1.8-1.8a3.5 3.5 0 0 1 5 5L19 14.5a3.5 3.5 0 0 1-5 5" /></svg>
 );
+
+// Warning triangle — used for the duplicate-lead notice on Add Lead wizards (see
+// app/api/leads/lookup/route.js) when a phone number is already in the system.
+export const IconAlertTriangle = ({ size = 20, ...p }) => (
+  <svg {...base(size)} {...p}><path d="M12 4.2 21 19H3L12 4.2Z" /><path d="M12 10v4" /><path d="M12 16.8v.1" /></svg>
+);

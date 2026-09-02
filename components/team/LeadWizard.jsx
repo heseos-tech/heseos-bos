@@ -19,7 +19,7 @@ import { useRouter } from 'next/navigation';
 import { ScreenHeader, ProgressSteps, TextField, SelectField, TextareaField, Button } from '@/components/partner/ui';
 import {
   IconUser, IconPhone, IconMapPin, IconBuilding, IconLayers, IconWallet, IconCalendar, IconSource, IconNote,
-  IconCheck, IconCopy, IconHome,
+  IconCheck, IconCopy, IconHome, IconAlertTriangle,
 } from '@/components/partner/icons';
 import {
   WIZARD_PROPERTY_TYPE, CONFIGURATION, REFERRAL_SOURCE, PROPERTY_TYPE_LABEL, CONFIGURATION_LABEL,
@@ -42,10 +42,26 @@ export default function TeamLeadWizard() {
   const [copied, setCopied] = useState(false);
   const [cities, setCities] = useState([]);
   const [citiesLoading, setCitiesLoading] = useState(true);
+  // Duplicate-lead notice — warns (non-blocking) when the phone number typed in step 0 is
+  // already in the system, and who brought it in earlier. See app/api/leads/lookup/route.js.
+  const [dupe, setDupe] = useState(null);
 
   useEffect(() => {
     fetch('/api/cities').then((r) => (r.ok ? r.json() : { cities: [] })).then((d) => setCities(d.cities || [])).finally(() => setCitiesLoading(false));
   }, []);
+
+  useEffect(() => {
+    const digits = form.phone.replace(/\D/g, '');
+    if (digits.length !== 10) { setDupe(null); return; }
+    let cancelled = false;
+    const t = setTimeout(() => {
+      fetch(`/api/leads/lookup?phone=${digits}`)
+        .then((r) => (r.ok ? r.json() : { exists: false }))
+        .then((d) => { if (!cancelled) setDupe(d.exists ? d : null); })
+        .catch(() => { if (!cancelled) setDupe(null); });
+    }, 400);
+    return () => { cancelled = true; clearTimeout(t); };
+  }, [form.phone]);
 
   function set(field, val) {
     setForm((f) => ({ ...f, [field]: val, ...(field === 'propertyType' ? { budget: '' } : {}) }));
@@ -123,6 +139,12 @@ export default function TeamLeadWizard() {
           <div className="hp-card-title">Customer Details</div>
           <TextField label="Full Name" icon={<IconUser size={18} />} placeholder="Enter full name" value={form.name} onChange={(e) => set('name', e.target.value)} />
           <TextField label="Mobile Number" icon={<IconPhone size={18} />} placeholder="Enter 10 digit mobile number" value={form.phone} onChange={(e) => set('phone', e.target.value)} inputMode="numeric" />
+          {dupe && (
+            <div className="hp-dupe-warn">
+              <IconAlertTriangle size={16} />
+              <span>This number is already in our system — {dupe.origin}. You can still submit if this is a new enquiry.</span>
+            </div>
+          )}
           <TextField label="Alternate Number (Optional)" icon={<IconPhone size={18} />} placeholder="Enter alternate number" value={form.altPhone} onChange={(e) => set('altPhone', e.target.value)} inputMode="numeric" />
           <SelectField label="City" icon={<IconMapPin size={18} />} value={form.city} onChange={(e) => set('city', e.target.value)} options={cities.map((c) => ({ v: c, l: c }))} placeholder={citiesLoading ? 'Loading cities…' : (cities.length ? 'Select city' : 'No cities configured yet')} disabled={citiesLoading || cities.length === 0} />
         </div>
