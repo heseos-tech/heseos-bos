@@ -367,6 +367,7 @@ html:has(.hp-root), body:has(.hp-root) {
 .hp-profile-id { font-size: 11.5px; color: var(--hp-text-faint); margin-top: 6px; }
 .hp-menu-list { margin: 4px 20px 20px; background: var(--hp-surface); border: 1px solid var(--hp-border); border-radius: var(--hp-r-lg); overflow: hidden; }
 .hp-menu-item { display: flex; align-items: center; gap: 13px; padding: 15px 16px; border-bottom: 1px solid var(--hp-border); background: none; border-left: none; border-right: none; border-top: none; width: 100%; text-align: left; cursor: pointer; color: #fff; }
+.hp-menu-item:disabled { opacity: 0.6; cursor: default; }
 .hp-menu-item:last-child { border-bottom: none; }
 .hp-menu-icon { width: 34px; height: 34px; border-radius: 9px; background: var(--hp-bg2); color: var(--hp-text-soft); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .hp-menu-label { flex: 1; font-size: 14px; font-weight: 600; }

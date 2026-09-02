@@ -1,3 +1,4 @@
+import Script from 'next/script';
 import './globals.css';
 import FloatingCTA from '@/components/FloatingCTA';
 
@@ -28,6 +29,23 @@ export default function RootLayout({ children }) {
           href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap"
           rel="stylesheet"
         />
+        {/*
+          Captures the browser's 'beforeinstallprompt' event (Chrome/Edge's signal that the PWA
+          is installable) the instant it fires, into window.__heseosInstallPrompt — BEFORE React
+          hydrates. Chrome can fire this event within a second or two of page load, sometimes
+          before a client component's own useEffect has attached its listener; without this, a
+          visitor who taps "Download App" fast enough on the Partner/Team landing screen
+          (components/partner/InstallApp.jsx's useInstallPrompt) could miss the native install
+          dialog and fall back to the manual "Add to Home Screen" instructions instead. Runs on
+          every page (root layout), not just /partner and /team, since it costs nothing elsewhere.
+        */}
+        <Script id="pwa-install-capture" strategy="beforeInteractive">
+          {`window.__heseosInstallPrompt = null;
+window.addEventListener('beforeinstallprompt', function (e) {
+  e.preventDefault();
+  window.__heseosInstallPrompt = e;
+});`}
+        </Script>
       </head>
       <body>
         <FloatingCTA />

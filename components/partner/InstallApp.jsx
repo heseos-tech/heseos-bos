@@ -21,12 +21,17 @@
 // Once the app is already running standalone (installed and opened from its home-screen icon,
 // or Chrome's 'appinstalled' event has fired) the menu item renders nothing — there's nothing
 // left to install.
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { Button } from './ui';
 import { IconDownload, IconShare, IconPlus } from './icons';
 
 export function useInstallPrompt() {
-  const [deferredPrompt, setDeferredPrompt] = useState(null);
+  // A ref, not just state — promptInstall() and waitForPrompt() below need to read the FRESHEST
+  // captured event synchronously (state from a stale closure could miss one that arrived a
+  // moment ago), so the ref is the source of truth and `hasPrompt` state only exists to make the
+  // UI re-render when it changes.
+  const deferredRef = useRef(null);
+  const [hasPrompt, setHasPrompt] = useState(false);
   const [installed, setInstalled] = useState(false);
   const [isIOS, setIsIOS] = useState(false);
 
@@ -40,13 +45,26 @@ export function useInstallPrompt() {
     // a real Mac apart from an iPad in desktop-site mode.
     setIsIOS(/iphone|ipad|ipod/i.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1));
 
+    // Pick up an event already captured before hydration by the beforeInteractive script in
+    // app/layout.jsx (window.__heseosInstallPrompt) — Chrome can fire 'beforeinstallprompt'
+    // within a second or two of page load, sometimes before this component has even mounted, so
+    // relying only on the listener below risks missing it.
+    if (window.__heseosInstallPrompt) {
+      deferredRef.current = window.__heseosInstallPrompt;
+      setHasPrompt(true);
+    }
+
     function onBeforeInstall(e) {
       e.preventDefault();
-      setDeferredPrompt(e);
+      window.__heseosInstallPrompt = e;
+      deferredRef.current = e;
+      setHasPrompt(true);
     }
     function onInstalled() {
       setInstalled(true);
-      setDeferredPrompt(null);
+      deferredRef.current = null;
+      window.__heseosInstallPrompt = null;
+      setHasPrompt(false);
     }
     window.addEventListener('beforeinstallprompt', onBeforeInstall);
     window.addEventListener('appinstalled', onInstalled);
@@ -57,14 +75,30 @@ export function useInstallPrompt() {
   }, []);
 
   const promptInstall = useCallback(async () => {
-    if (!deferredPrompt) return false;
-    deferredPrompt.prompt();
-    const choice = await deferredPrompt.userChoice.catch(() => null);
-    setDeferredPrompt(null); // a captured prompt event can only ever be used once
+    const evt = deferredRef.current;
+    if (!evt) return false;
+    evt.prompt();
+    const choice = await evt.userChoice.catch(() => null);
+    deferredRef.current = null; // a captured prompt event can only ever be used once
+    window.__heseosInstallPrompt = null;
+    setHasPrompt(false);
     return choice?.outcome === 'accepted';
-  }, [deferredPrompt]);
+  }, []);
 
-  return { installed, isIOS, canPromptNative: !!deferredPrompt, promptInstall };
+  // Chrome doesn't always fire 'beforeinstallprompt' before the visitor has even had a chance to
+  // tap "Download App" — it can take a beat after page load. Rather than immediately falling
+  // back to manual instructions, give it a short window to still show up.
+  const waitForPrompt = useCallback(async (timeoutMs = 1800) => {
+    if (deferredRef.current) return true;
+    const start = Date.now();
+    while (Date.now() - start < timeoutMs) {
+      await new Promise((r) => setTimeout(r, 100));
+      if (deferredRef.current) return true;
+    }
+    return !!deferredRef.current;
+  }, []);
+
+  return { installed, isIOS, canPromptNative: hasPrompt, promptInstall, waitForPrompt };
 }
 
 // Bottom-sheet with manual "how to install" steps — shown whenever there's no native prompt to
@@ -116,36 +150,47 @@ function InstallStepsSheet({ appName, isIOS, onClose }) {
 // fired) or opens the manual-steps sheet (always on iOS; as a fallback everywhere else — see
 // this file's header comment for the full breakdown).
 function useInstallAction() {
-  const { installed, isIOS, canPromptNative, promptInstall } = useInstallPrompt();
+  const { installed, isIOS, canPromptNative, promptInstall, waitForPrompt } = useInstallPrompt();
   const [showSheet, setShowSheet] = useState(false);
+  const [checking, setChecking] = useState(false);
 
   async function handleClick() {
     // A native prompt IS the complete flow — whether the user accepts or dismisses it, that's
-    // their answer. Only fall back to the manual-steps sheet when there's no native prompt to
-    // offer at all (always true on iOS; sometimes true elsewhere).
+    // their answer. Chrome doesn't always have fired 'beforeinstallprompt' by the time someone
+    // taps this (it can take a beat after page load), so if it's not ready yet, give it a short
+    // window (waitForPrompt) rather than immediately assuming it'll never come — only fall back
+    // to the manual-steps sheet once that window has passed with nothing (always true on iOS,
+    // which never fires the event at all; sometimes true elsewhere).
     if (canPromptNative) {
+      await promptInstall();
+      return;
+    }
+    setChecking(true);
+    const available = await waitForPrompt();
+    setChecking(false);
+    if (available) {
       await promptInstall();
       return;
     }
     setShowSheet(true);
   }
 
-  return { installed, isIOS, showSheet, setShowSheet, handleClick };
+  return { installed, isIOS, showSheet, setShowSheet, checking, handleClick };
 }
 
 // Drop-in .hp-menu-item row for Profile screens (components/partner/ProfileScreen.jsx,
 // components/team/ProfileScreen.jsx). `appName` is just the display copy ("Partner App" /
 // "Team App") for the sheet's title. Renders nothing once the app is already installed.
 export default function InstallAppMenuItem({ appName = 'App' }) {
-  const { installed, isIOS, showSheet, setShowSheet, handleClick } = useInstallAction();
+  const { installed, isIOS, showSheet, setShowSheet, checking, handleClick } = useInstallAction();
 
   if (installed) return null;
 
   return (
     <>
-      <button className="hp-menu-item" onClick={handleClick}>
+      <button className="hp-menu-item" onClick={handleClick} disabled={checking}>
         <span className="hp-menu-icon"><IconDownload size={17} /></span>
-        <span className="hp-menu-label">Install App</span>
+        <span className="hp-menu-label">{checking ? 'Preparing install…' : 'Install App'}</span>
       </button>
       {showSheet && <InstallStepsSheet appName={appName} isIOS={isIOS} onClose={() => setShowSheet(false)} />}
     </>
@@ -159,14 +204,14 @@ export default function InstallAppMenuItem({ appName = 'App' }) {
 // Renders nothing once the app is already installed. A Server Component page can render this
 // directly — it's the 'use client' boundary itself.
 export function InstallAppButton({ appName = 'App', className = '' }) {
-  const { installed, isIOS, showSheet, setShowSheet, handleClick } = useInstallAction();
+  const { installed, isIOS, showSheet, setShowSheet, checking, handleClick } = useInstallAction();
 
   if (installed) return null;
 
   return (
     <>
-      <button type="button" className={`hp-btn hp-btn-ghost hp-btn-block hp-btn-sm ${className}`} onClick={handleClick}>
-        <IconDownload size={16} /> Download App
+      <button type="button" className={`hp-btn hp-btn-ghost hp-btn-block hp-btn-sm ${className}`} onClick={handleClick} disabled={checking}>
+        <IconDownload size={16} /> {checking ? 'Preparing…' : 'Download App'}
       </button>
       {showSheet && <InstallStepsSheet appName={appName} isIOS={isIOS} onClose={() => setShowSheet(false)} />}
     </>
