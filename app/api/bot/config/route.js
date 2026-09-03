@@ -41,6 +41,13 @@ export async function PATCH(request) {
   for (const key of EDITABLE_FIELDS) {
     if (body[key] !== undefined) patch[key] = body[key];
   }
+  // A pasted-in-with-surrounding-whitespace Phone Number ID/Access Token is a real mistake we've
+  // seen (copying out of a table cell, a trailing newline from a password manager, etc.) — and a
+  // silent one: app/api/bot/webhook's tenant lookup is an exact string match against
+  // waPhoneNumberId, so a stray space makes every inbound WhatsApp message match no tenant at all
+  // and vanish with no error anywhere. Trim defensively rather than let that happen.
+  if (typeof patch.waPhoneNumberId === 'string') patch.waPhoneNumberId = patch.waPhoneNumberId.trim();
+  if (typeof patch.waAccessToken === 'string') patch.waAccessToken = patch.waAccessToken.trim();
   if (patch.status && !['live', 'paused'].includes(patch.status)) delete patch.status;
   if (Object.keys(patch).length === 0) return Response.json({ error: 'Nothing to update' }, { status: 400 });
 

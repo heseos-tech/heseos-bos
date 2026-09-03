@@ -80,7 +80,15 @@ export async function POST(req) {
     try {
       const tenants = await dbWhere('bot_tenants', 'waPhoneNumberId', g.phoneNumberId);
       const tenant = tenants[0];
-      if (!tenant) continue; // number not connected to any tenant — nothing we can do with it
+      if (!tenant) {
+        // Exact-string-match lookup (lib/db.js's dbWhere) against whatever's saved in Bot
+        // Configuration — a typo, stray whitespace, or the WABA ID pasted in instead of the
+        // Phone Number ID all land here identically: every message from that number silently
+        // vanishes, with the console still showing "Connected"/"live". Log it so a mismatch is
+        // at least traceable in server logs instead of invisible everywhere.
+        console.error(`Bot webhook: no tenant has waPhoneNumberId "${g.phoneNumberId}" — inbound message(s) dropped.`);
+        continue;
+      }
       // Defense in depth: a pending/rejected tenant can never actually reach this point in
       // practice (they can't log in to set WhatsApp credentials in the first place — see
       // lib/auth.js's getBotTenant()), but skip explicitly rather than assume that holds forever.
