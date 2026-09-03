@@ -80,7 +80,15 @@ export async function POST(request) {
     industry,
     botName,
     brandColor: String(body.brandColor || '#D9481E'),
-    whatsappNumber: `+91 ${70000 + (Date.now() % 9999)} ${10000 + Math.floor(Math.random() * 89999)}`,
+    // Left blank on purpose — this used to be a randomly generated fake number (e.g. "+91
+    // 71234 56789") that every QR code / referral link / "Get Started" WhatsApp CTA silently
+    // resolved to (see lib/attribution.js's buildWaLink and app/get-started/route.js), pointing
+    // scans/clicks at a phone number that was never real. It's now filled in automatically —
+    // and kept in sync — from Meta's own verified display_phone_number the moment the tenant
+    // connects and successfully verifies real WhatsApp credentials (see
+    // app/api/bot/config/verify/route.js). Until then, an empty value correctly falls back to
+    // "WhatsApp isn't connected yet" instead of silently linking to a fake number.
+    whatsappNumber: '',
     status: 'live',
     languages,
     welcomeMessage: finalWelcome,

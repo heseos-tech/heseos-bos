@@ -46,7 +46,14 @@ export default function ConfigScreen({ tenant: initialTenant }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ waPhoneNumberId: phoneNumberId, waAccessToken: token }),
       });
-      setWaCheck(res.ok ? await res.json() : { ok: false, error: 'Could not reach the verification check.' });
+      const result = res.ok ? await res.json() : { ok: false, error: 'Could not reach the verification check.' };
+      setWaCheck(result);
+      // Mirror the server's whatsappNumber sync (app/api/bot/config/verify) locally so the
+      // "QR codes & referral links open" line below updates immediately, without waiting on a
+      // full page reload to pick up what the verify endpoint just wrote to the tenant record.
+      if (result.ok && result.displayPhoneNumber) {
+        setTenant((t) => ({ ...t, whatsappNumber: result.displayPhoneNumber }));
+      }
     } catch {
       setWaCheck({ ok: false, error: 'Could not reach the verification check.' });
     } finally {
@@ -170,6 +177,17 @@ export default function ConfigScreen({ tenant: initialTenant }) {
             </button>
             {waCheck && waCheck.ok === false && <span style={{ color: 'var(--bc-red)', fontSize: 12.5, fontWeight: 600 }}>{waCheck.error || 'Meta rejected these credentials.'}</span>}
             {waCheck?.ok && <span style={{ color: '#15803d', fontSize: 12.5, fontWeight: 600 }}>Verified live with Meta{waCheck.verifiedName ? ` as "${waCheck.verifiedName}"` : ''}.</span>}
+          </div>
+          {/* This is the number every QR code, referral link, and site "Get Started" WhatsApp
+              button actually opens (lib/attribution.js's buildWaLink / app/get-started) — always
+              Meta's own verified number, never a manually-typed value, so it can't silently drift
+              from whatever's really connected the way it used to (a random placeholder set once
+              at signup, never updated — every scan/click opened a phone number that never
+              existed). Shown here so that's never invisible again. */}
+          <div className="bc-hint" style={{ marginTop: -4 }}>
+            {tenant.whatsappNumber
+              ? <>QR codes, referral links, and website WhatsApp buttons open a chat on <strong>{tenant.whatsappNumber}</strong>.</>
+              : 'QR codes, referral links, and website WhatsApp buttons won’t work until this connection is verified above.'}
           </div>
           <div className="bc-field">
             <label>Webhook URL — paste into your Meta App's Webhooks config</label>

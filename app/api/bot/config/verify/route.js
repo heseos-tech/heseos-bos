@@ -6,6 +6,7 @@
 // token pair reaches this without a valid session (getBotTenant()).
 
 import { getBotTenant } from '@/lib/auth';
+import { dbPatch } from '@/lib/db';
 import { verifyBotCredentials } from '@/lib/botWhatsapp';
 
 export const dynamic = 'force-dynamic';
@@ -23,5 +24,18 @@ export async function POST(request) {
   }
 
   const result = await verifyBotCredentials({ phoneNumberId, token });
+
+  // Meta's own display_phone_number is now the single source of truth for tenant.whatsappNumber
+  // — the field every QR code, referral link (lib/attribution.js's buildWaLink) and "Get
+  // Started" WhatsApp CTA (app/get-started/route.js) resolves to. It used to be a one-time
+  // random placeholder set at signup and never updated again, so a tenant could have a fully
+  // working, verified WhatsApp connection while every scan/click still silently opened a chat
+  // with a phone number that never existed. Refreshing it here — every successful verification,
+  // not just at signup — keeps it correct even if the connected number ever changes.
+  if (result.ok && result.displayPhoneNumber && result.displayPhoneNumber !== tenant.whatsappNumber) {
+    try { await dbPatch('bot_tenants', tenant.id, { whatsappNumber: result.displayPhoneNumber }); }
+    catch (err) { console.error('Failed to sync whatsappNumber from verified Meta number:', err); }
+  }
+
   return Response.json(result);
 }
