@@ -28,8 +28,39 @@ export default function ConfigScreen({ tenant: initialTenant }) {
   const [copied, setCopied] = useState('');
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  // Real WhatsApp verification state — null means "not tested yet" (distinct from a failed
+  // test), since the badge used to just check both fields were non-empty and would show
+  // "Connected" for literally any typed-in garbage. See lib/botWhatsapp.js's
+  // verifyBotCredentials and app/api/bot/config/verify/route.js.
+  const [waCheck, setWaCheck] = useState(null);
+  const [checking, setChecking] = useState(false);
 
   useEffect(() => { setOrigin(window.location.origin); }, []);
+
+  async function testConnection(phoneNumberId = waPhoneNumberId, token = waAccessToken) {
+    if (!phoneNumberId || !token) { setWaCheck(null); return; }
+    setChecking(true);
+    try {
+      const res = await fetch('/api/bot/config/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ waPhoneNumberId: phoneNumberId, waAccessToken: token }),
+      });
+      setWaCheck(res.ok ? await res.json() : { ok: false, error: 'Could not reach the verification check.' });
+    } catch {
+      setWaCheck({ ok: false, error: 'Could not reach the verification check.' });
+    } finally {
+      setChecking(false);
+    }
+  }
+
+  // Auto-test once on load if credentials were already saved from a previous visit — a token
+  // can expire or get revoked on Meta's side at any time, silently, so "it worked when I saved
+  // it" isn't good enough to keep showing green.
+  useEffect(() => {
+    if (initialTenant.waPhoneNumberId && initialTenant.waAccessToken) testConnection();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function copy(value, key) {
     navigator.clipboard?.writeText(value).then(() => {
@@ -68,6 +99,10 @@ export default function ConfigScreen({ tenant: initialTenant }) {
         setTenant(updated);
         setSaved(true);
         setTimeout(() => setSaved(false), 2500);
+        // The WhatsApp fields are always part of this payload, so re-verify against whatever
+        // just got saved — catches "I just pasted a fresh token and it's still wrong" instantly
+        // instead of leaving the stale badge state up.
+        testConnection(waPhoneNumberId, waAccessToken);
       }
     } finally {
       setSaving(false);
@@ -75,7 +110,6 @@ export default function ConfigScreen({ tenant: initialTenant }) {
   }
 
   const isLive = tenant.status === 'live';
-  const waConnected = !!(waPhoneNumberId && waAccessToken);
 
   return (
     <>
@@ -109,7 +143,17 @@ export default function ConfigScreen({ tenant: initialTenant }) {
         <div className="bc-card">
           <div className="bc-card-title" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <IconWhatsApp size={18} /> WhatsApp Connection
-            {waConnected ? <Badge tone="green">Connected</Badge> : <Badge tone="amber">Not connected</Badge>}
+            {checking ? (
+              <Badge tone="amber">Checking…</Badge>
+            ) : waCheck?.ok ? (
+              <Badge tone="green">Connected{waCheck.displayPhoneNumber ? ` — ${waCheck.displayPhoneNumber}` : ''}</Badge>
+            ) : waCheck && waCheck.ok === false ? (
+              <Badge tone="red">Not connected</Badge>
+            ) : waPhoneNumberId && waAccessToken ? (
+              <Badge tone="gray">Untested</Badge>
+            ) : (
+              <Badge tone="amber">Not connected</Badge>
+            )}
           </div>
           <div className="bc-card-sub">
             Connect your own WhatsApp number so this bot can actually send and receive messages. Generate a Phone Number ID
@@ -117,8 +161,15 @@ export default function ConfigScreen({ tenant: initialTenant }) {
             webhook URL and verify token to your Meta App's Webhooks configuration.
           </div>
           <div className="bc-wizard-row2">
-            <TextField label="WhatsApp Phone Number ID" value={waPhoneNumberId} onChange={(e) => setWaPhoneNumberId(e.target.value)} placeholder="e.g. 109876543210987" />
-            <TextField label="Access Token" type="password" value={waAccessToken} onChange={(e) => setWaAccessToken(e.target.value)} placeholder="Permanent access token from Meta" />
+            <TextField label="WhatsApp Phone Number ID" value={waPhoneNumberId} onChange={(e) => { setWaPhoneNumberId(e.target.value); setWaCheck(null); }} placeholder="e.g. 109876543210987" />
+            <TextField label="Access Token" type="password" value={waAccessToken} onChange={(e) => { setWaAccessToken(e.target.value); setWaCheck(null); }} placeholder="Permanent access token from Meta" />
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: -6, marginBottom: 4 }}>
+            <button type="button" className="bc-btn bc-btn-outline bc-btn-sm" onClick={() => testConnection()} disabled={checking || !waPhoneNumberId || !waAccessToken}>
+              {checking ? 'Testing…' : 'Test Connection'}
+            </button>
+            {waCheck && waCheck.ok === false && <span style={{ color: 'var(--bc-red)', fontSize: 12.5, fontWeight: 600 }}>{waCheck.error || 'Meta rejected these credentials.'}</span>}
+            {waCheck?.ok && <span style={{ color: '#15803d', fontSize: 12.5, fontWeight: 600 }}>Verified live with Meta{waCheck.verifiedName ? ` as "${waCheck.verifiedName}"` : ''}.</span>}
           </div>
           <div className="bc-field">
             <label>Webhook URL — paste into your Meta App's Webhooks config</label>

@@ -191,6 +191,7 @@
 .bc-badge-green { background: var(--bc-green-dim); color: #15803d; }
 .bc-badge-amber { background: var(--bc-amber-dim); color: var(--bc-amber); }
 .bc-badge-gray { background: #eef1f5; color: var(--bc-ink-soft); }
+.bc-badge-red { background: rgba(220, 38, 38, 0.12); color: var(--bc-red); }
 
 .bc-table { width: 100%; border-collapse: collapse; }
 .bc-table th { text-align: left; font-size: 11px; font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase; color: var(--bc-ink-faint); padding: 0 14px 10px; border-bottom: 1px solid var(--bc-border); }
