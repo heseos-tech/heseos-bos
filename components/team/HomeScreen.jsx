@@ -113,7 +113,7 @@ export default function TeamHomeScreen({ employee }) {
       {(payout.hasTiers || myReferrals.length > 0) && (
         <Link href="/team/leads/new" className="hp-earn-hero" style={{ display: "block" }}>
           <div className="hp-earn-icon"><IconWallet size={20} /></div>
-          <div className="hp-earn-label">Your Leads&rsquo; Payout — This {payout.period === "quarterly" ? "Quarter" : "Month"}</div>
+          <div className="hp-earn-label">Your {isPresales ? "Leads" : "Demos"}&rsquo; Payout — This {payout.period === "quarterly" ? "Quarter" : "Month"}</div>
           <div className="hp-earn-val">₹{payout.payout.toLocaleString("en-IN")}</div>
           <div className="hp-earn-period">
             {payout.hasTiers ? `${payout.rate}% of ₹${payout.totalValue.toLocaleString("en-IN")} converted · Add Lead →` : "Set up in Settings by an admin · Add Lead →"}
@@ -141,7 +141,7 @@ export default function TeamHomeScreen({ employee }) {
       )}
 
       <div className="hp-section-head" style={{ marginTop: 0 }}>
-        <div className="hp-section-title">Recent Leads</div>
+        <div className="hp-section-title">{isPresales ? "Recent Leads" : "Recent Demos"}</div>
         <Link className="hp-view-all" href="/team/home?tab=leads">View All</Link>
       </div>
 
@@ -150,7 +150,7 @@ export default function TeamHomeScreen({ employee }) {
       ) : recent.length === 0 ? (
         <div className="hp-empty">
           <div className="hp-empty-icon"><IconLeads size={24} /></div>
-          <div className="hp-empty-title">No leads yet</div>
+          <div className="hp-empty-title">{isPresales ? "No leads yet" : "No demos yet"}</div>
           <div className="hp-empty-sub">{isPresales ? "New leads assigned to you will show up here." : "Claim an available demo to get started."}</div>
         </div>
       ) : (
@@ -176,7 +176,7 @@ export default function TeamHomeScreen({ employee }) {
 
       <div className="hp-cta-block" style={{ paddingBottom: 24 }}>
         <Link href="/team/home?tab=leads" className="hp-btn hp-btn-primary hp-btn-block">
-          {isPresales ? "View My Leads" : available.length > 0 ? `View ${available.length} Available Lead${available.length === 1 ? "" : "s"}` : "View My Leads"}
+          {isPresales ? "View My Leads" : available.length > 0 ? `View ${available.length} Available Demo${available.length === 1 ? "" : "s"}` : "View My Demos"}
         </Link>
       </div>
     </>

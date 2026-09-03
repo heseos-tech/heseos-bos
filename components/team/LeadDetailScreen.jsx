@@ -55,18 +55,18 @@ export default function TeamLeadDetailScreen({ employee, lead: initialLead }) {
       const res = await fetch(`/api/leads/${lead.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ type: "claim" }) });
       const data = await res.json();
       if (!res.ok) {
-        flash(res.status === 409 ? "Too slow — someone else just claimed this lead." : (data.error || "Could not claim this lead."));
+        flash(res.status === 409 ? "Too slow — someone else just claimed this demo." : (data.error || "Could not claim this demo."));
         refresh();
         return;
       }
       setLead(data);
-      flash("This lead is now yours.");
+      flash("This demo is now yours.");
     } finally {
       setClaiming(false);
     }
   }
 
-  const history = Array.isArray(lead.history) && lead.history.length ? lead.history : [{ at: lead.createdAt, event: "Lead Created", by: "System", note: "" }];
+  const history = Array.isArray(lead.history) && lead.history.length ? lead.history : [{ at: lead.createdAt, event: isSE ? "Demo Created" : "Lead Created", by: "System", note: "" }];
   const revisions = Array.isArray(lead.quotationRevisions) ? lead.quotationRevisions : [];
 
   const summary = [
@@ -78,13 +78,13 @@ export default function TeamLeadDetailScreen({ employee, lead: initialLead }) {
 
   return (
     <>
-      <ScreenHeader title="Lead Details" backHref="/team/home?tab=leads" />
+      <ScreenHeader title={isSE ? "Demo Details" : "Lead Details"} backHref="/team/home?tab=leads" />
 
       <div className="hp-detail-hero">
         <Avatar name={lead.name} size="lg" />
         <div style={{ flex: 1 }}>
           <div className="hp-detail-name">{lead.name}</div>
-          <div className="hp-detail-id">Lead ID: {lead.id}</div>
+          <div className="hp-detail-id">{isSE ? "Demo" : "Lead"} ID: {lead.id}</div>
           <div style={{ marginTop: 6 }}>
             {isAvailableToMe ? (
               <span className="hp-badge" style={{ color: "#38bdf8", background: "var(--hp-info-dim)" }}><span className="hp-badge-dot" />Open — unclaimed</span>
@@ -174,7 +174,7 @@ export default function TeamLeadDetailScreen({ employee, lead: initialLead }) {
 
       <div className="hp-cta-block" style={{ paddingBottom: 24, display: "flex", flexDirection: "column", gap: 10 }}>
         {isAvailableToMe && (
-          <Button block onClick={acceptLead} disabled={claiming}>{claiming ? "Claiming…" : "Accept Lead"}</Button>
+          <Button block onClick={acceptLead} disabled={claiming}>{claiming ? "Claiming…" : "Accept Demo"}</Button>
         )}
         {canPresalesAct && (
           <>

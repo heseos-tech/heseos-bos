@@ -17,7 +17,7 @@ export default async function TeamAppLayout({ children }) {
   return (
     <div className="hp-root">
       <Suspense fallback={null}>
-        <TeamAppShell>{children}</TeamAppShell>
+        <TeamAppShell role={employee.role}>{children}</TeamAppShell>
       </Suspense>
     </div>
   );

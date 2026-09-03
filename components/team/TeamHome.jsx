@@ -11,12 +11,14 @@ import { useSearchParams } from "next/navigation";
 import TeamHomeScreen from "./HomeScreen";
 import TeamLeadsScreen from "./LeadsScreen";
 import TeamProfileScreen from "./ProfileScreen";
+import TeamRewardsScreen from "./RewardsScreen";
 
-const KNOWN_TABS = new Set(["home", "leads", "profile"]);
+const KNOWN_TABS = new Set(["home", "leads", "rewards", "profile"]);
 
 function renderTab(tab, employee) {
   switch (tab) {
     case "leads": return <TeamLeadsScreen employee={employee} />;
+    case "rewards": return <TeamRewardsScreen employee={employee} />;
     case "profile": return <TeamProfileScreen employee={employee} />;
     default: return <TeamHomeScreen employee={employee} />;
   }

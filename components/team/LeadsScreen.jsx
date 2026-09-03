@@ -89,7 +89,7 @@ export default function TeamLeadsScreen({ employee }) {
   return (
     <>
       <div className="hp-header" style={{ paddingBottom: 4 }}>
-        <div className="hp-header-title" style={{ fontSize: 21, fontWeight: 800 }}>My Leads</div>
+        <div className="hp-header-title" style={{ fontSize: 21, fontWeight: 800 }}>{isPresales ? "My Leads" : "My Demos"}</div>
       </div>
 
       <div className="hp-tabs">
