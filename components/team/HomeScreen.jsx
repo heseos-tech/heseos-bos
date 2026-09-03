@@ -113,7 +113,12 @@ export default function TeamHomeScreen({ employee }) {
       {(payout.hasTiers || myReferrals.length > 0) && (
         <Link href="/team/leads/new" className="hp-earn-hero" style={{ display: "block" }}>
           <div className="hp-earn-icon"><IconWallet size={20} /></div>
-          <div className="hp-earn-label">Your {isPresales ? "Leads" : "Demos"}&rsquo; Payout — This {payout.period === "quarterly" ? "Quarter" : "Month"}</div>
+          {/* This is REFERRAL payout — leads this employee added (addedByEmployeeId), paid out
+              regardless of who ends up working/converting them. It has nothing to do with the
+              demos/leads a sales engineer or presales person is personally assigned to work —
+              that's a separate "job" concern with no incentive plan defined yet, so the label
+              stays "Referral" for both roles rather than following the Lead/Demo role split. */}
+          <div className="hp-earn-label">Referral Payout — This {payout.period === "quarterly" ? "Quarter" : "Month"}</div>
           <div className="hp-earn-val">₹{payout.payout.toLocaleString("en-IN")}</div>
           <div className="hp-earn-period">
             {payout.hasTiers ? `${payout.rate}% of ₹${payout.totalValue.toLocaleString("en-IN")} converted · Add Lead →` : "Set up in Settings by an admin · Add Lead →"}

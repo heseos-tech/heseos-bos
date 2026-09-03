@@ -3,16 +3,15 @@
 // (lib/payout.js), same card layout, but scoped to leads THIS employee referred
 // (addedByEmployeeId) and priced under the 'employee' payout category instead of 'partner'.
 // Shared by both presales and sales_engineer — payout crediting works identically for both
-// roles (HomeScreen.jsx's existing payout hero already computes it the same way) — but sales
-// engineers treat every lead as a demo they ran, so their copy says "Demo" instead of "Lead".
+// roles, and depends only on who REFERRED the lead, never on who ends up working/converting
+// it (that's a separate "job" concern with no incentive plan defined yet — don't mix the two).
+// Because of that, this screen's copy always says "leads referred", never "demo" — a sales
+// engineer's referral earning isn't about demos they personally ran.
 import { IconWallet, IconGift, IconLeads, IconCheck, IconSpark } from '@/components/partner/icons';
 import { useApiResource } from '@/lib/useApiResource';
 import { payoutFor, normalizeConfig } from '@/lib/payout';
 
 export default function TeamRewardsScreen({ employee }) {
-  const isSE = employee.role === 'sales_engineer';
-  const noun = isSE ? 'Demos' : 'Leads';
-
   const { data: leads } = useApiResource('/api/leads');
   const { data: rawConfig } = useApiResource('/api/payout-settings');
 
@@ -23,8 +22,9 @@ export default function TeamRewardsScreen({ employee }) {
 
   return (
     <>
-      <div className="hp-header" style={{ paddingBottom: 4 }}>
+      <div className="hp-header" style={{ paddingBottom: 4, flexDirection: 'column', alignItems: 'flex-start' }}>
         <div className="hp-header-title" style={{ fontSize: 21, fontWeight: 800 }}>Rewards &amp; Earnings</div>
+        <div className="hp-sub-sm" style={{ marginTop: 2 }}>Payout for leads you&rsquo;ve referred — separate from your day-to-day work</div>
       </div>
 
       <div className="hp-earn-hero">
@@ -49,7 +49,7 @@ export default function TeamRewardsScreen({ employee }) {
 
       <div className="hp-card">
         <div className="hp-card-title">This {periodWord}&rsquo;s Summary</div>
-        <div className="hp-breakdown-row"><span className="hp-breakdown-label" style={{ display: 'flex', alignItems: 'center', gap: 8 }}><IconCheck size={15} /> {noun} Converted</span><span className="hp-breakdown-val">{payout.convertedCount}</span></div>
+        <div className="hp-breakdown-row"><span className="hp-breakdown-label" style={{ display: 'flex', alignItems: 'center', gap: 8 }}><IconCheck size={15} /> Referred Leads Converted</span><span className="hp-breakdown-val">{payout.convertedCount}</span></div>
         <div className="hp-breakdown-row"><span className="hp-breakdown-label" style={{ display: 'flex', alignItems: 'center', gap: 8 }}><IconLeads size={15} /> Converted Sale Value</span><span className="hp-breakdown-val">₹{payout.totalValue.toLocaleString('en-IN')}</span></div>
         <div className="hp-breakdown-row"><span className="hp-breakdown-label" style={{ display: 'flex', alignItems: 'center', gap: 8 }}><IconSpark size={15} /> Your Payout Rate</span><span className="hp-breakdown-val">{payout.rate}%</span></div>
       </div>
