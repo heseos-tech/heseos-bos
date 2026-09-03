@@ -12,15 +12,26 @@
 
 import { dbGetById, dbList, dbPatch } from '@/lib/db';
 import { getEmployee } from '@/lib/auth';
-import { createAttributionLink, funnelForAll } from '@/lib/attribution';
+import { createAttributionLink, funnelForAll, getHeseosBotTenant, buildWaLink } from '@/lib/attribution';
 
 export const dynamic = 'force-dynamic';
+
+// Prefer a direct https://wa.me/<number>?text=...(ref:<code>) link straight into Heseos Buddy
+// (buildWaLink) over the tracked /go/<code> redirector — scanning/tapping opens WhatsApp
+// immediately instead of bouncing through our own domain first. Only falls back to /go/<code>
+// when WhatsApp isn't connected/verified yet, since that page's own friendly message is a
+// better dead end than a broken wa.me link — and it resolves correctly the moment it is
+// connected. See app/api/partner/attribution/route.js for the same logic, and its header
+// comment for why losing the tracked hop doesn't affect lead/conversion attribution.
+function linkUrlFor(tenant, code) {
+  return (tenant ? buildWaLink(tenant, code) : null) || null;
+}
 
 export async function GET() {
   const employee = await getEmployee();
   if (!employee) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const [allLinks, partners] = await Promise.all([dbList('attribution_links'), dbList('partners')]);
+  const [allLinks, partners, tenant] = await Promise.all([dbList('attribution_links'), dbList('partners'), getHeseosBotTenant()]);
   const links = allLinks.filter((l) => l.kind !== 'referral_customer');
   const funnels = await funnelForAll(links.map((l) => l.id));
   const partnerName = Object.fromEntries(partners.map((p) => [p.id, p.businessName || p.name || p.id]));
@@ -28,6 +39,7 @@ export async function GET() {
   const out = links.map((l) => ({
     ...l,
     partnerName: l.partnerId ? (partnerName[l.partnerId] || l.partnerId) : null,
+    url: linkUrlFor(tenant, l.id),
     funnel: funnels.get(l.id) || { visits: 0, leads: 0, converted: 0 },
   }));
   return Response.json(out);
@@ -68,7 +80,8 @@ export async function POST(request) {
     partnerId: resolvedPartnerId,
     createdBy: `employee:${employee.id}`,
   });
-  return Response.json(link, { status: 201 });
+  const tenant = await getHeseosBotTenant();
+  return Response.json({ ...link, url: linkUrlFor(tenant, link.id) }, { status: 201 });
 }
 
 export async function PATCH(request) {

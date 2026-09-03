@@ -133,9 +133,12 @@ export default function GrowthPage() {
 }
 
 function LinkDetailModal({ link, onClose, onCopied }) {
-  // The admin list (GET /api/admin/attribution) doesn't carry PUBLIC_BASE_URL, so build the
-  // shareable URL straight from window.location — always correct for whichever domain the
-  // admin is actually using, and link.url (set right after creation) is used when present.
+  // GET/POST /api/admin/attribution now always compute link.url server-side: a direct
+  // https://wa.me/... link straight into Heseos Buddy when WhatsApp is connected & verified
+  // (no bouncing through our own domain first), or null when it isn't. The window.location
+  // fallback below only ever fires in that "not connected yet" case, landing on our own
+  // /go/<code> page — which shows a friendly explanation instead of a broken wa.me link, and
+  // resolves correctly on its own the moment WhatsApp gets connected.
   const shareUrl = link.url || (typeof window !== 'undefined' ? `${window.location.origin}/go/${link.id}` : `/go/${link.id}`);
   const qrImg = `https://api.qrserver.com/v1/create-qr-code/?size=280x280&data=${encodeURIComponent(shareUrl)}`;
 
