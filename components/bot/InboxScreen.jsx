@@ -162,13 +162,21 @@ export default function InboxScreen({ tenant }) {
               </div>
 
               <div className="bc-messages">
-                {messages.map((m) => (
-                  <div key={m.id} className={`bc-bubble ${m.direction === 'out' ? 'bc-out' : 'bc-in'}`}>
-                    {m.direction === 'out' && m.sender && m.sender !== 'bot' && <div className="bc-bubble-sender">{m.sender}</div>}
-                    <div>{m.body}</div>
-                    <div className="bc-bubble-meta">{fmtTime(m.ts)}</div>
-                  </div>
-                ))}
+                {messages.map((m) => {
+                  const failed = m.direction === 'out' && m.status === 'failed';
+                  return (
+                    <div key={m.id} className={`bc-bubble ${m.direction === 'out' ? 'bc-out' : 'bc-in'}${failed ? ' bc-bubble-failed' : ''}`}>
+                      {m.direction === 'out' && m.sender && m.sender !== 'bot' && <div className="bc-bubble-sender">{m.sender}</div>}
+                      <div>{m.body}</div>
+                      <div className="bc-bubble-meta">{fmtTime(m.ts)}</div>
+                      {failed && (
+                        <div className="bc-bubble-failed-note">
+                          ⚠ Not delivered{m.error ? ` — ${m.error}` : ''}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
                 <div ref={bottomRef} />
               </div>
 
