@@ -7,7 +7,7 @@ import { useMemo } from "react";
 import Link from "next/link";
 import { Avatar } from "@/components/partner/ui";
 import { IconBell, IconLeads, IconGift, IconCheck, IconMapPin, IconWallet } from "@/components/partner/icons";
-import { IconProducts, IconChevronRight } from "@/components/admin/icons";
+import { IconProducts, IconTasks, IconChevronRight } from "@/components/admin/icons";
 import { fmtDateTime } from "@/lib/date";
 import { stageOf, displayStatus } from "@/lib/leadStage";
 import { PROPERTY_TYPE } from "@/lib/formOptions";
@@ -145,6 +145,15 @@ export default function TeamHomeScreen({ employee }) {
         <div style={{ flex: 1 }}>
           <div style={{ fontSize: 14, fontWeight: 700, color: "#fff" }}>Browse Catalogue</div>
           <div style={{ fontSize: 12, color: "var(--hp-text-soft)" }}>Products, photos &amp; pricing — show a customer right from your phone</div>
+        </div>
+        <IconChevronRight size={18} style={{ color: "var(--hp-text-faint)", flexShrink: 0 }} />
+      </Link>
+
+      <Link href="/team/tasks" className="hp-card" style={{ display: "flex", alignItems: "center", gap: 12, textDecoration: "none" }}>
+        <div className="hp-stat-icon" style={{ width: 38, height: 38, flexShrink: 0, margin: 0 }}><IconTasks size={19} /></div>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: "#fff" }}>My Tasks</div>
+          <div style={{ fontSize: 12, color: "var(--hp-text-soft)" }}>Follow-ups and reminders assigned to you</div>
         </div>
         <IconChevronRight size={18} style={{ color: "var(--hp-text-faint)", flexShrink: 0 }} />
       </Link>

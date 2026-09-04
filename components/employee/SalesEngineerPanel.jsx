@@ -11,6 +11,7 @@ import { stageOf, displayStatus, subUpdateOf, needsReschedule, DEMO_OUTCOMES } f
 import { PRODUCT_INTEREST, PROPERTY_TYPE, LEAD_SOURCES } from '@/lib/formOptions';
 import { useApiResource } from '@/lib/useApiResource';
 import QuotationBuilderModal from '@/components/shared/QuotationBuilder';
+import MyTasksPanel from './MyTasksPanel';
 
 const PI_LABEL = Object.fromEntries(PRODUCT_INTEREST.map((p) => [p.v, p.l]));
 const PT_LABEL = Object.fromEntries(PROPERTY_TYPE.map((p) => [p.v, p.l]));
@@ -24,6 +25,7 @@ export default function SalesEngineerPanel({ employee }) {
   // faster than Pre-sales (15s vs 20s) since open demos get claimed fast — first come first
   // served.
   const { data: leads, loading, refresh: fetchLeads } = useApiResource('/api/leads', { pollMs: 15000 });
+  const [view, setView] = useState('leads'); // 'leads' | 'tasks'
   const [tab, setTab] = useState('available');
   const [modal, setModal] = useState(null); // { type: 'quotation'|'outcome'|'timeline', lead }
   const [claimingId, setClaimingId] = useState(null);
@@ -107,101 +109,112 @@ export default function SalesEngineerPanel({ employee }) {
       <div className="dash-body">
         {notice && <div className="dash-notice" style={{ marginBottom: 16 }}>{notice}</div>}
 
-        <div className="kpi-row">
-          <div className="kpi-card"><div className="kpi-label">Available in {employee.location || 'your city'}</div><div className="kpi-val">{available.length}</div></div>
-          <div className="kpi-card"><div className="kpi-label">Upcoming Demos</div><div className="kpi-val">{groups.upcoming.length}</div></div>
-          <div className="kpi-card"><div className="kpi-label">Quotation Sent</div><div className="kpi-val">{groups.quoted.length}</div></div>
-          <div className="kpi-card"><div className="kpi-label">Converted</div><div className="kpi-val">{groups.converted.length}</div></div>
-        </div>
-
         <div className="dash-tabs">
-          {TABS.map((t) => (
-            <button key={t.key} className={`dash-tab${tab === t.key ? ' active' : ''}`} onClick={() => setTab(t.key)}>
-              {t.label} <span className="dash-tab-count">{t.list.length}</span>
-            </button>
-          ))}
+          <button className={`dash-tab${view === 'leads' ? ' active' : ''}`} onClick={() => setView('leads')}>Leads</button>
+          <button className={`dash-tab${view === 'tasks' ? ' active' : ''}`} onClick={() => setView('tasks')}>My Tasks</button>
         </div>
 
-        {!myCity && (
-          <div className="dash-notice" style={{ marginBottom: 16 }}>Your profile has no city set — ask an admin to set it from Sales Engineers so open demos in your city show up here.</div>
-        )}
-
-        {loading ? (
-          <div className="empty-state">Loading your leads…</div>
-        ) : active.list.length === 0 ? (
-          <div className="empty-state">
-            <div className="empty-state-icon">📭</div>
-            {tab === 'available' ? 'No open demos in your city right now.' : (mine.length === 0 ? 'No leads assigned to you yet.' : `Nothing in ${active.label.toLowerCase()} right now.`)}
-          </div>
+        {view === 'tasks' ? (
+          <MyTasksPanel employee={employee} />
         ) : (
-          <div style={{ overflowX: 'auto' }}>
-            <table className="lead-table">
-              <thead>
-                <tr><th>Lead</th><th>Interest</th><th>Source</th><th>Demo</th><th>Status</th><th>Actions</th></tr>
-              </thead>
-              <tbody>
-                {active.list.map((l) => {
-                  const status = displayStatus(l);
-                  const sub = subUpdateOf(l);
-                  const canAct = tab === 'upcoming' || tab === 'quoted' || tab === 'reschedule';
-                  return (
-                    <tr key={l.id}>
-                      <td>
-                        <div className="lead-name">{l.name}</div>
-                        <div className="lead-meta">{l.phone} · {l.city}</div>
-                      </td>
-                      <td>
-                        <div>{(l.productInterest || []).map((p) => PI_LABEL[p] || p).join(', ') || '—'}</div>
-                        <div className="lead-meta">{PT_LABEL[l.propertyType] || ''}</div>
-                      </td>
-                      <td>{LEAD_SOURCES[l.source] || l.source}</td>
-                      <td>{l.demoDate ? <>{fmtDate(l.demoDate)} · {l.demoTime}<div className="lead-meta">{l.demoAddress}</div></> : '—'}</td>
-                      <td>
-                        {tab === 'available' ? (
-                          <span className="badge" style={{ color: '#0EA5E9', background: '#E0F2FE' }}><span className="badge-dot" />Open — unclaimed</span>
-                        ) : (
-                          <>
-                            <span className="badge" style={{ color: status.c, background: status.bg }}>
-                              <span className="badge-dot" />{status.label}
-                            </span>
-                            {sub && <div className="lead-meta" style={{ color: '#B7791F', marginTop: 4 }}>{sub.label}</div>}
-                            {l.quotationSentAt && (
-                              <div className="lead-meta" style={{ marginTop: 4 }}>
-                                Quoted {l.quotationAmount ? `₹${l.quotationAmount}` : ''}
-                                {(l.quotationRevisions?.length || 0) > 1 && ` (rev ${l.quotationRevisions.length})`}
-                              </div>
-                            )}
-                            {l.finalPrice != null && <div className="lead-meta" style={{ marginTop: 4, fontWeight: 700, color: '#16A34A' }}>Final ₹{l.finalPrice}</div>}
-                          </>
-                        )}
-                      </td>
-                      <td>
-                        <div className="row-actions">
-                          {tab === 'available' && (
-                            <button className="chip-btn primary" onClick={() => acceptLead(l)} disabled={claimingId === l.id}>{claimingId === l.id ? 'Claiming…' : 'Accept Lead'}</button>
-                          )}
-                          {canAct && (
+          <>
+          <div className="kpi-row">
+            <div className="kpi-card"><div className="kpi-label">Available in {employee.location || 'your city'}</div><div className="kpi-val">{available.length}</div></div>
+            <div className="kpi-card"><div className="kpi-label">Upcoming Demos</div><div className="kpi-val">{groups.upcoming.length}</div></div>
+            <div className="kpi-card"><div className="kpi-label">Quotation Sent</div><div className="kpi-val">{groups.quoted.length}</div></div>
+            <div className="kpi-card"><div className="kpi-label">Converted</div><div className="kpi-val">{groups.converted.length}</div></div>
+          </div>
+
+          <div className="dash-tabs">
+            {TABS.map((t) => (
+              <button key={t.key} className={`dash-tab${tab === t.key ? ' active' : ''}`} onClick={() => setTab(t.key)}>
+                {t.label} <span className="dash-tab-count">{t.list.length}</span>
+              </button>
+            ))}
+          </div>
+
+          {!myCity && (
+            <div className="dash-notice" style={{ marginBottom: 16 }}>Your profile has no city set — ask an admin to set it from Sales Engineers so open demos in your city show up here.</div>
+          )}
+
+          {loading ? (
+            <div className="empty-state">Loading your leads…</div>
+          ) : active.list.length === 0 ? (
+            <div className="empty-state">
+              <div className="empty-state-icon">📭</div>
+              {tab === 'available' ? 'No open demos in your city right now.' : (mine.length === 0 ? 'No leads assigned to you yet.' : `Nothing in ${active.label.toLowerCase()} right now.`)}
+            </div>
+          ) : (
+            <div style={{ overflowX: 'auto' }}>
+              <table className="lead-table">
+                <thead>
+                  <tr><th>Lead</th><th>Interest</th><th>Source</th><th>Demo</th><th>Status</th><th>Actions</th></tr>
+                </thead>
+                <tbody>
+                  {active.list.map((l) => {
+                    const status = displayStatus(l);
+                    const sub = subUpdateOf(l);
+                    const canAct = tab === 'upcoming' || tab === 'quoted' || tab === 'reschedule';
+                    return (
+                      <tr key={l.id}>
+                        <td>
+                          <div className="lead-name">{l.name}</div>
+                          <div className="lead-meta">{l.phone} · {l.city}</div>
+                        </td>
+                        <td>
+                          <div>{(l.productInterest || []).map((p) => PI_LABEL[p] || p).join(', ') || '—'}</div>
+                          <div className="lead-meta">{PT_LABEL[l.propertyType] || ''}</div>
+                        </td>
+                        <td>{LEAD_SOURCES[l.source] || l.source}</td>
+                        <td>{l.demoDate ? <>{fmtDate(l.demoDate)} · {l.demoTime}<div className="lead-meta">{l.demoAddress}</div></> : '—'}</td>
+                        <td>
+                          {tab === 'available' ? (
+                            <span className="badge" style={{ color: '#0EA5E9', background: '#E0F2FE' }}><span className="badge-dot" />Open — unclaimed</span>
+                          ) : (
                             <>
-                              <button className="chip-btn" onClick={() => setModal({ type: 'quotation', lead: l })}>{l.quotationSentAt ? 'Revise Quotation' : 'Send Quotation'}</button>
-                              <button className="chip-btn primary" onClick={() => setModal({ type: 'outcome', lead: l })}>{tab === 'reschedule' ? 'Reschedule' : 'Mark Outcome'}</button>
+                              <span className="badge" style={{ color: status.c, background: status.bg }}>
+                                <span className="badge-dot" />{status.label}
+                              </span>
+                              {sub && <div className="lead-meta" style={{ color: '#B7791F', marginTop: 4 }}>{sub.label}</div>}
+                              {l.quotationSentAt && (
+                                <div className="lead-meta" style={{ marginTop: 4 }}>
+                                  Quoted {l.quotationAmount ? `₹${l.quotationAmount}` : ''}
+                                  {(l.quotationRevisions?.length || 0) > 1 && ` (rev ${l.quotationRevisions.length})`}
+                                </div>
+                              )}
+                              {l.finalPrice != null && <div className="lead-meta" style={{ marginTop: 4, fontWeight: 700, color: '#16A34A' }}>Final ₹{l.finalPrice}</div>}
                             </>
                           )}
-                          <button className="chip-btn" onClick={() => setModal({ type: 'timeline', lead: l })}>Timeline</button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                        </td>
+                        <td>
+                          <div className="row-actions">
+                            {tab === 'available' && (
+                              <button className="chip-btn primary" onClick={() => acceptLead(l)} disabled={claimingId === l.id}>{claimingId === l.id ? 'Claiming…' : 'Accept Lead'}</button>
+                            )}
+                            {canAct && (
+                              <>
+                                <button className="chip-btn" onClick={() => setModal({ type: 'quotation', lead: l })}>{l.quotationSentAt ? 'Revise Quotation' : 'Send Quotation'}</button>
+                                <button className="chip-btn primary" onClick={() => setModal({ type: 'outcome', lead: l })}>{tab === 'reschedule' ? 'Reschedule' : 'Mark Outcome'}</button>
+                              </>
+                            )}
+                            <button className="chip-btn" onClick={() => setModal({ type: 'timeline', lead: l })}>Timeline</button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+          </>
         )}
       </div>
 
-      {modal?.type === 'quotation' && (
+      {view === 'leads' && modal?.type === 'quotation' && (
         <QuotationBuilderModal lead={modal.lead} onClose={() => setModal(null)} onDone={() => { setModal(null); fetchLeads(); flash('Quotation saved'); }} />
       )}
-      {modal && modal.type !== 'quotation' && <EngineerModal modal={modal} onClose={() => setModal(null)} onDone={() => { setModal(null); fetchLeads(); }} />}
+      {view === 'leads' && modal && modal.type !== 'quotation' && <EngineerModal modal={modal} onClose={() => setModal(null)} onDone={() => { setModal(null); fetchLeads(); }} />}
     </div>
   );
 }

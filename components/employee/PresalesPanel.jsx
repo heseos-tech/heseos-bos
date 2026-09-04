@@ -9,6 +9,7 @@ import { fmtDateTime, fmtDate } from '@/lib/date';
 import { stageOf, displayStatus, subUpdateOf, isFollowUpLead, CONTACT_STAGES } from '@/lib/leadStage';
 import { PRODUCT_INTEREST, PROPERTY_TYPE, LEAD_SOURCES } from '@/lib/formOptions';
 import { useApiResource } from '@/lib/useApiResource';
+import MyTasksPanel from './MyTasksPanel';
 
 // Small inline refresh glyph — same no-icon-library convention as this folder's siblings
 // (components/partner, components/admin each keep their own tiny icon set).
@@ -28,6 +29,7 @@ export default function PresalesPanel({ employee }) {
   // every existing call site below (the modal's onDone, the manual refresh button) keeps working
   // unchanged.
   const { data: leads, loading, refresh: fetchLeads } = useApiResource('/api/leads', { pollMs: 20000 });
+  const [view, setView] = useState('leads'); // 'leads' | 'tasks'
   const [tab, setTab] = useState('new');
   const [syncing, setSyncing] = useState(false);
   const [syncMsg, setSyncMsg] = useState('');
@@ -102,82 +104,93 @@ export default function PresalesPanel({ employee }) {
       </div>
 
       <div className="dash-body">
-        <div className="kpi-row">
-          <div className="kpi-card"><div className="kpi-label">New Leads</div><div className="kpi-val">{groups.new.length}</div></div>
-          <div className="kpi-card"><div className="kpi-label">Follow-ups</div><div className="kpi-val">{groups.followup.length}</div></div>
-          <div className="kpi-card"><div className="kpi-label">Demo Scheduled</div><div className="kpi-val">{groups.demo.length}</div></div>
-          <div className="kpi-card"><div className="kpi-label">Converted</div><div className="kpi-val">{groups.converted.length}</div></div>
-        </div>
-
         <div className="dash-tabs">
-          {TABS.map((t) => (
-            <button key={t.key} className={`dash-tab${tab === t.key ? ' active' : ''}`} onClick={() => setTab(t.key)}>
-              {t.label} <span className="dash-tab-count">{t.list.length}</span>
-            </button>
-          ))}
+          <button className={`dash-tab${view === 'leads' ? ' active' : ''}`} onClick={() => setView('leads')}>Leads</button>
+          <button className={`dash-tab${view === 'tasks' ? ' active' : ''}`} onClick={() => setView('tasks')}>My Tasks</button>
         </div>
 
-        {loading ? (
-          <div className="empty-state">Loading your leads…</div>
-        ) : active.list.length === 0 ? (
-          <div className="empty-state">
-            <div className="empty-state-icon">📭</div>
-            {mine.length === 0 ? 'No leads assigned to you yet.' : `Nothing in ${active.label.toLowerCase()} right now.`}
-          </div>
+        {view === 'tasks' ? (
+          <MyTasksPanel employee={employee} />
         ) : (
-          <div style={{ overflowX: 'auto' }}>
-            <table className="lead-table">
-              <thead>
-                <tr><th>Lead</th><th>Interest</th><th>Source</th><th>Status</th><th>Submitted</th><th>Actions</th></tr>
-              </thead>
-              <tbody>
-                {active.list.map((l) => {
-                  const status = displayStatus(l);
-                  const sub = subUpdateOf(l);
-                  return (
-                    <tr key={l.id}>
-                      <td>
-                        <div className="lead-name">{l.name}</div>
-                        <div className="lead-meta">{l.phone} · {l.city}</div>
-                      </td>
-                      <td>
-                        <div>{(l.productInterest || []).map((p) => PI_LABEL[p] || p).join(', ') || '—'}</div>
-                        <div className="lead-meta">{PT_LABEL[l.propertyType] || ''}</div>
-                      </td>
-                      <td>{LEAD_SOURCES[l.source] || l.source}</td>
-                      <td>
-                        <span className="badge" style={{ color: status.c, background: status.bg }}>
-                          <span className="badge-dot" />{status.label}
-                        </span>
-                        {sub && <div className="lead-meta" style={{ color: '#B7791F', marginTop: 4 }}>{sub.label}</div>}
-                        {l.demoScheduledAt && stageOf(l) === 'Demo Scheduled' && (
-                          <div className="lead-meta">{fmtDate(l.demoDate)} · {l.demoTime}</div>
-                        )}
-                      </td>
-                      <td>{fmtDateTime(l.createdAt)}</td>
-                      <td>
-                        <div className="row-actions">
-                          {canWork && (
-                            <>
-                              <button className="chip-btn" onClick={() => quickContact(l, 'call_not_picked')}>Not Picked</button>
-                              <button className="chip-btn danger" onClick={() => quickContact(l, 'not_interested')}>Not Interested</button>
-                              <button className="chip-btn" onClick={() => setModal({ type: 'contact', lead: l })}>Follow-up</button>
-                              <button className="chip-btn primary" onClick={() => setModal({ type: 'schedule', lead: l })}>Schedule Demo</button>
-                            </>
-                          )}
-                          <button className="chip-btn" onClick={() => setModal({ type: 'timeline', lead: l })}>Timeline</button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+          <>
+          <div className="kpi-row">
+            <div className="kpi-card"><div className="kpi-label">New Leads</div><div className="kpi-val">{groups.new.length}</div></div>
+            <div className="kpi-card"><div className="kpi-label">Follow-ups</div><div className="kpi-val">{groups.followup.length}</div></div>
+            <div className="kpi-card"><div className="kpi-label">Demo Scheduled</div><div className="kpi-val">{groups.demo.length}</div></div>
+            <div className="kpi-card"><div className="kpi-label">Converted</div><div className="kpi-val">{groups.converted.length}</div></div>
           </div>
+
+          <div className="dash-tabs">
+            {TABS.map((t) => (
+              <button key={t.key} className={`dash-tab${tab === t.key ? ' active' : ''}`} onClick={() => setTab(t.key)}>
+                {t.label} <span className="dash-tab-count">{t.list.length}</span>
+              </button>
+            ))}
+          </div>
+
+          {loading ? (
+            <div className="empty-state">Loading your leads…</div>
+          ) : active.list.length === 0 ? (
+            <div className="empty-state">
+              <div className="empty-state-icon">📭</div>
+              {mine.length === 0 ? 'No leads assigned to you yet.' : `Nothing in ${active.label.toLowerCase()} right now.`}
+            </div>
+          ) : (
+            <div style={{ overflowX: 'auto' }}>
+              <table className="lead-table">
+                <thead>
+                  <tr><th>Lead</th><th>Interest</th><th>Source</th><th>Status</th><th>Submitted</th><th>Actions</th></tr>
+                </thead>
+                <tbody>
+                  {active.list.map((l) => {
+                    const status = displayStatus(l);
+                    const sub = subUpdateOf(l);
+                    return (
+                      <tr key={l.id}>
+                        <td>
+                          <div className="lead-name">{l.name}</div>
+                          <div className="lead-meta">{l.phone} · {l.city}</div>
+                        </td>
+                        <td>
+                          <div>{(l.productInterest || []).map((p) => PI_LABEL[p] || p).join(', ') || '—'}</div>
+                          <div className="lead-meta">{PT_LABEL[l.propertyType] || ''}</div>
+                        </td>
+                        <td>{LEAD_SOURCES[l.source] || l.source}</td>
+                        <td>
+                          <span className="badge" style={{ color: status.c, background: status.bg }}>
+                            <span className="badge-dot" />{status.label}
+                          </span>
+                          {sub && <div className="lead-meta" style={{ color: '#B7791F', marginTop: 4 }}>{sub.label}</div>}
+                          {l.demoScheduledAt && stageOf(l) === 'Demo Scheduled' && (
+                            <div className="lead-meta">{fmtDate(l.demoDate)} · {l.demoTime}</div>
+                          )}
+                        </td>
+                        <td>{fmtDateTime(l.createdAt)}</td>
+                        <td>
+                          <div className="row-actions">
+                            {canWork && (
+                              <>
+                                <button className="chip-btn" onClick={() => quickContact(l, 'call_not_picked')}>Not Picked</button>
+                                <button className="chip-btn danger" onClick={() => quickContact(l, 'not_interested')}>Not Interested</button>
+                                <button className="chip-btn" onClick={() => setModal({ type: 'contact', lead: l })}>Follow-up</button>
+                                <button className="chip-btn primary" onClick={() => setModal({ type: 'schedule', lead: l })}>Schedule Demo</button>
+                              </>
+                            )}
+                            <button className="chip-btn" onClick={() => setModal({ type: 'timeline', lead: l })}>Timeline</button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+          </>
         )}
       </div>
 
-      {modal && <PresalesModal modal={modal} onClose={() => setModal(null)} onDone={() => { setModal(null); fetchLeads(); }} />}
+      {view === 'leads' && modal && <PresalesModal modal={modal} onClose={() => setModal(null)} onDone={() => { setModal(null); fetchLeads(); }} />}
     </div>
   );
 

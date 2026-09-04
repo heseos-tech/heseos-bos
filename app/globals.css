@@ -381,6 +381,31 @@ footer { background: #011F2E; padding: 64px 0 28px; color: rgba(255, 255, 255, 0
 .empty-state-icon { font-size: 36px; margin-bottom: 10px; }
 
 /* ─────────────────────────────────────────
+   MY TASKS (components/employee/MyTasksPanel.jsx)
+   Self-contained mt-* prefix so this never collides with Admin's own
+   .task-* classes in app/admin/admin.css — globals.css loads on every
+   route including /admin, so both stylesheets are active there together.
+───────────────────────────────────────── */
+.mt-task-list { display: flex; flex-direction: column; background: var(--white); border: 1px solid var(--border-light); border-radius: var(--r16); padding: 4px 16px; }
+.mt-task-row { display: flex; align-items: center; gap: 12px; padding: 12px 4px; border-bottom: 1px solid var(--border-light); }
+.mt-task-row:last-child { border-bottom: none; }
+.mt-task-row--done .mt-task-title { text-decoration: line-through; color: var(--ink-soft); }
+.mt-task-row--overdue:not(.mt-task-row--done) .mt-task-meta { color: #C0392B; font-weight: 600; }
+.mt-task-check { width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid var(--border); background: var(--white); flex-shrink: 0; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #fff; }
+.mt-task-check.checked { background: var(--p); border-color: var(--p); }
+.mt-task-body { flex: 1; min-width: 0; cursor: pointer; }
+.mt-task-title { font-size: 13.5px; font-weight: 700; color: var(--ink); }
+.mt-task-meta { font-size: 11.5px; color: var(--ink-soft); margin-top: 2px; }
+.mt-task-priority { font-size: 10.5px; font-weight: 700; padding: 3px 9px; border-radius: 999px; flex-shrink: 0; white-space: nowrap; }
+
+.mt-lead-chip { display: inline-flex; align-items: center; gap: 8px; background: var(--bg2); border: 1px solid var(--border-light); border-radius: 999px; padding: 6px 8px 6px 12px; font-size: 12.5px; color: var(--ink); }
+.mt-lead-chip button { background: none; border: none; color: var(--ink-soft); cursor: pointer; display: flex; align-items: center; }
+.mt-lead-matches { margin-top: 6px; border: 1px solid var(--border-light); border-radius: 10px; overflow: hidden; }
+.mt-lead-match { display: block; width: 100%; text-align: left; padding: 9px 12px; font-size: 12.5px; color: var(--ink); background: var(--white); border: none; border-bottom: 1px solid var(--border-light); cursor: pointer; }
+.mt-lead-match:last-child { border-bottom: none; }
+.mt-lead-match:hover { background: var(--bg2); }
+
+/* ─────────────────────────────────────────
    WHATSAPP TEAM INBOX
 ───────────────────────────────────────── */
 .inbox-shell { max-width: 1320px; margin: 0 auto; height: calc(100vh - 64px); display: grid; grid-template-columns: 320px 1fr; }

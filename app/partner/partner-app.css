@@ -236,6 +236,25 @@ html:has(.hp-root), body:has(.hp-root) {
 .hp-lead-time { font-size: 11px; color: var(--hp-text-faint); }
 .hp-chev { color: var(--hp-text-faint); flex-shrink: 0; }
 
+/* ── Task cards / list (components/team/TasksScreen.jsx) ───────────────── */
+.hp-task-list { display: flex; flex-direction: column; padding: 0 20px; gap: 10px; }
+.hp-task-card { display: flex; align-items: center; gap: 12px; background: var(--hp-surface); border: 1px solid var(--hp-border); border-radius: var(--hp-r); padding: 13px 14px; }
+.hp-task-card--done .hp-task-title { text-decoration: line-through; color: var(--hp-text-faint); }
+.hp-task-card--overdue:not(.hp-task-card--done) .hp-task-meta { color: #ff8484; font-weight: 600; }
+.hp-task-check { width: 24px; height: 24px; border-radius: 50%; border: 1.5px solid var(--hp-border); background: transparent; flex-shrink: 0; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #fff; }
+.hp-task-check.checked { background: var(--hp-orange); border-color: var(--hp-orange); }
+.hp-task-info { flex: 1; min-width: 0; cursor: pointer; }
+.hp-task-title { font-size: 14.5px; font-weight: 700; color: #fff; }
+.hp-task-meta { font-size: 12px; color: var(--hp-text-soft); margin-top: 2px; }
+.hp-task-priority { font-size: 10.5px; font-weight: 700; padding: 4px 10px; border-radius: var(--hp-r-full); flex-shrink: 0; white-space: nowrap; }
+
+.hp-lead-picker-chip { display: inline-flex; align-items: center; gap: 8px; background: var(--hp-surface-2); border: 1px solid var(--hp-border); border-radius: 999px; padding: 6px 8px 6px 12px; font-size: 12.5px; color: #fff; }
+.hp-lead-picker-chip button { background: none; border: none; color: var(--hp-text-faint); cursor: pointer; display: flex; align-items: center; }
+.hp-lead-picker-matches { margin-top: 6px; border: 1px solid var(--hp-border); border-radius: 10px; overflow: hidden; }
+.hp-lead-picker-match { display: block; width: 100%; text-align: left; padding: 9px 12px; font-size: 12.5px; color: #fff; background: var(--hp-surface); border: none; border-bottom: 1px solid var(--hp-border); cursor: pointer; }
+.hp-lead-picker-match:last-child { border-bottom: none; }
+.hp-lead-picker-match:hover { background: var(--hp-surface-2); }
+
 /* ── Badges ──────────────────────────────────────────────────────────── */
 .hp-badge { display: inline-flex; align-items: center; gap: 5px; font-size: 10.5px; font-weight: 700; padding: 5px 11px; border-radius: var(--hp-r-full); white-space: nowrap; }
 .hp-badge-dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
