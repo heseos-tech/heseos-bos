@@ -388,3 +388,7 @@
 
 .qb-actions { display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap; }
 .qb-actions .adm-btn-primary, .qb-actions .adm-btn-outline { flex: 1; justify-content: center; min-width: 140px; }
+
+.qb-share-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: -4px 0 16px; padding-bottom: 14px; border-bottom: 1px solid var(--adm-border); }
+.qb-share-row .adm-btn-outline { padding: 7px 12px; font-size: 12.5px; }
+.qb-share-msg { font-size: 12px; color: var(--adm-text-soft); }

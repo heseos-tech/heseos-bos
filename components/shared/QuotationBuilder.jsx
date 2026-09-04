@@ -10,7 +10,7 @@
 // building is a live preview of that same math, so the number never surprises anyone at submit.
 import { useMemo, useState } from 'react';
 import { useApiResource } from '@/lib/useApiResource';
-import { IconSearch, IconX, IconProducts } from '@/components/admin/icons';
+import { IconSearch, IconX, IconProducts, IconDownload, IconWhatsApp } from '@/components/admin/icons';
 
 export function currency(n) {
   return `₹${Number(n || 0).toLocaleString('en-IN')}`;
@@ -44,6 +44,8 @@ export default function QuotationBuilderModal({ lead, onClose, onDone }) {
   const [note, setNote] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [sending, setSending] = useState(false);
+  const [sendMsg, setSendMsg] = useState('');
   const revisions = Array.isArray(lead.quotationRevisions) ? lead.quotationRevisions : [];
 
   const activeProducts = useMemo(() => products.filter((p) => p.active !== false), [products]);
@@ -95,6 +97,21 @@ export default function QuotationBuilderModal({ lead, onClose, onDone }) {
     }
   }
 
+  async function sendOnWhatsApp() {
+    setSendMsg('');
+    setSending(true);
+    try {
+      const res = await fetch(`/api/leads/${lead.id}/quotation-pdf/send`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Could not send the quotation on WhatsApp');
+      setSendMsg('Sent on WhatsApp ✓');
+    } catch (e) {
+      setSendMsg(e.message);
+    } finally {
+      setSending(false);
+    }
+  }
+
   return (
     <div className="adm-modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
       <div className="adm-modal-card adm-modal-card--wide">
@@ -105,6 +122,14 @@ export default function QuotationBuilderModal({ lead, onClose, onDone }) {
           </div>
           <button className="adm-icon-btn" onClick={onClose}><IconX size={18} /></button>
         </div>
+
+        {revisions.length > 0 && (
+          <div className="qb-share-row">
+            <a className="adm-btn-outline" href={`/api/leads/${lead.id}/quotation-pdf`} target="_blank" rel="noopener noreferrer"><IconDownload size={14} /> Download last PDF</a>
+            <button type="button" className="adm-btn-outline" onClick={sendOnWhatsApp} disabled={sending}><IconWhatsApp size={14} /> {sending ? 'Sending…' : 'Send on WhatsApp'}</button>
+            {sendMsg && <span className="qb-share-msg">{sendMsg}</span>}
+          </div>
+        )}
 
         <div className="qb-layout">
           <div>

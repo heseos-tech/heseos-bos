@@ -7,7 +7,7 @@ import { useMemo, useState } from 'react';
 import { fmtDate, fmtDateTime } from '@/lib/date';
 import { stageOf } from '@/lib/leadStage';
 import { StatCard, Pagination, Modal } from './ui';
-import { IconSearch, IconQuotation, IconEye, IconDownload } from './icons';
+import { IconSearch, IconQuotation, IconEye, IconDownload, IconWhatsApp } from './icons';
 import { useApiResource, invalidate } from '@/lib/useApiResource';
 import QuotationBuilderModal, { currency } from '@/components/shared/QuotationBuilder';
 
@@ -21,10 +21,25 @@ export default function QuotationsPage() {
   const [page, setPage] = useState(1);
   const [modal, setModal] = useState(null); // { type: 'build'|'view', lead }
   const [notice, setNotice] = useState('');
+  const [sending, setSending] = useState(false);
 
   function flash(msg) { setNotice(msg); setTimeout(() => setNotice(''), 3000); }
   function nameOf(id) { return employees.find((e) => e.id === id)?.name || '—'; }
   function load() { invalidate('/api/leads'); refresh(); }
+
+  async function sendOnWhatsApp(leadId) {
+    setSending(true);
+    try {
+      const res = await fetch(`/api/leads/${leadId}/quotation-pdf/send`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Could not send the quotation');
+      flash('Sent on WhatsApp');
+    } catch (e) {
+      flash(e.message);
+    } finally {
+      setSending(false);
+    }
+  }
 
   const quotedLeads = useMemo(() => leads.filter((l) => l.quotationSentAt), [leads]);
   const awaitingLeads = useMemo(() => leads.filter((l) => !l.quotationSentAt && stageOf(l) === 'Demo Scheduled'), [leads]);
@@ -127,6 +142,7 @@ export default function QuotationsPage() {
           </div>
           <div className="lf-actions">
             <a className="adm-btn-outline" href={`/api/leads/${modal.lead.id}/quotation-pdf`} target="_blank" rel="noopener noreferrer"><IconDownload size={15} /> Download PDF</a>
+            <button className="adm-btn-primary" onClick={() => sendOnWhatsApp(modal.lead.id)} disabled={sending}><IconWhatsApp size={15} /> {sending ? 'Sending…' : 'Send on WhatsApp'}</button>
           </div>
         </Modal>
       )}
