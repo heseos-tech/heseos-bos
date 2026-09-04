@@ -20,7 +20,15 @@ export async function PATCH(request, { params }) {
   const patch = {};
   if (body.markRead) patch.unread = 0;
   if (body.status && ['open', 'resolved'].includes(body.status)) patch.status = body.status;
-  if (typeof body.botOn === 'boolean') patch.botOn = body.botOn;
+  if (typeof body.botOn === 'boolean') {
+    patch.botOn = body.botOn;
+    // A human deliberately touching this toggle — either direction — always wins over the
+    // "auto-handoff" bookkeeping lib/botFlowEngine.js's endHandoff uses to know it's safe to
+    // wake the bot back up on the customer's next "hi" (see app/api/bot/webhook/route.js). Once
+    // a person has looked at this chat and made a call, that decision sticks until they (or a
+    // fresh flow completion) change it again — the webhook must never override it.
+    patch.autoHandoff = false;
+  }
   if (body.assign) patch.assignedTo = tenant.contactName || tenant.businessName;
   if (body.unassign) patch.assignedTo = null;
   // Resets the bot's conversation STATE only — the message transcript, the linked lead (leadId),
@@ -36,7 +44,9 @@ export async function PATCH(request, { params }) {
     patch.flowNodeId = null;
     patch.answers = {};
     patch.menuRetries = 0;
+    patch.answerRetries = 0;
     patch.botOn = true;
+    patch.autoHandoff = false;
     patch.status = 'open';
   }
 

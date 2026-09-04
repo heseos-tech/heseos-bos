@@ -10,7 +10,7 @@ import { parseWebhookByPhone } from '@/lib/botWhatsapp';
 import { runBotTurn } from '@/lib/botEngine';
 import { runFlowTurn, pickFlow } from '@/lib/botFlowEngine';
 import { parseRefFromText, referrerNoteFor } from '@/lib/attribution';
-import { createHeseosLead } from '@/lib/heseosLeadSync';
+import { createHeseosLead, heseosLeadSummary } from '@/lib/heseosLeadSync';
 import { findFirstLeadByPhone } from '@/lib/leadOrigin';
 import { ensureHeseosDefaultFlow } from '@/lib/heseosDefaultFlow';
 import { HESEOS_RETURNING_FLOW_ID, ensureHeseosReturningFlow } from '@/lib/heseosReturningFlow';
@@ -123,11 +123,13 @@ export async function POST(req) {
           // (see lib/heseosReturningFlow.js); a white-label linkToHeseosLeads tenant with no
           // flow of their own keeps the original immediate-bridge behaviour further below.
           let existingLeadId = null;
+          let existingLead = null;
           if (tenant.botKind === 'heseos') {
             const existingLeads = await dbList('leads');
             const firstLead = findFirstLeadByPhone(m.from, existingLeads);
             if (firstLead) {
               existingLeadId = firstLead.id;
+              existingLead = firstLead;
               const returningFlow = tenantFlows.find((f) => f.id === HESEOS_RETURNING_FLOW_ID);
               if (returningFlow) picked = returningFlow;
             }
@@ -136,9 +138,9 @@ export async function POST(req) {
           chat = {
             id: m.from, tenantId: tenant.id, phone: m.from, name: m.name || m.from,
             lastText: m.text, lastAt: m.ts, unread: 1, status: 'open', assignedTo: null,
-            botOn: true, lead: null, stage: null, menuRetries: 0, city: '',
+            botOn: true, lead: null, stage: null, menuRetries: 0, answerRetries: 0, city: '',
             attributionKind: link?.kind || null, attributionLinkId: link?.id || null,
-            flowNodeId: null, answers: {}, activeFlowId: picked?.id || null,
+            flowNodeId: null, answers: {}, activeFlowId: picked?.id || null, autoHandoff: false,
             firstMessageAt: m.ts, createdAt: m.ts,
           };
           await dbInsert('bot_chats', m.from, chat);
@@ -156,7 +158,8 @@ export async function POST(req) {
               // the returning-customer flow reaches its own handoff, since it only ever creates a
               // lead when the chat doesn't already have one — so this can never double-create.
               patch.leadId = existingLeadId;
-              chat = { ...chat, leadId: existingLeadId };
+              patch.leadSummary = heseosLeadSummary(existingLead);
+              chat = { ...chat, leadId: existingLeadId, leadSummary: patch.leadSummary };
             } else if (!picked) {
               // A flow is about to walk this chat through its own lead-capture question journey
               // (see lib/heseosDefaultFlow.js and finalizeHeseosLead, called once that flow
@@ -180,11 +183,39 @@ export async function POST(req) {
             unread: (Number(chat.unread) || 0) + 1,
             status: 'open',
           };
+
+          // A chat the bot silenced itself on after a flow finished naturally (autoHandoff —
+          // see lib/botFlowEngine.js's endHandoff) is fair game to wake back up on the
+          // customer's next message: "come back anytime saying hi" is a promise every Heseos
+          // flow's handoff/decline text makes. A chat a HUMAN deliberately silenced via the
+          // Inbox's Bot on/off toggle must never be overridden this way — that toggle explicitly
+          // clears autoHandoff the moment a person touches it either direction (see
+          // app/api/bot/chats/[id]/route.js), so this check alone is enough to tell the two
+          // apart. Always routes straight to the returning-customer flow (never back to the
+          // full new-enquiry questionnaire): reaching this point means a flow already completed
+          // for this chat once, which — see lib/botFlowEngine.js's endHandoff — only ever
+          // happens after finalizeHeseosLead has run, so chat.leadId is always already set.
+          if (tenant.botKind === 'heseos' && chat.botOn === false && chat.autoHandoff === true) {
+            const returningFlow = tenantFlows.find((f) => f.id === HESEOS_RETURNING_FLOW_ID);
+            if (returningFlow) {
+              patch.botOn = true;
+              patch.autoHandoff = false;
+              patch.flowNodeId = null;
+              patch.activeFlowId = returningFlow.id;
+              if (chat.leadId) {
+                const lead = await dbGetById('leads', chat.leadId).catch(() => null);
+                patch.leadSummary = heseosLeadSummary(lead);
+              }
+            }
+          }
+
           await dbPatch('bot_chats', m.from, patch);
           chat = { ...chat, ...patch };
           // Once a chat has entered a flow it stays on that same one for its whole
           // conversation — re-matching triggers on every reply would let an unrelated later
-          // message ("hi" mid-conversation, say) hijack the chat into a different flow.
+          // message ("hi" mid-conversation, say) hijack the chat into a different flow. (The
+          // re-engagement branch above is the one deliberate exception, and it already updated
+          // chat.activeFlowId before this check runs.)
           if (chat.activeFlowId) {
             const f = tenantFlows.find((tf) => tf.id === chat.activeFlowId) || null;
             if (f && f.enabled && (f.nodes || []).some((n) => n.type === 'start')) flow = f;
