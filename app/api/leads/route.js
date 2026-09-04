@@ -14,6 +14,7 @@ import { getEmployee, getPartner } from '@/lib/auth';
 import { pushHistory } from '@/lib/leadStage';
 import { autoAssignByCity } from '@/lib/leadAssign';
 import { LEAD_SOURCES } from '@/lib/formOptions';
+import { findFirstLeadByPhone, describeLeadOrigin } from '@/lib/leadOrigin';
 
 export const dynamic = 'force-dynamic';
 
@@ -61,6 +62,27 @@ export async function POST(request) {
       source = 'manual_entry';
     }
 
+    // First-touch attribution — "our system only considers who gave the lead first." A partner
+    // or employee can still punch this in as its own enquiry (the duplicate-check warning in
+    // the wizard explicitly allows that — app/api/leads/lookup), but if this phone number
+    // already has an earlier lead from ANY channel, payout credit stays with whoever brought it
+    // in first: this new lead is created for pipeline visibility only, with no partnerId/
+    // addedByEmployeeId of its own, so lib/payout.js never counts the same customer's converted
+    // sale toward two different referrers.
+    const existingLeads = await dbList('leads');
+    const firstLead = findFirstLeadByPhone(phone, existingLeads);
+    let duplicateNote = null;
+    // Preserved for the history entry below even after partnerId/addedByEmployeeId get nulled,
+    // so the audit trail still shows WHO actually punched this in — they just don't get payout
+    // credit for it.
+    const submittedBy = partnerId ? `partner:${partnerId}` : addedByEmployeeId ? `employee:${addedByEmployeeId}` : source;
+    if (firstLead && (partnerId || addedByEmployeeId)) {
+      const [origPartners, origEmployees, origLinks] = await Promise.all([dbList('partners'), dbList('employees'), dbList('attribution_links')]);
+      duplicateNote = `Not credited to ${partnerId ? 'this partner' : 'this employee'} — ${describeLeadOrigin(firstLead, { partners: origPartners, employees: origEmployees, leads: existingLeads, links: origLinks })}, so payout credit stays with the original referrer.`;
+      partnerId = null;
+      addedByEmployeeId = null;
+    }
+
     const now = new Date().toISOString();
     const id = `L${Date.now().toString().slice(-8)}${Math.floor(Math.random() * 90 + 10)}`;
 
@@ -101,7 +123,10 @@ export async function POST(request) {
 
       history: [],
     };
-    lead.history = pushHistory(lead, { event: 'Lead Submitted', by: partnerId ? `partner:${partnerId}` : addedByEmployeeId ? `employee:${addedByEmployeeId}` : source, note: LEAD_SOURCES[source] });
+    lead.history = pushHistory(lead, { event: 'Lead Submitted', by: submittedBy, note: LEAD_SOURCES[source] });
+    if (duplicateNote) {
+      lead.history = pushHistory(lead, { event: 'Not credited — first-touch attribution', by: 'system', note: duplicateNote });
+    }
     if (assignedTo) {
       lead.history = pushHistory(lead, { event: 'Auto-assigned by city', by: 'system', note: `${city} · pre-sales matched` });
     }

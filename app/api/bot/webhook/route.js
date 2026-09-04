@@ -5,12 +5,13 @@
 // matching the inbound payload's phone_number_id / verify token), see lib/botWhatsapp.js and
 // lib/botEngine.js.
 
-import { dbGetById, dbInsert, dbPatch, dbWhere } from '@/lib/db';
+import { dbGetById, dbInsert, dbList, dbPatch, dbWhere } from '@/lib/db';
 import { parseWebhookByPhone } from '@/lib/botWhatsapp';
 import { runBotTurn } from '@/lib/botEngine';
 import { runFlowTurn, pickFlow } from '@/lib/botFlowEngine';
 import { createLeadFromWhatsApp } from '@/lib/waInbound';
 import { parseRefFromText, referrerNoteFor } from '@/lib/attribution';
+import { findFirstLeadByPhone, describeLeadOrigin } from '@/lib/leadOrigin';
 
 export const dynamic = 'force-dynamic';
 
@@ -57,7 +58,21 @@ async function resolveAttributionLink(text) {
 // referral is tracked without a partnerId. No link (untagged / unrecognised ref) just falls back
 // to the plain 'whatsapp_bot' source, same as before this existed.
 async function bridgeToHeseosLeads(tenant, { phone, name, link }) {
-  if (link) {
+  // First-touch attribution — "our system only considers who gave the lead first." A brand-new
+  // WhatsApp chat still becomes its own lead here either way (pipeline visibility for a
+  // genuinely new enquiry), but if this phone number already has an earlier lead from ANY
+  // channel (Partner App, Team App, or a previous WhatsApp attribution), the partner/QR/referral
+  // credit this message would otherwise carry gets suppressed — same rule and same helper as
+  // app/api/leads's own duplicate check (lib/leadOrigin.js's findFirstLeadByPhone), just applied
+  // on the WhatsApp side so a customer re-scanning a DIFFERENT partner's QR code later can't
+  // shift payout credit away from whoever actually brought them in first.
+  const existingLeads = await dbList('leads');
+  const firstLead = findFirstLeadByPhone(phone, existingLeads);
+  const duplicateNote = firstLead
+    ? `Not credited — ${describeLeadOrigin(firstLead, { leads: existingLeads })}, so payout credit stays with the original referrer.`
+    : null;
+
+  if (link && !firstLead) {
     return createLeadFromWhatsApp({
       phone, name,
       source: link.kind,
@@ -68,7 +83,12 @@ async function bridgeToHeseosLeads(tenant, { phone, name, link }) {
       referredByLeadId: link.customerLeadId || null,
     });
   }
-  return createLeadFromWhatsApp({ phone, name, source: 'whatsapp_bot', note: `Heseos Bot (${tenant.businessName || tenant.id})` });
+  return createLeadFromWhatsApp({
+    phone, name,
+    source: link ? link.kind : 'whatsapp_bot',
+    note: link ? `Heseos Bot via ${link.kind} (${link.label || link.id})` : `Heseos Bot (${tenant.businessName || tenant.id})`,
+    duplicateNote,
+  });
 }
 
 // POST — every inbound WhatsApp message + delivery status, from every tenant, lands here.
