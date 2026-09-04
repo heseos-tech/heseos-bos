@@ -15,6 +15,7 @@ import { pushHistory } from '@/lib/leadStage';
 import { autoAssignByCity } from '@/lib/leadAssign';
 import { LEAD_SOURCES } from '@/lib/formOptions';
 import { findFirstLeadByPhone, describeLeadOrigin } from '@/lib/leadOrigin';
+import { notifyHeseosLeadAdded } from '@/lib/heseosNotify';
 
 export const dynamic = 'force-dynamic';
 
@@ -50,14 +51,22 @@ export async function POST(request) {
     let source = body.source || 'manual_entry';
     let partnerId = null;
     let addedByEmployeeId = null;
+    // Who to tell the CUSTOMER added them (see notifyHeseosLeadAdded below) — captured here,
+    // independent of the first-touch-attribution nulling further down, because the customer
+    // should still be told who punched them in even on a submission that doesn't earn payout
+    // credit (the two are unrelated: one's about who gets paid, the other's about who the
+    // customer should expect a follow-up from).
+    let addedByLabel = null;
     if (source === 'partner_app') {
       const partner = await getPartner();
       if (!partner) return Response.json({ error: 'Partner login required' }, { status: 401 });
       partnerId = partner.id;
+      addedByLabel = `${partner.name || partner.businessName || 'Our partner'}, Heseos Partner`;
     } else if (source === 'employee_app') {
       const employee = await getEmployee();
       if (!employee) return Response.json({ error: 'Employee login required' }, { status: 401 });
       addedByEmployeeId = employee.id;
+      addedByLabel = `${employee.name || 'Our team member'}, Heseos Team Member`;
     } else if (!LEAD_SOURCES[source]) {
       source = 'manual_entry';
     }
@@ -132,6 +141,14 @@ export async function POST(request) {
     }
 
     await dbInsert('leads', id, lead);
+
+    // Tell the customer who just added them — never lets a WhatsApp hiccup fail the actual
+    // lead-creation request (see notifyHeseosLeadAdded's own header comment).
+    if (addedByLabel) {
+      await notifyHeseosLeadAdded(lead, addedByLabel).catch((err) => {
+        console.error('notifyHeseosLeadAdded error:', err);
+      });
+    }
 
     return Response.json({ success: true, id: lead.id });
   } catch (err) {

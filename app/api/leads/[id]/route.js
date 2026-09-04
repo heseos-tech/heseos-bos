@@ -6,6 +6,7 @@
 import { dbGetById, dbPatch, dbClaim } from '@/lib/db';
 import { getEmployee, getPartner } from '@/lib/auth';
 import { pushHistory, CONTACT_LABEL, DEMO_OUTCOME_LABEL, DEMO_OUTCOME_KIND } from '@/lib/leadStage';
+import { notifyHeseosDemoClaimed } from '@/lib/heseosNotify';
 
 export const dynamic = 'force-dynamic';
 
@@ -57,6 +58,11 @@ export async function PATCH(request, { params }) {
         { status: result.reason === 'already_claimed' ? 409 : 404 }
       );
     }
+    // Tell the customer who's coming and reconfirm the demo details — never lets a WhatsApp
+    // hiccup fail the actual claim (see notifyHeseosDemoClaimed's own header comment).
+    await notifyHeseosDemoClaimed(result.data, employee).catch((err) => {
+      console.error('notifyHeseosDemoClaimed error:', err);
+    });
     return Response.json(result.data);
   }
 
