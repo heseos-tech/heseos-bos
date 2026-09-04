@@ -208,6 +208,16 @@ export default function InboxScreen({ tenant }) {
             ) : (
               <button className="bc-info-btn" onClick={() => patchActive({ assign: true })}>Assign conversation</button>
             )}
+            {/* Resets the bot's conversation state (which question it's on, what it's collected
+                so far) so the next "hi" from this same test number restarts the flow from the
+                top — handy while testing in Flow Builder. Never touches the message history or
+                any lead already linked to this chat — see app/api/bot/chats/[id]/route.js. */}
+            <button
+              className="bc-info-btn bc-info-btn-ghost"
+              onClick={() => { if (window.confirm('Reset this conversation\'s bot state? The next message from them will restart the flow from the beginning. Message history and any linked lead are kept.')) patchActive({ resetBot: true }); }}
+            >
+              Reset bot conversation
+            </button>
           </div>
         )}
       </div>

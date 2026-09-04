@@ -5,13 +5,15 @@
 // matching the inbound payload's phone_number_id / verify token), see lib/botWhatsapp.js and
 // lib/botEngine.js.
 
-import { dbGetById, dbInsert, dbPatch, dbWhere } from '@/lib/db';
+import { dbGetById, dbInsert, dbList, dbPatch, dbWhere } from '@/lib/db';
 import { parseWebhookByPhone } from '@/lib/botWhatsapp';
 import { runBotTurn } from '@/lib/botEngine';
 import { runFlowTurn, pickFlow } from '@/lib/botFlowEngine';
 import { parseRefFromText, referrerNoteFor } from '@/lib/attribution';
 import { createHeseosLead } from '@/lib/heseosLeadSync';
+import { findFirstLeadByPhone } from '@/lib/leadOrigin';
 import { ensureHeseosDefaultFlow } from '@/lib/heseosDefaultFlow';
+import { HESEOS_RETURNING_FLOW_ID, ensureHeseosReturningFlow } from '@/lib/heseosReturningFlow';
 
 export const dynamic = 'force-dynamic';
 
@@ -85,11 +87,16 @@ export async function POST(req) {
       // straight back to the simpler, Bot-Configuration-driven lib/botEngine.js exactly as
       // before Flow Builder existed. Read once per batch, not per message.
       let tenantFlows = await dbWhere('bot_flows', 'tenantId', tenant.id);
-      // Heseos's own tenant always gets its default lead-capture flow — self-heals into
-      // existence the first time it's needed rather than requiring a manual setup step (same
-      // spirit as app/api/bot/config's waVerifyToken backfill). No-op after the first run, and
-      // no-op entirely for every other tenant — see lib/heseosDefaultFlow.js.
-      if (tenant.botKind === 'heseos') tenantFlows = await ensureHeseosDefaultFlow(tenant, tenantFlows);
+      // Heseos's own tenant always gets its default lead-capture flow, and its "welcome back"
+      // flow for customers who already have a lead (see the chat-creation branch below) —
+      // self-heal into existence the first time they're needed rather than requiring a manual
+      // setup step (same spirit as app/api/bot/config's waVerifyToken backfill). No-op after the
+      // first run, and no-op entirely for every other tenant — see lib/heseosDefaultFlow.js and
+      // lib/heseosReturningFlow.js.
+      if (tenant.botKind === 'heseos') {
+        tenantFlows = await ensureHeseosDefaultFlow(tenant, tenantFlows);
+        tenantFlows = await ensureHeseosReturningFlow(tenant, tenantFlows);
+      }
 
       for (const m of g.messages) {
         if (await dbGetById('bot_messages', m.id)) continue; // de-dupe Meta's retries
@@ -107,7 +114,25 @@ export async function POST(req) {
           // codes exist, so this only ever resolves for Heseos's tenant, but nothing here is
           // Heseos-specific.
           const link = await resolveAttributionLink(m.text);
-          const picked = pickFlow(tenantFlows, { attributionKind: link?.kind || null, text: m.text });
+          let picked = pickFlow(tenantFlows, { attributionKind: link?.kind || null, text: m.text });
+
+          // A customer who already has a lead — punched in by a partner, captured on a previous
+          // WhatsApp chat, however it got there — gets HESEOS Buddy's "welcome back" flow
+          // instead of the full new-enquiry questionnaire, and this brand-new chat is linked
+          // straight to that EXISTING lead rather than spawning another one. Heseos-brand only
+          // (see lib/heseosReturningFlow.js); a white-label linkToHeseosLeads tenant with no
+          // flow of their own keeps the original immediate-bridge behaviour further below.
+          let existingLeadId = null;
+          if (tenant.botKind === 'heseos') {
+            const existingLeads = await dbList('leads');
+            const firstLead = findFirstLeadByPhone(m.from, existingLeads);
+            if (firstLead) {
+              existingLeadId = firstLead.id;
+              const returningFlow = tenantFlows.find((f) => f.id === HESEOS_RETURNING_FLOW_ID);
+              if (returningFlow) picked = returningFlow;
+            }
+          }
+
           chat = {
             id: m.from, tenantId: tenant.id, phone: m.from, name: m.name || m.from,
             lastText: m.text, lastAt: m.ts, unread: 1, status: 'open', assignedTo: null,
@@ -124,14 +149,22 @@ export async function POST(req) {
             const referrerNote = await referrerNoteFor(link);
             const patch = { referrerNote };
             chat = { ...chat, referrerNote };
-            // A flow is about to walk this chat through its own lead-capture question journey
-            // (see lib/heseosDefaultFlow.js and lib/heseosLeadSync.js's finalizeHeseosLead,
-            // called once that flow actually reaches a handoff node) — deferring lead creation
-            // to that moment is the whole point: a customer who only ever says "hi", or who
-            // declines when asked, must never become a lead at all. A tenant with
-            // linkToHeseosLeads but no flow (nothing picked) keeps the original immediate-bridge
-            // behaviour below, unchanged, for pipeline visibility exactly as before this existed.
-            if (!picked) {
+            if (existingLeadId) {
+              // Already have a lead for this phone number — link this chat to it directly rather
+              // than waiting for a flow to finish (there's no new-enquiry journey to finish here
+              // at all). This also makes lib/heseosLeadSync.js's finalizeHeseosLead a no-op once
+              // the returning-customer flow reaches its own handoff, since it only ever creates a
+              // lead when the chat doesn't already have one — so this can never double-create.
+              patch.leadId = existingLeadId;
+              chat = { ...chat, leadId: existingLeadId };
+            } else if (!picked) {
+              // A flow is about to walk this chat through its own lead-capture question journey
+              // (see lib/heseosDefaultFlow.js and finalizeHeseosLead, called once that flow
+              // actually reaches a handoff node) — deferring lead creation to that moment is the
+              // whole point: a customer who only ever says "hi", or who declines when asked, must
+              // never become a lead at all. A tenant with linkToHeseosLeads but no flow (nothing
+              // picked) keeps the original immediate-bridge behaviour, unchanged, for pipeline
+              // visibility exactly as before this existed.
               const lead = await createHeseosLead(tenant, { phone: m.from, name: m.name, link });
               patch.leadId = lead.id;
               chat = { ...chat, leadId: lead.id };
