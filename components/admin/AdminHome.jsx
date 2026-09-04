@@ -23,15 +23,7 @@ import QuotationsPage from "./QuotationsPage";
 import TasksPage from "./TasksPage";
 import DemoSchedulePage from "./DemoSchedulePage";
 import ConversionsPage from "./ConversionsPage";
-import StubPage from "./StubPage";
-import { IconPayouts } from "./icons";
-
-const STUBS = {
-  payouts: {
-    title: "Payouts", Icon: IconPayouts,
-    description: "A real payout ledger and settlement workflow for partners is coming soon — today, partner earnings shown across the app are an estimate based on their lead and conversion counts, not a processed payout.",
-  },
-};
+import PayoutsPage from "./PayoutsPage";
 
 function renderTab(tab, employee) {
   switch (tab) {
@@ -48,15 +40,12 @@ function renderTab(tab, employee) {
     case "tasks": return <TasksPage />;
     case "demo-schedule": return <DemoSchedulePage />;
     case "conversions": return <ConversionsPage />;
-    default: {
-      const s = STUBS[tab];
-      if (s) return <StubPage title={s.title} Icon={s.Icon} description={s.description} />;
-      return <DashboardPage employee={employee} />;
-    }
+    case "payouts": return <PayoutsPage />;
+    default: return <DashboardPage employee={employee} />;
   }
 }
 
-const KNOWN_TABS = new Set(["dashboard", "leads", "partners", "sales-engineers", "presales", "reports", "settings", "growth", "products", "quotations", "tasks", "demo-schedule", "conversions", ...Object.keys(STUBS)]);
+const KNOWN_TABS = new Set(["dashboard", "leads", "partners", "sales-engineers", "presales", "reports", "settings", "growth", "products", "quotations", "tasks", "demo-schedule", "conversions", "payouts"]);
 
 export default function AdminHome({ employee }) {
   const searchParams = useSearchParams();
