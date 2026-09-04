@@ -12,7 +12,8 @@ import { runFlowTurn, pickFlow } from '@/lib/botFlowEngine';
 import { parseRefFromText, referrerNoteFor } from '@/lib/attribution';
 import { createHeseosLead, heseosLeadSummary } from '@/lib/heseosLeadSync';
 import { findFirstLeadByPhone } from '@/lib/leadOrigin';
-import { ensureHeseosDefaultFlow } from '@/lib/heseosDefaultFlow';
+import { stageOf } from '@/lib/leadStage';
+import { HESEOS_DEFAULT_FLOW_ID, ensureHeseosDefaultFlow } from '@/lib/heseosDefaultFlow';
 import { HESEOS_RETURNING_FLOW_ID, ensureHeseosReturningFlow } from '@/lib/heseosReturningFlow';
 
 export const dynamic = 'force-dynamic';
@@ -127,7 +128,19 @@ export async function POST(req) {
           if (tenant.botKind === 'heseos') {
             const existingLeads = await dbList('leads');
             const firstLead = findFirstLeadByPhone(m.from, existingLeads);
-            if (firstLead) {
+            // Only route to the "welcome back" flow when that existing enquiry is still ACTIVE
+            // (a demo pending, or a fresh unworked lead) — see lib/leadStage.js's stageOf. A
+            // lead that's already closed out (Converted) or declined (Rejected) is done, one way
+            // or the other; a customer messaging in after that — even scanning a brand-new
+            // QR/referral link — is starting something new, not resuming something old, so
+            // `picked` is left alone here and falls through to pickFlow's normal attribution/
+            // keyword/default selection (lib/heseosDefaultFlow.js), exactly as if this phone
+            // number had never messaged before. createHeseosLead below still independently
+            // protects referral/QR payout credit via its own findFirstLeadByPhone check, so a
+            // repeat customer scanning a different partner's link still can't shift credit away
+            // from whoever brought them in first — only which FLOW they see changes here, never
+            // who gets paid.
+            if (firstLead && stageOf(firstLead) !== 'Converted' && stageOf(firstLead) !== 'Rejected') {
               existingLeadId = firstLead.id;
               existingLead = firstLead;
               const returningFlow = tenantFlows.find((f) => f.id === HESEOS_RETURNING_FLOW_ID);
@@ -191,20 +204,38 @@ export async function POST(req) {
           // Inbox's Bot on/off toggle must never be overridden this way — that toggle explicitly
           // clears autoHandoff the moment a person touches it either direction (see
           // app/api/bot/chats/[id]/route.js), so this check alone is enough to tell the two
-          // apart. Always routes straight to the returning-customer flow (never back to the
-          // full new-enquiry questionnaire): reaching this point means a flow already completed
-          // for this chat once, which — see lib/botFlowEngine.js's endHandoff — only ever
-          // happens after finalizeHeseosLead has run, so chat.leadId is always already set.
+          // apart. Reaching this point means a flow already completed for this chat once, which
+          // — see lib/botFlowEngine.js's endHandoff — only ever happens after finalizeHeseosLead
+          // has run, so chat.leadId is always already set at the moment autoHandoff was set; but
+          // time may have passed since then, and a human could since have closed that lead out
+          // (Converted/Rejected) from the admin/team app — same "still active?" check as the
+          // chat-creation branch above, and for the same reason: closed-out is done, and the
+          // next message is a fresh enquiry, not a resumed one.
           if (tenant.botKind === 'heseos' && chat.botOn === false && chat.autoHandoff === true) {
-            const returningFlow = tenantFlows.find((f) => f.id === HESEOS_RETURNING_FLOW_ID);
-            if (returningFlow) {
-              patch.botOn = true;
-              patch.autoHandoff = false;
-              patch.flowNodeId = null;
-              patch.activeFlowId = returningFlow.id;
-              if (chat.leadId) {
-                const lead = await dbGetById('leads', chat.leadId).catch(() => null);
+            const lead = chat.leadId ? await dbGetById('leads', chat.leadId).catch(() => null) : null;
+            const inProcess = lead && stageOf(lead) !== 'Converted' && stageOf(lead) !== 'Rejected';
+            if (inProcess) {
+              const returningFlow = tenantFlows.find((f) => f.id === HESEOS_RETURNING_FLOW_ID);
+              if (returningFlow) {
+                patch.botOn = true;
+                patch.autoHandoff = false;
+                patch.flowNodeId = null;
+                patch.activeFlowId = returningFlow.id;
                 patch.leadSummary = heseosLeadSummary(lead);
+              }
+            } else {
+              // Old lead is closed out (or this chat somehow has none) — unlink it and fall back
+              // to the normal new-enquiry flow, same as a first-ever message from this phone
+              // number would get with no active existing lead. A fresh lead is created when
+              // THIS flow reaches its own handoff (lib/heseosLeadSync.js's finalizeHeseosLead),
+              // never touching the old, already-closed one.
+              const defaultFlow = tenantFlows.find((f) => f.id === HESEOS_DEFAULT_FLOW_ID);
+              if (defaultFlow) {
+                patch.botOn = true;
+                patch.autoHandoff = false;
+                patch.flowNodeId = null;
+                patch.activeFlowId = defaultFlow.id;
+                patch.leadId = null;
               }
             }
           }
