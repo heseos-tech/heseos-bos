@@ -1,7 +1,16 @@
 'use client';
-// Shared quotation builder modal — used by Admin (components/admin/QuotationsPage.jsx) and
-// the Sales Engineer panel (components/employee/SalesEngineerPanel.jsx), per the access scope
-// decided for this feature (Admin + Sales Engineers can build/send quotations).
+// Shared quotation builder modal — used by Admin (components/admin/QuotationsPage.jsx), the
+// Sales Engineer panel (components/employee/SalesEngineerPanel.jsx) and the Team App mobile
+// lead screen (components/team/LeadDetailScreen.jsx), per the access scope decided for this
+// feature (Admin + Sales Engineers can build/send quotations).
+//
+// Deliberately styled with its own qb-* classes (app/globals.css) rather than any surface's own
+// theme (Admin's admin.css vs. globals.css's MARG-ported tokens for Employee/Team) — this
+// component is mounted from three different route trees that don't all load the same
+// stylesheet, so it can't depend on any of their theme-specific classes/variables and still
+// look right (or look at all) everywhere. It also collapses into a bottom sheet on narrow
+// screens (see the max-width: 560px rule in globals.css), so the same component works as a
+// desktop modal on Admin and a mobile sheet on the Team App without a separate variant.
 //
 // Pick products from the catalogue (app/api/products) into a cart with qty/discount per line,
 // or skip the catalogue entirely and just type a one-off amount — either way the SERVER (the
@@ -113,32 +122,32 @@ export default function QuotationBuilderModal({ lead, onClose, onDone }) {
   }
 
   return (
-    <div className="adm-modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="adm-modal-card adm-modal-card--wide">
-        <div className="adm-modal-head">
+    <div className="qb-modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="qb-modal-card">
+        <div className="qb-modal-head">
           <div>
-            <div className="adm-modal-title">{revisions.length ? `Revise quotation (v${revisions.length + 1})` : 'Build quotation'}</div>
-            <div className="adm-modal-sub">{lead.name} · {lead.phone}</div>
+            <div className="qb-modal-title">{revisions.length ? `Revise quotation (v${revisions.length + 1})` : 'Build quotation'}</div>
+            <div className="qb-modal-sub">{lead.name} · {lead.phone}</div>
           </div>
-          <button className="adm-icon-btn" onClick={onClose}><IconX size={18} /></button>
+          <button className="qb-modal-close" onClick={onClose}><IconX size={18} /></button>
         </div>
 
         {revisions.length > 0 && (
           <div className="qb-share-row">
-            <a className="adm-btn-outline" href={`/api/leads/${lead.id}/quotation-pdf`} target="_blank" rel="noopener noreferrer"><IconDownload size={14} /> Download last PDF</a>
-            <button type="button" className="adm-btn-outline" onClick={sendOnWhatsApp} disabled={sending}><IconWhatsApp size={14} /> {sending ? 'Sending…' : 'Send on WhatsApp'}</button>
+            <a className="qb-btn-outline" href={`/api/leads/${lead.id}/quotation-pdf`} target="_blank" rel="noopener noreferrer"><IconDownload size={14} /> Download last PDF</a>
+            <button type="button" className="qb-btn-outline" onClick={sendOnWhatsApp} disabled={sending}><IconWhatsApp size={14} /> {sending ? 'Sending…' : 'Send on WhatsApp'}</button>
             {sendMsg && <span className="qb-share-msg">{sendMsg}</span>}
           </div>
         )}
 
         <div className="qb-layout">
           <div>
-            <div className="adm-search adm-search--inline qb-picker-search"><IconSearch size={16} /><input placeholder="Search products by name or SKU…" value={pq} onChange={(e) => setPq(e.target.value)} /></div>
+            <div className="qb-search"><IconSearch size={16} /><input placeholder="Search products by name or SKU…" value={pq} onChange={(e) => setPq(e.target.value)} /></div>
             <div className="qb-product-list">
               {productsLoading ? (
-                <div className="adm-empty">Loading catalogue…</div>
+                <div className="qb-empty">Loading catalogue…</div>
               ) : filteredProducts.length === 0 ? (
-                <div className="adm-empty">{activeProducts.length === 0 ? 'No products in the catalogue yet — add some in Admin → Products.' : 'No products match.'}</div>
+                <div className="qb-empty">{activeProducts.length === 0 ? 'No products in the catalogue yet — add some in Admin → Products.' : 'No products match.'}</div>
               ) : filteredProducts.map((p) => (
                 <div className="qb-product-row" key={p.id}>
                   {p.photos?.[0]?.dataUrl
@@ -162,7 +171,7 @@ export default function QuotationBuilderModal({ lead, onClose, onDone }) {
               </>
             ) : (
               <>
-                <div className="qb-line qb-line-head" style={{ gridTemplateColumns: '1fr 50px 82px 70px 22px' }}>
+                <div className="qb-line qb-line-head">
                   <span>Item</span><span>Qty</span><span>Price</span><span>Disc.</span><span></span>
                 </div>
                 {lines.map((l) => (
@@ -197,8 +206,8 @@ export default function QuotationBuilderModal({ lead, onClose, onDone }) {
 
             {error && <div className="lf-error">{error}</div>}
             <div className="qb-actions">
-              <button className="adm-btn-outline" onClick={onClose} disabled={saving}>Cancel</button>
-              <button className="adm-btn-primary" onClick={submit} disabled={saving || (lines.length === 0 && manualAmount === '')}>
+              <button className="qb-btn-outline" onClick={onClose} disabled={saving}>Cancel</button>
+              <button className="qb-btn-primary" onClick={submit} disabled={saving || (lines.length === 0 && manualAmount === '')}>
                 {saving ? 'Saving…' : revisions.length ? 'Save Revision' : 'Send Quotation'}
               </button>
             </div>
