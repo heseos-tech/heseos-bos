@@ -5,7 +5,7 @@
 
 import { dbGetById, dbPatch, dbClaim } from '@/lib/db';
 import { getEmployee, getPartner } from '@/lib/auth';
-import { pushHistory, CONTACT_LABEL, DEMO_OUTCOME_LABEL, DEMO_OUTCOME_KIND } from '@/lib/leadStage';
+import { pushHistory, CONTACT_LABEL, DEMO_OUTCOME_LABEL, DEMO_OUTCOME_KIND, INSTALL_STATUS_LABEL, INVOICE_STATUS_LABEL } from '@/lib/leadStage';
 import { notifyHeseosDemoClaimed } from '@/lib/heseosNotify';
 
 export const dynamic = 'force-dynamic';
@@ -205,6 +205,31 @@ export async function PATCH(request, { params }) {
     const quoteEvent = revisionNum === 1 ? 'Quotation Sent' : `Quotation Revised (v${revisionNum})`;
     const quoteNote = `${amount != null ? `₹${amount}` : ''}${body.note ? (amount != null ? ' — ' : '') + body.note : ''}`;
     patch.history = pushHistory(lead, { event: quoteEvent, by: actorLabel, note: quoteNote });
+
+  } else if (body.type === 'conversionUpdate') {
+    // Post-sale tracking for a CONVERTED deal — install status, invoice, warranty. Admin-only
+    // (this is edited exclusively from Admin -> Conversions); every other PATCH type on this
+    // route stays open to any employee per this file's existing trust model.
+    if (employee.role !== 'admin') {
+      return Response.json({ error: 'Only admins can update conversion tracking' }, { status: 403 });
+    }
+    if (lead.demoOutcome !== 'converted') {
+      return Response.json({ error: 'This lead has not been converted yet' }, { status: 400 });
+    }
+    if (body.installStatus !== undefined && !INSTALL_STATUS_LABEL[body.installStatus]) {
+      return Response.json({ error: 'Invalid installStatus' }, { status: 400 });
+    }
+    if (body.invoiceStatus !== undefined && !INVOICE_STATUS_LABEL[body.invoiceStatus]) {
+      return Response.json({ error: 'Invalid invoiceStatus' }, { status: 400 });
+    }
+    if (body.installStatus !== undefined) patch.installStatus = body.installStatus;
+    if (body.installDate !== undefined) patch.installDate = body.installDate || null;
+    if (body.invoiceNumber !== undefined) patch.invoiceNumber = body.invoiceNumber || '';
+    if (body.invoiceAmount !== undefined) patch.invoiceAmount = body.invoiceAmount != null && body.invoiceAmount !== '' ? (Number(body.invoiceAmount) || null) : null;
+    if (body.invoiceStatus !== undefined) patch.invoiceStatus = body.invoiceStatus;
+    if (body.warrantyMonths !== undefined) patch.warrantyMonths = body.warrantyMonths != null && body.warrantyMonths !== '' ? (Number(body.warrantyMonths) || null) : null;
+    if (body.conversionNote !== undefined) patch.conversionNote = body.conversionNote || '';
+    patch.history = pushHistory(lead, { event: 'Conversion tracking updated', by: actorLabel, note: body.note || '' });
 
   } else if (body.type === 'assign') {
     patch = {
