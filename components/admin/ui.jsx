@@ -8,7 +8,7 @@ import Image from 'next/image';
 import { useSearchParams, useRouter } from 'next/navigation';
 import {
   IconDashboard, IconLeads, IconPartners, IconSalesEngineer, IconPresales, IconDemo,
-  IconQuotation, IconConversions, IconReports, IconPayouts, IconTasks, IconSettings,
+  IconProducts, IconQuotation, IconConversions, IconReports, IconPayouts, IconTasks, IconSettings,
   IconSearch, IconBell, IconChevronDown, IconChevronLeft, IconChevronRight, IconArrowUp,
   IconArrowDown, IconX, IconLogout, IconQrCode,
 } from './icons';
@@ -22,6 +22,7 @@ export const NAV_ITEMS = [
   { tab: 'sales-engineers', href: '/admin?tab=sales-engineers', label: 'Sales Engineers', Icon: IconSalesEngineer },
   { tab: 'presales', href: '/admin?tab=presales', label: 'Pre-sales', Icon: IconPresales },
   { tab: 'demo-schedule', href: '/admin?tab=demo-schedule', label: 'Demo Schedule', Icon: IconDemo },
+  { tab: 'products', href: '/admin?tab=products', label: 'Products', Icon: IconProducts },
   { tab: 'quotations', href: '/admin?tab=quotations', label: 'Quotations', Icon: IconQuotation },
   { tab: 'conversions', href: '/admin?tab=conversions', label: 'Conversions', Icon: IconConversions },
   { tab: 'reports', href: '/admin?tab=reports', label: 'Reports', Icon: IconReports },

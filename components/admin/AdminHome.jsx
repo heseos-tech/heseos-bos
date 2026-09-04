@@ -18,6 +18,7 @@ import PresalesPage from "./PresalesPage";
 import ReportsPage from "./ReportsPage";
 import SettingsPage from "./SettingsPage";
 import GrowthPage from "./GrowthPage";
+import ProductsPage from "./ProductsPage";
 import StubPage from "./StubPage";
 import { IconDemo, IconQuotation, IconConversions, IconPayouts, IconTasks } from "./icons";
 
@@ -54,6 +55,7 @@ function renderTab(tab, employee) {
     case "reports": return <ReportsPage />;
     case "settings": return <SettingsPage />;
     case "growth": return <GrowthPage />;
+    case "products": return <ProductsPage />;
     default: {
       const s = STUBS[tab];
       if (s) return <StubPage title={s.title} Icon={s.Icon} description={s.description} />;
@@ -62,7 +64,7 @@ function renderTab(tab, employee) {
   }
 }
 
-const KNOWN_TABS = new Set(["dashboard", "leads", "partners", "sales-engineers", "presales", "reports", "settings", "growth", ...Object.keys(STUBS)]);
+const KNOWN_TABS = new Set(["dashboard", "leads", "partners", "sales-engineers", "presales", "reports", "settings", "growth", "products", ...Object.keys(STUBS)]);
 
 export default function AdminHome({ employee }) {
   const searchParams = useSearchParams();

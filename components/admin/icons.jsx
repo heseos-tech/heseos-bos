@@ -39,3 +39,4 @@ export const IconLink = (p) => S(<><path d="M9.5 14.5l5-5" /><path d="M8 16.5l-1
 export const IconRefresh = (p) => S(<><path d="M4 12a8 8 0 0114.5-4.5M20 12a8 8 0 01-14.5 4.5" /><path d="M18.5 3v4.5H14M5.5 21v-4.5H10" /></>, p?.size);
 export const IconTrash = (p) => S(<><path d="M4 7h16" /><path d="M9 7V4.5a1 1 0 011-1h4a1 1 0 011 1V7" /><path d="M6 7l1 13a1.5 1.5 0 001.5 1.5h7A1.5 1.5 0 0017 20l1-13" /><path d="M10 11v6M14 11v6" /></>, p?.size);
 export const IconInfo = (p) => S(<><circle cx="12" cy="12" r="9" /><path d="M12 11v5.5" /><circle cx="12" cy="8" r="0.1" fill="currentColor" stroke="currentColor" strokeWidth="2.4" /></>, p?.size);
+export const IconProducts = (p) => S(<><path d="M3.5 7.5l8.5-4 8.5 4-8.5 4-8.5-4z" /><path d="M3.5 7.5v9l8.5 4 8.5-4v-9" /><path d="M12 11.5v9" /></>, p?.size);
