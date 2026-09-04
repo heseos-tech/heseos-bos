@@ -190,7 +190,7 @@ export default function ConfigScreen({ tenant: initialTenant }) {
               {checking ? 'Testing…' : 'Test Connection'}
             </button>
             {waCheck && waCheck.ok === false && <span style={{ color: 'var(--bc-red)', fontSize: 12.5, fontWeight: 600 }}>{waCheck.error || 'Meta rejected these credentials.'}</span>}
-            {waCheck?.ok && <span style={{ color: '#15803d', fontSize: 12.5, fontWeight: 600 }}>Verified live with Meta{waCheck.verifiedName ? ` as "${waCheck.verifiedName}"` : ''}.</span>}
+            {waCheck?.ok && <span style={{ color: '#15803d', fontSize: 12.5, fontWeight: 600 }}>Verified live with Meta{waCheck.verifiedName ? ` as "${waCheck.verifiedName}"` : ''} — saved.</span>}
           </div>
           {/* Not a live status — this is only refreshed when Test Connection is clicked or the
               connection is saved (see the removed auto-test-on-mount effect above). Shown so it

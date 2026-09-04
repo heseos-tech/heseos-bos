@@ -37,6 +37,21 @@ export async function POST(request) {
     waVerifiedError: result.ok ? null : (result.error || null),
   };
 
+  // A SUCCESSFUL Test Connection now also saves the credentials that just verified — this is
+  // the actual bug behind "it got connected, then I refreshed and it failed again": Test
+  // Connection only ever verified whatever was CURRENTLY TYPED in the form against Meta, live —
+  // it never wrote waPhoneNumberId/waAccessToken to the tenant record. Only the separate "Save
+  // changes" button at the bottom of the page did that. So pasting a new token, clicking Test
+  // Connection, seeing "Connected", and then refreshing (or navigating away) WITHOUT scrolling
+  // down to also click Save meant the new token was never actually stored — the next load (and
+  // next Test Connection) was silently re-testing the OLD, already-expired token instead. Only
+  // persist on success: a failed test is very often a typo being tried out, and must never
+  // silently overwrite a previously-working saved connection.
+  if (result.ok) {
+    verifyPatch.waPhoneNumberId = phoneNumberId;
+    verifyPatch.waAccessToken = token;
+  }
+
   // Meta's own display_phone_number is now the single source of truth for tenant.whatsappNumber
   // — the field every QR code, referral link (lib/attribution.js's buildWaLink) and "Get
   // Started" WhatsApp CTA (app/get-started/route.js) resolves to. It used to be a one-time
