@@ -19,17 +19,14 @@ import ReportsPage from "./ReportsPage";
 import SettingsPage from "./SettingsPage";
 import GrowthPage from "./GrowthPage";
 import ProductsPage from "./ProductsPage";
+import QuotationsPage from "./QuotationsPage";
 import StubPage from "./StubPage";
-import { IconDemo, IconQuotation, IconConversions, IconPayouts, IconTasks } from "./icons";
+import { IconDemo, IconConversions, IconPayouts, IconTasks } from "./icons";
 
 const STUBS = {
   "demo-schedule": {
     title: "Demo Schedule", Icon: IconDemo,
     description: "A calendar view of every scheduled demo, by sales engineer, is coming soon. For now, demo dates and times are visible on each lead in the Leads and Pre-sales tables.",
-  },
-  quotations: {
-    title: "Quotations", Icon: IconQuotation,
-    description: "A dedicated quotation builder (line items, PDF, e-signature) is coming soon. For now you can mark a quotation as sent from a lead's row menu in the Leads table, and it's tracked on the Dashboard.",
   },
   conversions: {
     title: "Conversions", Icon: IconConversions,
@@ -56,6 +53,7 @@ function renderTab(tab, employee) {
     case "settings": return <SettingsPage />;
     case "growth": return <GrowthPage />;
     case "products": return <ProductsPage />;
+    case "quotations": return <QuotationsPage />;
     default: {
       const s = STUBS[tab];
       if (s) return <StubPage title={s.title} Icon={s.Icon} description={s.description} />;
@@ -64,7 +62,7 @@ function renderTab(tab, employee) {
   }
 }
 
-const KNOWN_TABS = new Set(["dashboard", "leads", "partners", "sales-engineers", "presales", "reports", "settings", "growth", "products", ...Object.keys(STUBS)]);
+const KNOWN_TABS = new Set(["dashboard", "leads", "partners", "sales-engineers", "presales", "reports", "settings", "growth", "products", "quotations", ...Object.keys(STUBS)]);
 
 export default function AdminHome({ employee }) {
   const searchParams = useSearchParams();

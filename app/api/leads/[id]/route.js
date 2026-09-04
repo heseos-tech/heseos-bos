@@ -159,11 +159,43 @@ export async function PATCH(request, { params }) {
     // quotationSentAt/quotationSentBy/quotationAmount always mirror the LATEST revision, so
     // every existing table/column/funnel that already reads those three fields keeps working
     // unchanged and just shows the current number.
+    //
+    // `items` is optional — the Team App and the old simple Sales-Engineer modal still send
+    // just { amount, note } and keep working exactly as before. When the quotation builder
+    // sends structured line items instead, the server (never the client) computes subtotal/
+    // discountTotal/amount from them, so a tampered client-sent total can't slip through.
     const now = new Date().toISOString();
     const prevRevisions = Array.isArray(lead.quotationRevisions) ? lead.quotationRevisions : [];
     const revisionNum = prevRevisions.length + 1;
-    const amount = body.amount != null && body.amount !== '' ? Number(body.amount) || null : (lead.quotationAmount || null);
+
+    let amount;
+    let items = null;
+    let subtotal = null;
+    let discountTotal = null;
+    if (Array.isArray(body.items) && body.items.length > 0) {
+      items = body.items.map((it) => {
+        const price = Number(it.price) || 0;
+        const qty = Number(it.qty) || 0;
+        const discount = Math.max(0, Number(it.discount) || 0);
+        const lineTotal = Math.max(0, price * qty - discount);
+        return {
+          productId: it.productId || null,
+          sku: String(it.sku || ''),
+          name: String(it.name || ''),
+          price, qty, discount, lineTotal,
+        };
+      });
+      subtotal = items.reduce((s, it) => s + it.price * it.qty, 0);
+      const lineDiscounts = items.reduce((s, it) => s + it.discount, 0);
+      const extraDiscount = body.extraDiscount != null && body.extraDiscount !== '' ? Math.max(0, Number(body.extraDiscount) || 0) : 0;
+      discountTotal = lineDiscounts + extraDiscount;
+      amount = Math.max(0, subtotal - discountTotal);
+    } else {
+      amount = body.amount != null && body.amount !== '' ? Number(body.amount) || null : (lead.quotationAmount || null);
+    }
+
     const revisionEntry = { revision: revisionNum, amount, at: now, by: actorLabel, note: body.note || '' };
+    if (items) { revisionEntry.items = items; revisionEntry.subtotal = subtotal; revisionEntry.discountTotal = discountTotal; }
     patch = {
       quotationSentAt: now,
       quotationSentBy: employee.id,

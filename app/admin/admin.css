@@ -190,6 +190,7 @@
 /* Modal */
 .adm-modal-overlay { position: fixed; inset: 0; background: rgba(8, 20, 34, 0.55); backdrop-filter: blur(3px); z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 20px; }
 .adm-modal-card { background: #fff; border-radius: 18px; padding: 24px; width: 100%; max-width: 460px; max-height: 88vh; overflow-y: auto; box-shadow: 0 40px 100px rgba(8, 20, 34, 0.25); }
+.adm-modal-card--wide { max-width: 920px; }
 .adm-modal-head { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 18px; }
 .adm-modal-title { font-size: 17px; font-weight: 800; color: var(--adm-ink); }
 .adm-modal-sub { font-size: 12.5px; color: var(--adm-text-faint); margin-top: 3px; }
@@ -370,16 +371,15 @@
 .qb-add-btn { flex-shrink: 0; background: var(--adm-orange); color: #fff; border: none; border-radius: 999px; width: 28px; height: 28px; font-size: 16px; font-weight: 700; cursor: pointer; line-height: 1; }
 .qb-add-btn:hover { opacity: 0.88; }
 
-.qb-line { display: grid; grid-template-columns: 34px 1fr 64px 90px 80px 26px; gap: 8px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--adm-border); }
-.qb-line-thumb { width: 34px; height: 34px; border-radius: 6px; object-fit: cover; background: var(--adm-bg); }
-.qb-line-thumb-placeholder { width: 34px; height: 34px; border-radius: 6px; background: var(--adm-bg); }
-.qb-line-name { font-size: 12.5px; font-weight: 700; color: var(--adm-ink); }
+.qb-line { display: grid; grid-template-columns: 1fr 50px 82px 70px 22px; gap: 8px; align-items: center; padding: 9px 0; border-bottom: 1px solid var(--adm-border); }
+.qb-line-head { font-size: 10px; color: var(--adm-text-faint); font-weight: 700; text-transform: uppercase; letter-spacing: 0.02em; padding-bottom: 4px; border-bottom: 1px solid var(--adm-border); }
+.qb-line-name { font-size: 12.5px; font-weight: 700; color: var(--adm-ink); line-height: 1.3; }
 .qb-line-sku { font-size: 10.5px; color: var(--adm-text-faint); }
-.qb-line-qty, .qb-line-price, .qb-line-discount { width: 100%; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--adm-border); font-size: 12.5px; text-align: right; font-family: inherit; }
-.qb-line-total { font-size: 12.5px; font-weight: 700; text-align: right; }
+.qb-line-total { font-size: 10.5px; color: var(--adm-text-soft); margin-top: 1px; }
+.qb-line-qty, .qb-line-price, .qb-line-discount { width: 100%; padding: 6px 6px; border-radius: 8px; border: 1px solid var(--adm-border); font-size: 12px; text-align: right; font-family: inherit; }
 .qb-line-remove { background: none; border: none; color: var(--adm-text-faint); cursor: pointer; display: flex; align-items: center; justify-content: center; }
 .qb-line-remove:hover { color: #c0392b; }
-.qb-empty-lines { padding: 26px 0; text-align: center; color: var(--adm-text-faint); font-size: 12.5px; }
+.qb-empty-lines { padding: 22px 0 16px; text-align: center; color: var(--adm-text-faint); font-size: 12.5px; }
 
 .qb-totals { margin-top: 14px; padding-top: 14px; border-top: 1.5px solid var(--adm-border); }
 .qb-totals-row { display: flex; justify-content: space-between; font-size: 13px; color: var(--adm-text-soft); padding: 3px 0; }

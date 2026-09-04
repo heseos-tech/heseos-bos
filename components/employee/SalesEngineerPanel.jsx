@@ -10,6 +10,7 @@ import { fmtDateTime, fmtDate } from '@/lib/date';
 import { stageOf, displayStatus, subUpdateOf, needsReschedule, DEMO_OUTCOMES } from '@/lib/leadStage';
 import { PRODUCT_INTEREST, PROPERTY_TYPE, LEAD_SOURCES } from '@/lib/formOptions';
 import { useApiResource } from '@/lib/useApiResource';
+import QuotationBuilderModal from '@/components/shared/QuotationBuilder';
 
 const PI_LABEL = Object.fromEntries(PRODUCT_INTEREST.map((p) => [p.v, p.l]));
 const PT_LABEL = Object.fromEntries(PROPERTY_TYPE.map((p) => [p.v, p.l]));
@@ -197,7 +198,10 @@ export default function SalesEngineerPanel({ employee }) {
         )}
       </div>
 
-      {modal && <EngineerModal modal={modal} onClose={() => setModal(null)} onDone={() => { setModal(null); fetchLeads(); }} />}
+      {modal?.type === 'quotation' && (
+        <QuotationBuilderModal lead={modal.lead} onClose={() => setModal(null)} onDone={() => { setModal(null); fetchLeads(); flash('Quotation saved'); }} />
+      )}
+      {modal && modal.type !== 'quotation' && <EngineerModal modal={modal} onClose={() => setModal(null)} onDone={() => { setModal(null); fetchLeads(); }} />}
     </div>
   );
 }
@@ -207,24 +211,19 @@ function EngineerModal({ modal, onClose, onDone }) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
-  const [amount, setAmount] = useState(lead.quotationAmount || '');
-  const [quoteNote, setQuoteNote] = useState('');
   const [outcome, setOutcome] = useState(needsReschedule(lead) ? lead.demoOutcome : '');
   const [finalPrice, setFinalPrice] = useState(lead.quotationAmount || '');
   const [note, setNote] = useState('');
   const [demoDate, setDemoDate] = useState(lead.demoDate || '');
   const [demoTime, setDemoTime] = useState(lead.demoTime || '');
   const [demoAddress, setDemoAddress] = useState(lead.demoAddress || '');
-  const revisions = Array.isArray(lead.quotationRevisions) ? lead.quotationRevisions : [];
 
   async function submit() {
     setError('');
     setSubmitting(true);
     try {
       let body;
-      if (type === 'quotation') {
-        body = { type: 'quotation', amount: amount ? Number(amount) : null, note: quoteNote };
-      } else if (type === 'outcome') {
+      if (type === 'outcome') {
         if (!outcome) { setError('Choose an outcome.'); setSubmitting(false); return; }
         if (outcome === 'converted' && !finalPrice) { setError('Enter the final price to mark this Converted.'); setSubmitting(false); return; }
         body = {
@@ -248,38 +247,6 @@ function EngineerModal({ modal, onClose, onDone }) {
   return (
     <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
       <div className="modal-card">
-        {type === 'quotation' && (
-          <>
-            <div className="modal-title">{revisions.length ? 'Revise quotation' : 'Send quotation'}</div>
-            <div className="modal-sub">{lead.name} · {lead.phone}</div>
-            {revisions.length > 0 && (
-              <div className="lf-field">
-                <label className="lf-label">Previous revisions</label>
-                <div className="timeline" style={{ marginTop: 0 }}>
-                  {revisions.slice().reverse().map((r) => (
-                    <div className="timeline-item" key={r.revision}>
-                      <div className="timeline-dot" />
-                      <div>
-                        <div className="timeline-label">v{r.revision} · {r.amount != null ? `₹${r.amount}` : 'no amount'}</div>
-                        <div className="timeline-meta">{fmtDateTime(r.at)}</div>
-                        {r.note && <div className="timeline-note">{r.note}</div>}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-            <div className="lf-field">
-              <label className="lf-label">{revisions.length ? 'New amount (₹)' : 'Amount (₹, optional)'}</label>
-              <input className="lf-input" type="number" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="e.g. 185000" />
-            </div>
-            <div className="lf-field">
-              <label className="lf-label">Reason for {revisions.length ? 'revision' : 'this quote'} (optional)</label>
-              <input className="lf-input" value={quoteNote} onChange={(e) => setQuoteNote(e.target.value)} placeholder="e.g. Reduced after negotiation" />
-            </div>
-          </>
-        )}
-
         {type === 'outcome' && (
           <>
             <div className="modal-title">{needsReschedule(lead) ? 'Reschedule demo' : 'Mark demo outcome'}</div>

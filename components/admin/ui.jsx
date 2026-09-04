@@ -217,10 +217,10 @@ export function Pagination({ page, pageCount, total, pageSize, onPage }) {
   );
 }
 
-export function Modal({ title, sub, onClose, children }) {
+export function Modal({ title, sub, onClose, children, wide = false }) {
   return (
     <div className="adm-modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="adm-modal-card">
+      <div className={`adm-modal-card${wide ? ' adm-modal-card--wide' : ''}`}>
         <div className="adm-modal-head">
           <div>
             <div className="adm-modal-title">{title}</div>
