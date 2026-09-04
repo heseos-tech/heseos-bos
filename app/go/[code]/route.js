@@ -1,8 +1,8 @@
 // The unified QR-code / referral-link entry point — every printed QR (partner or billboard/
 // location) and every shared referral link (partner or customer) points at
 // https://<domain>/go/<code>. See lib/attribution.js for what a code is and how it's created,
-// and app/api/bot/webhook/route.js's bridgeToHeseosLeads for the other half (turning the
-// resulting WhatsApp chat into an attributed lead).
+// and lib/heseosLeadSync.js's createHeseosLead/finalizeHeseosLead for the other half (turning
+// the resulting WhatsApp chat into an attributed lead).
 //
 // This route: look up the code → log a scan/click → redirect into WhatsApp, pre-filled with a
 // message tagging the code so the webhook can attribute it. It never creates a lead itself —

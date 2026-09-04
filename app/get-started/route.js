@@ -5,7 +5,7 @@
 //
 // Plain, untracked hand-off — no ref tag (that's only for QR codes / referral links, see
 // lib/attribution.js and app/go/[code]). The resulting chat lands as an ordinary 'whatsapp_bot'
-// source lead once bridgeToHeseosLeads (app/api/bot/webhook/route.js) picks it up.
+// source lead once lib/heseosLeadSync.js's createHeseosLead/finalizeHeseosLead picks it up.
 
 import { getHeseosBotTenant } from '@/lib/attribution';
 

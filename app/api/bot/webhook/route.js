@@ -5,13 +5,13 @@
 // matching the inbound payload's phone_number_id / verify token), see lib/botWhatsapp.js and
 // lib/botEngine.js.
 
-import { dbGetById, dbInsert, dbList, dbPatch, dbWhere } from '@/lib/db';
+import { dbGetById, dbInsert, dbPatch, dbWhere } from '@/lib/db';
 import { parseWebhookByPhone } from '@/lib/botWhatsapp';
 import { runBotTurn } from '@/lib/botEngine';
 import { runFlowTurn, pickFlow } from '@/lib/botFlowEngine';
-import { createLeadFromWhatsApp } from '@/lib/waInbound';
 import { parseRefFromText, referrerNoteFor } from '@/lib/attribution';
-import { findFirstLeadByPhone, describeLeadOrigin } from '@/lib/leadOrigin';
+import { createHeseosLead } from '@/lib/heseosLeadSync';
+import { ensureHeseosDefaultFlow } from '@/lib/heseosDefaultFlow';
 
 export const dynamic = 'force-dynamic';
 
@@ -47,50 +47,13 @@ async function resolveAttributionLink(text) {
   return null;
 }
 
-// Only Heseos's own tenant has this flag set (a manual, trust-based grant — never something a
-// tenant can switch on themselves; it is deliberately left out of EDITABLE_FIELDS in
-// app/api/bot/config/route.js). When set, every lead this bot captures also lands in the real,
-// shared `leads` table so it shows up in Admin/Partner/Employee exactly like any other lead.
+// Only Heseos's own tenant has botKind === 'heseos'; linkToHeseosLeads is a manual, trust-based
+// grant for a white-label tenant that still funnels into the real, shared `leads` table (never
+// something a tenant can switch on themselves — deliberately left out of EDITABLE_FIELDS in
+// app/api/bot/config/route.js). Either way, bridging a chat into a real lead now happens via
+// lib/heseosLeadSync.js's createHeseosLead/finalizeHeseosLead — see the chat-creation branch
+// below for WHEN each tenant's chats get bridged.
 //
-// `link` (already resolved by resolveAttributionLink, above, so it isn't looked up twice) is the
-// attribution_links row the customer's first message was tagged with, if any — partner QR/referral
-// gets partnerId set, so it shows up in that partner's Partner App; location QR / customer
-// referral is tracked without a partnerId. No link (untagged / unrecognised ref) just falls back
-// to the plain 'whatsapp_bot' source, same as before this existed.
-async function bridgeToHeseosLeads(tenant, { phone, name, link }) {
-  // First-touch attribution — "our system only considers who gave the lead first." A brand-new
-  // WhatsApp chat still becomes its own lead here either way (pipeline visibility for a
-  // genuinely new enquiry), but if this phone number already has an earlier lead from ANY
-  // channel (Partner App, Team App, or a previous WhatsApp attribution), the partner/QR/referral
-  // credit this message would otherwise carry gets suppressed — same rule and same helper as
-  // app/api/leads's own duplicate check (lib/leadOrigin.js's findFirstLeadByPhone), just applied
-  // on the WhatsApp side so a customer re-scanning a DIFFERENT partner's QR code later can't
-  // shift payout credit away from whoever actually brought them in first.
-  const existingLeads = await dbList('leads');
-  const firstLead = findFirstLeadByPhone(phone, existingLeads);
-  const duplicateNote = firstLead
-    ? `Not credited — ${describeLeadOrigin(firstLead, { leads: existingLeads })}, so payout credit stays with the original referrer.`
-    : null;
-
-  if (link && !firstLead) {
-    return createLeadFromWhatsApp({
-      phone, name,
-      source: link.kind,
-      note: `Heseos Bot via ${link.kind} (${link.label || link.id})`,
-      partnerId: link.partnerId || null,
-      attributionLinkId: link.id,
-      attributionKind: link.kind,
-      referredByLeadId: link.customerLeadId || null,
-    });
-  }
-  return createLeadFromWhatsApp({
-    phone, name,
-    source: link ? link.kind : 'whatsapp_bot',
-    note: link ? `Heseos Bot via ${link.kind} (${link.label || link.id})` : `Heseos Bot (${tenant.businessName || tenant.id})`,
-    duplicateNote,
-  });
-}
-
 // POST — every inbound WhatsApp message + delivery status, from every tenant, lands here.
 export async function POST(req) {
   const payload = await req.json().catch(() => ({}));
@@ -121,7 +84,12 @@ export async function POST(req) {
       // conversation. No match at all — including no flows built, or none enabled — falls
       // straight back to the simpler, Bot-Configuration-driven lib/botEngine.js exactly as
       // before Flow Builder existed. Read once per batch, not per message.
-      const tenantFlows = await dbWhere('bot_flows', 'tenantId', tenant.id);
+      let tenantFlows = await dbWhere('bot_flows', 'tenantId', tenant.id);
+      // Heseos's own tenant always gets its default lead-capture flow — self-heals into
+      // existence the first time it's needed rather than requiring a manual setup step (same
+      // spirit as app/api/bot/config's waVerifyToken backfill). No-op after the first run, and
+      // no-op entirely for every other tenant — see lib/heseosDefaultFlow.js.
+      if (tenant.botKind === 'heseos') tenantFlows = await ensureHeseosDefaultFlow(tenant, tenantFlows);
 
       for (const m of g.messages) {
         if (await dbGetById('bot_messages', m.id)) continue; // de-dupe Meta's retries
@@ -144,18 +112,31 @@ export async function POST(req) {
             id: m.from, tenantId: tenant.id, phone: m.from, name: m.name || m.from,
             lastText: m.text, lastAt: m.ts, unread: 1, status: 'open', assignedTo: null,
             botOn: true, lead: null, stage: null, menuRetries: 0, city: '',
-            attributionKind: link?.kind || null, flowNodeId: null, answers: {}, activeFlowId: picked?.id || null,
+            attributionKind: link?.kind || null, attributionLinkId: link?.id || null,
+            flowNodeId: null, answers: {}, activeFlowId: picked?.id || null,
             firstMessageAt: m.ts, createdAt: m.ts,
           };
           await dbInsert('bot_chats', m.from, chat);
           if (tenant.botKind === 'heseos' || tenant.linkToHeseosLeads === true) {
-            const lead = await bridgeToHeseosLeads(tenant, { phone: m.from, name: m.name, link });
             // Only ever computed for Heseos's own tenant — white-label tenants never reach this
             // branch, so their chats simply have no referrerNote and {{referrerNote}} (if a
             // tenant's own flow happens to use it) just renders blank. See lib/attribution.js.
             const referrerNote = await referrerNoteFor(link);
-            chat = { ...chat, leadId: lead.id, referrerNote };
-            await dbPatch('bot_chats', m.from, { leadId: lead.id, referrerNote });
+            const patch = { referrerNote };
+            chat = { ...chat, referrerNote };
+            // A flow is about to walk this chat through its own lead-capture question journey
+            // (see lib/heseosDefaultFlow.js and lib/heseosLeadSync.js's finalizeHeseosLead,
+            // called once that flow actually reaches a handoff node) — deferring lead creation
+            // to that moment is the whole point: a customer who only ever says "hi", or who
+            // declines when asked, must never become a lead at all. A tenant with
+            // linkToHeseosLeads but no flow (nothing picked) keeps the original immediate-bridge
+            // behaviour below, unchanged, for pipeline visibility exactly as before this existed.
+            if (!picked) {
+              const lead = await createHeseosLead(tenant, { phone: m.from, name: m.name, link });
+              patch.leadId = lead.id;
+              chat = { ...chat, leadId: lead.id };
+            }
+            await dbPatch('bot_chats', m.from, patch);
           }
           flow = picked;
         } else {
