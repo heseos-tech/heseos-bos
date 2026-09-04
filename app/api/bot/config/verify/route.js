@@ -25,6 +25,18 @@ export async function POST(request) {
 
   const result = await verifyBotCredentials({ phoneNumberId, token });
 
+  // Persist the outcome on the tenant record — this is what lets Bot Configuration show a
+  // connection status on load WITHOUT re-hitting Meta every time the page is opened (it used to
+  // auto-test on every mount, which meant loading the page could itself surface a freshly
+  // expired token as a page-load error, over and over). Test Connection / Save still trigger a
+  // real live check on demand; this cached result is only what the badge shows in between.
+  const verifyPatch = {
+    waVerifiedStatus: result.ok ? 'connected' : 'error',
+    waVerifiedAt: new Date().toISOString(),
+    waVerifiedName: result.ok ? (result.verifiedName || null) : null,
+    waVerifiedError: result.ok ? null : (result.error || null),
+  };
+
   // Meta's own display_phone_number is now the single source of truth for tenant.whatsappNumber
   // — the field every QR code, referral link (lib/attribution.js's buildWaLink) and "Get
   // Started" WhatsApp CTA (app/get-started/route.js) resolves to. It used to be a one-time
@@ -33,9 +45,11 @@ export async function POST(request) {
   // with a phone number that never existed. Refreshing it here — every successful verification,
   // not just at signup — keeps it correct even if the connected number ever changes.
   if (result.ok && result.displayPhoneNumber && result.displayPhoneNumber !== tenant.whatsappNumber) {
-    try { await dbPatch('bot_tenants', tenant.id, { whatsappNumber: result.displayPhoneNumber }); }
-    catch (err) { console.error('Failed to sync whatsappNumber from verified Meta number:', err); }
+    verifyPatch.whatsappNumber = result.displayPhoneNumber;
   }
+
+  try { await dbPatch('bot_tenants', tenant.id, verifyPatch); }
+  catch (err) { console.error('Failed to save WhatsApp verification result:', err); }
 
   return Response.json(result);
 }

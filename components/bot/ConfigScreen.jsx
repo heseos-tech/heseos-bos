@@ -31,8 +31,21 @@ export default function ConfigScreen({ tenant: initialTenant }) {
   // Real WhatsApp verification state — null means "not tested yet" (distinct from a failed
   // test), since the badge used to just check both fields were non-empty and would show
   // "Connected" for literally any typed-in garbage. See lib/botWhatsapp.js's
-  // verifyBotCredentials and app/api/bot/config/verify/route.js.
-  const [waCheck, setWaCheck] = useState(null);
+  // verifyBotCredentials and app/api/bot/config/verify/route.js. Seeded from the tenant's
+  // LAST SAVED verification result (waVerifiedStatus/waVerifiedAt/etc, written by the verify
+  // route) rather than null, so a saved-and-tested connection still shows as connected on the
+  // next page load without needing to re-check anything — see the removed auto-test-on-mount
+  // effect below for why that matters.
+  const [waCheck, setWaCheck] = useState(() => {
+    if (!initialTenant.waVerifiedStatus) return null;
+    return {
+      ok: initialTenant.waVerifiedStatus === 'connected',
+      error: initialTenant.waVerifiedError || null,
+      displayPhoneNumber: initialTenant.whatsappNumber || null,
+      verifiedName: initialTenant.waVerifiedName || null,
+      checkedAt: initialTenant.waVerifiedAt || null,
+    };
+  });
   const [checking, setChecking] = useState(false);
 
   useEffect(() => { setOrigin(window.location.origin); }, []);
@@ -47,7 +60,9 @@ export default function ConfigScreen({ tenant: initialTenant }) {
         body: JSON.stringify({ waPhoneNumberId: phoneNumberId, waAccessToken: token }),
       });
       const result = res.ok ? await res.json() : { ok: false, error: 'Could not reach the verification check.' };
-      setWaCheck(result);
+      // checkedAt marks this as a check that just ran (not the seeded/persisted one from load),
+      // so the "Last checked" hint below reflects it immediately.
+      setWaCheck({ ...result, checkedAt: new Date().toISOString() });
       // Mirror the server's whatsappNumber sync (app/api/bot/config/verify) locally so the
       // "QR codes & referral links open" line below updates immediately, without waiting on a
       // full page reload to pick up what the verify endpoint just wrote to the tenant record.
@@ -61,14 +76,13 @@ export default function ConfigScreen({ tenant: initialTenant }) {
     }
   }
 
-  // Auto-test once on load if credentials were already saved from a previous visit — a token
-  // can expire or get revoked on Meta's side at any time, silently, so "it worked when I saved
-  // it" isn't good enough to keep showing green.
-  useEffect(() => {
-    if (initialTenant.waPhoneNumberId && initialTenant.waAccessToken) testConnection();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
+  // Deliberately NOT auto-testing on every load: opening this page used to silently re-hit
+  // Meta every time (auto-test-on-mount), so a token that expired on Meta's side turned every
+  // single visit into a fresh error banner even though nothing about the config had changed. A
+  // saved, previously-verified connection now stays shown as "Connected" from the persisted
+  // waVerifiedStatus (see the waCheck seed above) until something actually needs re-checking:
+  // the tenant edits the credentials (which clears waCheck below), clicks Test Connection
+  // themselves, or saves — see save()'s testConnection call.
   function copy(value, key) {
     navigator.clipboard?.writeText(value).then(() => {
       setCopied(key);
@@ -178,6 +192,14 @@ export default function ConfigScreen({ tenant: initialTenant }) {
             {waCheck && waCheck.ok === false && <span style={{ color: 'var(--bc-red)', fontSize: 12.5, fontWeight: 600 }}>{waCheck.error || 'Meta rejected these credentials.'}</span>}
             {waCheck?.ok && <span style={{ color: '#15803d', fontSize: 12.5, fontWeight: 600 }}>Verified live with Meta{waCheck.verifiedName ? ` as "${waCheck.verifiedName}"` : ''}.</span>}
           </div>
+          {/* Not a live status — this is only refreshed when Test Connection is clicked or the
+              connection is saved (see the removed auto-test-on-mount effect above). Shown so it
+              never reads as "we're continuously monitoring this" when it isn't. */}
+          {waCheck?.checkedAt && (
+            <div className="bc-hint" style={{ marginTop: -8, marginBottom: 8 }}>
+              Last checked {new Date(waCheck.checkedAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })} — click Test Connection above to check again anytime.
+            </div>
+          )}
           {/* This is the number every QR code, referral link, and site "Get Started" WhatsApp
               button actually opens (lib/attribution.js's buildWaLink / app/get-started) — always
               Meta's own verified number, never a manually-typed value, so it can't silently drift
