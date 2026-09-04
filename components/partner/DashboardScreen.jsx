@@ -2,6 +2,7 @@
 import Link from 'next/link';
 import { Avatar, StatusBadge } from './ui';
 import { IconBell, IconLeads, IconGift, IconCheck, IconPlus, IconQrCode, IconChevronRight } from './icons';
+import { IconProducts } from '@/components/admin/icons';
 import { fmtDateTime } from '@/lib/date';
 import { partnerStatusOf, PROPERTY_TYPE_LABEL } from '@/lib/partnerMock';
 import { useApiResource } from '@/lib/useApiResource';
@@ -72,6 +73,15 @@ export default function DashboardScreen({ partner }) {
         <div style={{ flex: 1 }}>
           <div style={{ fontSize: 14, fontWeight: 700, color: '#fff' }}>Share &amp; Earn</div>
           <div style={{ fontSize: 12, color: 'var(--hp-text-soft)' }}>Your QR code &amp; referral link — leads from either are credited to you</div>
+        </div>
+        <IconChevronRight size={18} style={{ color: 'var(--hp-text-faint)', flexShrink: 0 }} />
+      </Link>
+
+      <Link href="/partner/catalogue" className="hp-card" style={{ display: 'flex', alignItems: 'center', gap: 12, textDecoration: 'none' }}>
+        <div className="hp-stat-icon" style={{ width: 38, height: 38, flexShrink: 0, margin: 0 }}><IconProducts size={19} /></div>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: '#fff' }}>Browse Catalogue</div>
+          <div style={{ fontSize: 12, color: 'var(--hp-text-soft)' }}>Products, photos &amp; pricing — show a customer right from your phone</div>
         </div>
         <IconChevronRight size={18} style={{ color: 'var(--hp-text-faint)', flexShrink: 0 }} />
       </Link>

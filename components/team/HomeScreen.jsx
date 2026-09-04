@@ -7,6 +7,7 @@ import { useMemo } from "react";
 import Link from "next/link";
 import { Avatar } from "@/components/partner/ui";
 import { IconBell, IconLeads, IconGift, IconCheck, IconMapPin, IconWallet } from "@/components/partner/icons";
+import { IconProducts, IconChevronRight } from "@/components/admin/icons";
 import { fmtDateTime } from "@/lib/date";
 import { stageOf, displayStatus } from "@/lib/leadStage";
 import { PROPERTY_TYPE } from "@/lib/formOptions";
@@ -138,6 +139,15 @@ export default function TeamHomeScreen({ employee }) {
           );
         })}
       </div>
+
+      <Link href="/team/catalogue" className="hp-card" style={{ display: "flex", alignItems: "center", gap: 12, textDecoration: "none" }}>
+        <div className="hp-stat-icon" style={{ width: 38, height: 38, flexShrink: 0, margin: 0 }}><IconProducts size={19} /></div>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: "#fff" }}>Browse Catalogue</div>
+          <div style={{ fontSize: 12, color: "var(--hp-text-soft)" }}>Products, photos &amp; pricing — show a customer right from your phone</div>
+        </div>
+        <IconChevronRight size={18} style={{ color: "var(--hp-text-faint)", flexShrink: 0 }} />
+      </Link>
 
       {!isPresales && !myCity && (
         <div className="hp-card" style={{ background: "var(--hp-warn-dim)", border: "1px solid var(--hp-warn)" }}>

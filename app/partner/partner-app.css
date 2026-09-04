@@ -469,3 +469,17 @@ html:has(.hp-root), body:has(.hp-root) {
   .hp-splash-icon, .hp-splash-lockup-img { animation: none !important; transition: opacity 0.3s ease !important; transform: none !important; }
   .hp-splash-icon { opacity: 1; }
 }
+
+/* ── Catalogue (Partner Browse Catalogue / Team App) ───────────────────── */
+.hp-cat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 0 20px 20px; }
+.hp-cat-card { background: var(--hp-surface); border: 1px solid var(--hp-border); border-radius: var(--hp-r-lg); overflow: hidden; text-align: left; cursor: pointer; }
+.hp-cat-photo { aspect-ratio: 1 / 1; background: var(--hp-surface-2); display: flex; align-items: center; justify-content: center; color: var(--hp-text-faint); }
+.hp-cat-photo img { width: 100%; height: 100%; object-fit: cover; }
+.hp-cat-body { padding: 10px 12px 12px; }
+.hp-cat-name { font-size: 12.5px; font-weight: 700; color: #fff; line-height: 1.3; }
+.hp-cat-meta { font-size: 10.5px; color: var(--hp-text-soft); margin-top: 3px; }
+.hp-cat-price { font-size: 13px; font-weight: 800; color: var(--hp-orange); margin-top: 6px; }
+
+.hp-cat-detail-photos { display: flex; gap: 8px; overflow-x: auto; padding: 4px 20px 16px; }
+.hp-cat-detail-photos img { width: 120px; height: 120px; object-fit: cover; border-radius: var(--hp-r); border: 1px solid var(--hp-border); flex-shrink: 0; }
+.hp-cat-detail-desc { font-size: 13.5px; color: var(--hp-text-soft); line-height: 1.6; padding: 0 20px 20px; }

@@ -8,7 +8,7 @@
 // app; fine for a catalogue of a reasonable size.
 
 import { dbInsert, dbList } from '@/lib/db';
-import { getEmployee } from '@/lib/auth';
+import { getEmployee, getPartner } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,11 +19,20 @@ async function requireAdmin() {
 }
 
 export async function GET() {
+  // Employees see the full catalogue (including inactive products, for editing); partners see
+  // only what's active — a partner-facing catalogue view, same product data everyone else uses
+  // to build a quotation, filtered the same way the Products page's own "Active" filter would.
   const employee = await getEmployee();
-  if (!employee) return Response.json({ error: 'Unauthorized' }, { status: 401 });
-  const products = await dbList('products');
-  // Newest first, same convention dbList already gives every other table.
-  return Response.json(products);
+  if (employee) {
+    const products = await dbList('products');
+    return Response.json(products);
+  }
+  const partner = await getPartner();
+  if (partner) {
+    const products = await dbList('products');
+    return Response.json(products.filter((p) => p.active !== false));
+  }
+  return Response.json({ error: 'Unauthorized' }, { status: 401 });
 }
 
 export async function POST(request) {
