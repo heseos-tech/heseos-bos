@@ -10,6 +10,7 @@ import { IconPhone, IconMapPin, IconBuilding, IconWallet, IconCalendar, IconSour
 import { fmtDate, fmtDateTime } from "@/lib/date";
 import { stageOf, displayStatus, subUpdateOf, needsReschedule, CONTACT_STAGES, DEMO_OUTCOMES } from "@/lib/leadStage";
 import { PRODUCT_INTEREST, PROPERTY_TYPE, TIMELINE, LEAD_SOURCES, budgetOptionsFor } from "@/lib/formOptions";
+import QuotationBuilderModal from "@/components/shared/QuotationBuilder";
 
 const PI_LABEL = Object.fromEntries(PRODUCT_INTEREST.map((p) => [p.v, p.l]));
 const PT_LABEL = Object.fromEntries(PROPERTY_TYPE.map((p) => [p.v, p.l]));
@@ -192,7 +193,14 @@ export default function TeamLeadDetailScreen({ employee, lead: initialLead }) {
 
       {notice && <div className="hp-toast">{notice}</div>}
 
-      {sheet && (
+      {sheet === "quotation" && (
+        <QuotationBuilderModal
+          lead={lead}
+          onClose={() => setSheet(null)}
+          onDone={(updated) => { setSheet(null); if (updated) setLead(updated); else refresh(); flash("Quotation saved"); }}
+        />
+      )}
+      {sheet && sheet !== "quotation" && (
         <TeamActionSheet
           type={sheet}
           lead={lead}
@@ -216,13 +224,8 @@ function TeamActionSheet({ type, lead, onClose, onDone }) {
   const [demoDate, setDemoDate] = useState(lead.demoDate || "");
   const [demoTime, setDemoTime] = useState(lead.demoTime || "");
 
-  const [amount, setAmount] = useState(lead.quotationAmount || "");
-  const [quoteNote, setQuoteNote] = useState("");
-
   const [outcome, setOutcome] = useState(needsReschedule(lead) ? lead.demoOutcome : "");
   const [finalPrice, setFinalPrice] = useState(lead.quotationAmount || "");
-
-  const revisions = Array.isArray(lead.quotationRevisions) ? lead.quotationRevisions : [];
 
   async function submit() {
     setError("");
@@ -234,8 +237,6 @@ function TeamActionSheet({ type, lead, onClose, onDone }) {
       } else if (type === "schedule") {
         if (!demoAddress || !demoDate || !demoTime) { setError("Address, date and time are all required."); setSubmitting(false); return; }
         body = { type: "scheduleDemo", demoAddress, demoDate, demoTime };
-      } else if (type === "quotation") {
-        body = { type: "quotation", amount: amount ? Number(amount) : null, note: quoteNote };
       } else if (type === "outcome") {
         if (!outcome) { setError("Choose an outcome."); setSubmitting(false); return; }
         if (outcome === "converted" && !finalPrice) { setError("Enter the final price to mark this Converted."); setSubmitting(false); return; }
@@ -292,21 +293,6 @@ function TeamActionSheet({ type, lead, onClose, onDone }) {
             <div className="hp-field"><label className="hp-field-label">Demo address</label><div className="hp-input-wrap"><input className="hp-input" value={demoAddress} onChange={(e) => setDemoAddress(e.target.value)} placeholder="Full address for the visit" /></div></div>
             <div className="hp-field"><label className="hp-field-label">Date</label><div className="hp-input-wrap"><input className="hp-input" type="date" value={demoDate} onChange={(e) => setDemoDate(e.target.value)} /></div></div>
             <div className="hp-field"><label className="hp-field-label">Time</label><div className="hp-input-wrap"><input className="hp-input" type="time" value={demoTime} onChange={(e) => setDemoTime(e.target.value)} /></div></div>
-          </>
-        )}
-
-        {type === "quotation" && (
-          <>
-            <div className="hp-sheet-title">{revisions.length ? "Revise quotation" : "Send quotation"}</div>
-            <div className="hp-sheet-sub">{lead.name} · {lead.phone}</div>
-            <div className="hp-field">
-              <label className="hp-field-label">{revisions.length ? "New amount (₹)" : "Amount (₹, optional)"}</label>
-              <div className="hp-input-wrap"><input className="hp-input" type="number" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="e.g. 185000" /></div>
-            </div>
-            <div className="hp-field">
-              <label className="hp-field-label">Reason for {revisions.length ? "revision" : "this quote"} (optional)</label>
-              <div className="hp-input-wrap"><input className="hp-input" value={quoteNote} onChange={(e) => setQuoteNote(e.target.value)} placeholder="e.g. Reduced after negotiation" /></div>
-            </div>
           </>
         )}
 
