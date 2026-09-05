@@ -36,7 +36,17 @@ export async function GET(request, { params }) {
     : revisions[revisions.length - 1];
   if (!revision) return Response.json({ error: 'Revision not found' }, { status: 404 });
 
-  const buffer = await renderToBuffer(QuotationPdfDocument({ lead, revision }));
+  let buffer;
+  try {
+    buffer = await renderToBuffer(QuotationPdfDocument({ lead, revision }));
+  } catch (e) {
+    // Was an unhandled crash before (a bare 500 with no body — useless both to whoever clicked
+    // Download and to us trying to diagnose it after the fact). Logging the full error here
+    // means the real cause shows up in Vercel's function logs for this route the next time this
+    // happens, and the client gets an actual message instead of a dead page.
+    console.error(`GET quotation-pdf failed for lead ${id} v${revision.revision}:`, e);
+    return Response.json({ error: 'Could not generate the quotation PDF' }, { status: 500 });
+  }
   const safeName = String(lead.name || 'quotation').replace(/[^a-z0-9]+/gi, '-').toLowerCase();
 
   return new Response(buffer, {
