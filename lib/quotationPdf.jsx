@@ -4,10 +4,33 @@
 // app/api/leads/[id]/quotation-pdf/route.js for both the in-app "Download PDF" button and the
 // file WhatsApp sends (lib/heseosNotify.js's sendHeseosQuotationPdf).
 //
-// This template matches a branded reference layout: letterhead header, a two-column hero (heading
-// + intro on the left, a house photo with a rounded "wave" corner on the right), a three-panel
-// "Prepared For / Quotation No. / tagline" info row, a product table with per-row photos and a
-// real rupee sign, a four-icon feature strip, and a highlighted totals box.
+// This template mirrors the approved browser mockup pixel-for-pixel where @react-pdf/renderer
+// has a proven-safe way to do it: letterhead with "Lighting Ahead" sub-lockup, a two-column hero
+// (heading + intro on the left, a house photo on the right), a three-panel "Prepared For /
+// Quotation No. + Date / Smarter Homes tagline" info row, a product table with per-row photos and
+// a real rupee sign, a highlighted totals box, and a four-icon feature strip placed BELOW the
+// totals box (matching the approved design's element order).
+//
+// WHY THIS FILE WAS REWRITTEN, NOT JUST TWEAKED: the previous pass produced a PDF with elements
+// overlapping each other (a label overlapped by an avatar, a value overlapped by a neighbouring
+// label, panel text overlapping itself). Nothing here can be live-rendered from wherever this
+// file is edited (no @react-pdf/renderer install is reachable from that environment), so the
+// fix is structural rather than a pixel-chased patch: @react-pdf/renderer's layout engine (Yoga)
+// differs from ordinary CSS in two ways that are easy to trip on and match this bug exactly —
+//   1. A flex item's default flexShrink is 0 (CSS defaults to 1). A Text/View sized only by
+//      `flexGrow` + `flexBasis: 0` never shrinks below its own content's width, so a long value
+//      (a customer name, a quotation number) can silently render past its column's boundary and
+//      visually overlap the next column — which is exactly what was reported.
+//   2. `<View>` has no CSS-style "block" fallback — every View is a flex container, defaulting to
+//      flexDirection: 'column'. Leaving flexDirection unstated still works, but it means nothing
+//      here relies on that default silently doing the right thing.
+// The fix applied throughout this file: every multi-column area (letterhead, hero row, the three
+// info panels, the product table, the feature strip) uses an explicit PERCENTAGE width per column
+// instead of flexGrow/flexBasis, and every column that holds user-entered free text also sets
+// `flexShrink: 1` and wraps normally inside that fixed width — so long content wraps to a second
+// line instead of overflowing into a neighbour. Every <View> also states its flexDirection
+// explicitly, even where 'column' is already the default, so nothing here depends on a default
+// staying the same.
 //
 // REAL RUPEE SIGN: the built-in PDF fonts (Helvetica etc.) only carry the WinAnsi/CP1252 set,
 // which does not include ₹ at all (it's a 2010 Unicode addition, no legacy codepage has it) — no
@@ -19,22 +42,22 @@
 // network dependency at all, at render time or otherwise. Registration is wrapped in try/catch
 // and gated on the files actually being present (registerRupeeFont() below): if anything about it
 // ever fails, every "₹" in this document quietly falls back to "Rs." instead of breaking PDF
-// generation — the same safety net the rest of this file already relies on. Only the handful of
-// spots that actually show a currency symbol (table header labels, the totals box) opt into the
-// DejaVu font; everything else stays on the already-proven Helvetica family.
+// generation — the same safety net the rest of this file already relies on.
 //
-// OTHER DELIBERATE SIMPLIFICATIONS (kept from the previous pass, for the same reason — nothing in
-// this pipeline can be live-rendered from wherever this file is edited, so anything not already
-// proven either elsewhere in this file or by long-documented @react-pdf/renderer behavior is kept
-// simple enough that its failure mode is "looks slightly off", never "breaks the PDF"):
-//   - Hero photo: a large rounded corner (bottom-left) rather than an exact free-form wave cutout
-//     — react-pdf has no reliable free-form image clip path, but overflow:hidden + borderRadius
-//     is standard.
-//   - "A Smarter Way to Live" / "Thank you": italic Helvetica, not a true cursive font — no script
-//     font file exists anywhere in this repo.
-//   - Icon badges: built from Svg's straight-line primitives only (Rect/Line/Circle/Polygon) —
-//     no bezier curves — since a malformed curve is the one category of mistake that has no
-//     graceful fallback.
+// DELIBERATE SIMPLIFICATIONS vs. the browser mockup (kept for the same reason: nothing here can
+// be live-rendered before it ships, so anything not already proven, or long-documented
+// @react-pdf/renderer behaviour, is kept simple enough that its failure mode is "looks slightly
+// off", never "breaks the PDF"):
+//   - Hero photo: a large rounded corner (bottom-left), not the mockup's free-form SVG wave —
+//     react-pdf has no proven-safe free-form image clip path; overflow:hidden + borderRadius is
+//     standard and long-documented.
+//   - "A Smarter Way to Live" / "Thank you": italic Helvetica, not the mockup's cursive webfont —
+//     no script font file exists anywhere reachable from this repo, and no network fetch at
+//     render time is acceptable (same reasoning as the rupee sign above).
+//   - The peach panel's small flag accent on the house icon (a curved-fabric shape in the
+//     mockup) is left off — every icon here is built from Svg's straight-line primitives only
+//     (Rect/Line/Circle/Polygon, no bezier curve paths), since a malformed curve is the one kind
+//     of mistake with no graceful fallback.
 import { Document, Page, View, Text, Image, StyleSheet, Font, Svg, Rect, Line, Circle, Polygon } from '@react-pdf/renderer';
 import fs from 'fs';
 import path from 'path';
@@ -43,8 +66,9 @@ const ORANGE = '#ff7a00';
 const INK = '#0b1b2e';
 const SOFT = '#5c6b7c';
 const FAINT = '#8a97a6';
-const BORDER = '#e8eaee';
-const CARD_BG = '#f7f8fa';
+const BORDER = '#ece9e4';
+const CARD_BG = '#f7f5f1';
+const HEADER_BG = '#f5f1ea';
 const PEACH = '#fff1e6';
 const PEACH_BORDER = '#ffd9b8';
 const GREEN = '#178a4c';
@@ -72,98 +96,105 @@ const RUPEE_FONT_AVAILABLE = registerRupeeFont();
 const CUR = RUPEE_FONT_AVAILABLE ? '₹' : 'Rs.';
 
 const styles = StyleSheet.create({
-  page: { padding: 32, fontSize: 10, color: INK, fontFamily: 'Helvetica' },
+  page: { flexDirection: 'column', padding: 40, paddingBottom: 64, fontSize: 10, color: INK, fontFamily: 'Helvetica' },
 
-  // Letterhead
-  letterhead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 },
-  logo: { width: 104 },
-  taglineCol: { alignItems: 'flex-end' },
-  taglineLine: { fontSize: 7.5, fontFamily: 'Helvetica-Bold', color: SOFT, letterSpacing: 1, textTransform: 'uppercase' },
+  // ---------- Letterhead ----------
+  letterhead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
+  logoCol: { flexDirection: 'column' },
+  logo: { width: 108 },
+  logoSub: { fontSize: 7, fontFamily: 'Helvetica-Bold', color: FAINT, letterSpacing: 2, textTransform: 'uppercase', marginTop: 5 },
+  taglineCol: { flexDirection: 'column', alignItems: 'flex-end' },
+  taglineLine: { fontSize: 8, fontFamily: 'Helvetica-Bold', color: SOFT, letterSpacing: 1, textTransform: 'uppercase', lineHeight: 1.5 },
 
-  // Two-column hero
-  heroRow: { flexDirection: 'row', alignItems: 'stretch', marginBottom: 20 },
-  heroLeft: { flexGrow: 1.3, flexBasis: 0, paddingRight: 20, justifyContent: 'center' },
-  heroRight: { flexGrow: 1, flexBasis: 0, minHeight: 168 },
-  quotationLabelRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
-  quotationDash: { width: 16, height: 2, backgroundColor: ORANGE, marginRight: 6 },
+  // ---------- Hero row ----------
+  heroRow: { flexDirection: 'row', alignItems: 'stretch', marginTop: 10, marginBottom: 30 },
+  heroLeft: { flexDirection: 'column', width: '55%', marginRight: 18, justifyContent: 'center' },
+  heroRight: { flexDirection: 'column', width: '41%', minHeight: 168 },
+  quotationLabelRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
+  quotationDash: { width: 16, height: 2, backgroundColor: ORANGE, marginRight: 7 },
   quotationLabelText: { fontSize: 8, fontFamily: 'Helvetica-Bold', color: SOFT, textTransform: 'uppercase', letterSpacing: 2 },
-  headingLine: { fontSize: 22, fontFamily: 'Helvetica-Bold', color: INK },
-  headingLineOrange: { fontSize: 22, fontFamily: 'Helvetica-Bold', color: ORANGE, marginTop: 1 },
-  introBlock: { marginTop: 10 },
-  intro: { fontSize: 9.5, color: SOFT, lineHeight: 1.5 },
+  headingLine: { fontSize: 24, fontFamily: 'Helvetica-Bold', color: INK, flexShrink: 1 },
+  headingLineOrange: { fontSize: 24, fontFamily: 'Helvetica-Bold', color: ORANGE, marginTop: 2, flexShrink: 1 },
+  introBlock: { marginTop: 12 },
+  intro: { fontSize: 9.5, color: SOFT, lineHeight: 1.6, flexShrink: 1 },
 
-  heroImageWrap: { width: '100%', height: '100%', minHeight: 168, borderBottomLeftRadius: 90, overflow: 'hidden', position: 'relative', backgroundColor: CARD_BG },
+  heroImageWrap: { flexDirection: 'column', width: '100%', height: '100%', minHeight: 168, borderBottomLeftRadius: 96, overflow: 'hidden', position: 'relative', backgroundColor: CARD_BG },
   heroImage: { width: '100%', height: '100%' },
-  heroOverlay: { position: 'absolute', left: 0, right: 0, bottom: 0, height: '55%', backgroundColor: 'rgba(11,27,46,0.40)' },
-  heroCaption: { position: 'absolute', right: 14, bottom: 18, width: 78, fontSize: 13, fontFamily: 'Helvetica-Oblique', color: '#ffffff', textAlign: 'right', lineHeight: 1.3 },
+  heroOverlay: { position: 'absolute', left: 0, right: 0, bottom: 0, height: '55%', backgroundColor: 'rgba(9,18,32,0.45)' },
+  heroCaption: { position: 'absolute', right: 14, bottom: 16, width: 90, fontSize: 12.5, fontFamily: 'Helvetica-Oblique', color: '#ffffff', textAlign: 'right', lineHeight: 1.3 },
 
-  // Three-panel info row
-  panelRow: { flexDirection: 'row', marginBottom: 18 },
-  panel: { flexGrow: 1, flexBasis: 0, borderWidth: 1, borderColor: BORDER, borderRadius: 10, padding: 10, marginRight: 10 },
-  panelLast: { flexGrow: 1, flexBasis: 0, borderRadius: 10, padding: 10, backgroundColor: PEACH, borderWidth: 1, borderColor: PEACH_BORDER },
-  panelLabel: { fontSize: 7.5, color: FAINT, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 },
+  // ---------- Three-panel info row ----------
+  panelRow: { flexDirection: 'row', marginBottom: 26 },
+  panel: { flexDirection: 'column', width: '31%', marginRight: 16, borderWidth: 1, borderColor: BORDER, borderRadius: 10, padding: 12, overflow: 'hidden' },
+  panelLast: { flexDirection: 'column', width: '31%', borderRadius: 10, padding: 12, backgroundColor: PEACH, borderWidth: 1, borderColor: PEACH_BORDER, overflow: 'hidden' },
+  panelLabel: { fontSize: 7.5, color: FAINT, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 },
 
-  avatarRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 6 },
-  avatarCircle: { width: 28, height: 28, borderRadius: 14, backgroundColor: PEACH, alignItems: 'center', overflow: 'hidden', marginRight: 8 },
-  personHead: { width: 9, height: 9, borderRadius: 4.5, backgroundColor: ORANGE, marginTop: 4 },
-  personBody: { width: 18, height: 11, borderTopLeftRadius: 9, borderTopRightRadius: 9, backgroundColor: ORANGE, marginTop: 1 },
-  customerName: { fontSize: 11, fontFamily: 'Helvetica-Bold' },
-  customerLine: { fontSize: 9, color: SOFT, marginTop: 2 },
+  avatarRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 7 },
+  avatarCircle: { flexDirection: 'column', alignItems: 'center', width: 26, height: 26, borderRadius: 13, backgroundColor: PEACH, overflow: 'hidden', marginRight: 8 },
+  personHead: { width: 8, height: 8, borderRadius: 4, backgroundColor: ORANGE, marginTop: 4 },
+  personBody: { width: 17, height: 10, borderTopLeftRadius: 8.5, borderTopRightRadius: 8.5, backgroundColor: ORANGE, marginTop: 1 },
+  customerNameWrap: { flexDirection: 'column', flexShrink: 1 },
+  customerName: { fontSize: 11, fontFamily: 'Helvetica-Bold', flexShrink: 1 },
+  customerLine: { fontSize: 8.5, color: SOFT, marginTop: 3, flexShrink: 1 },
 
-  quoteMetaItem: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
-  quoteMetaIconWrap: { marginRight: 7 },
-  quoteMetaLabel: { fontSize: 7.5, color: FAINT, textTransform: 'uppercase', letterSpacing: 0.5 },
-  quoteMetaValue: { fontSize: 9.5, fontFamily: 'Helvetica-Bold', color: INK, marginTop: 1 },
+  metaIconWrap: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', width: 24, height: 24, borderRadius: 7, backgroundColor: CARD_BG, borderWidth: 1, borderColor: BORDER, marginBottom: 10 },
+  metaItem: { flexDirection: 'column', marginBottom: 9 },
+  metaLabel: { fontSize: 7.5, color: FAINT, textTransform: 'uppercase', letterSpacing: 0.5 },
+  metaValue: { fontSize: 9.5, fontFamily: 'Helvetica-Bold', color: INK, marginTop: 2, flexShrink: 1 },
 
-  taglinePanelIconRow: { marginBottom: 8 },
-  taglinePanelText: { fontSize: 10.5, fontFamily: 'Helvetica-Bold', color: INK, lineHeight: 1.4 },
-  taglinePanelDash: { width: 20, height: 2, backgroundColor: ORANGE, marginTop: 6 },
+  houseIconWrap: { flexDirection: 'row', marginBottom: 10 },
+  peachText: { fontSize: 10.5, fontFamily: 'Helvetica-Bold', color: INK, lineHeight: 1.4, flexShrink: 1 },
+  peachDash: { width: 20, height: 2, backgroundColor: ORANGE, marginTop: 10 },
 
-  // Product table
-  table: { borderTopWidth: 1, borderTopColor: BORDER, marginTop: 4 },
-  tHeadRow: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: BORDER, paddingVertical: 6, backgroundColor: CARD_BG },
-  tRow: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: BORDER, paddingVertical: 8, alignItems: 'center' },
-  colIndex: { flexGrow: 0.4, flexBasis: 0, paddingHorizontal: 6 },
-  colProduct: { flexGrow: 2.6, flexBasis: 0, paddingHorizontal: 6 },
-  colDescription: { flexGrow: 2.4, flexBasis: 0, paddingHorizontal: 6 },
-  colQty: { flexGrow: 0.6, flexBasis: 0, paddingHorizontal: 6, textAlign: 'right' },
-  colPrice: { flexGrow: 1, flexBasis: 0, paddingHorizontal: 6, textAlign: 'right' },
-  colDiscount: { flexGrow: 1.1, flexBasis: 0, paddingHorizontal: 6, textAlign: 'right' },
-  colTotal: { flexGrow: 1.1, flexBasis: 0, paddingHorizontal: 6, textAlign: 'right' },
+  // ---------- Product table ----------
+  table: { flexDirection: 'column', borderTopWidth: 1, borderTopColor: BORDER },
+  tHeadRow: { flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: BORDER, paddingVertical: 7, backgroundColor: HEADER_BG },
+  tRow: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: BORDER, paddingVertical: 9, alignItems: 'center' },
+  colIndex: { width: '4%', paddingHorizontal: 5 },
+  colProduct: { width: '26%', paddingHorizontal: 5, flexShrink: 1 },
+  colDescription: { width: '21%', paddingHorizontal: 5, flexShrink: 1 },
+  colQty: { width: '6%', paddingHorizontal: 5, textAlign: 'right' },
+  colPrice: { width: '13%', paddingHorizontal: 5, textAlign: 'right' },
+  colDiscount: { width: '15%', paddingHorizontal: 5, textAlign: 'right' },
+  colTotal: { width: '15%', paddingHorizontal: 5, textAlign: 'right' },
   thText: { fontSize: 7.5, fontFamily: 'Helvetica-Bold', color: FAINT, textTransform: 'uppercase' },
   productRow: { flexDirection: 'row', alignItems: 'center' },
-  itemThumbWrap: { width: 30, height: 30, borderRadius: 5, overflow: 'hidden', backgroundColor: CARD_BG, borderWidth: 1, borderColor: BORDER },
+  itemThumbWrap: { width: 28, height: 28, borderRadius: 6, overflow: 'hidden', backgroundColor: CARD_BG, borderWidth: 1, borderColor: BORDER, flexShrink: 0 },
   itemThumb: { width: '100%', height: '100%' },
-  itemTextCol: { marginLeft: 8 },
-  itemName: { fontSize: 9.5, fontFamily: 'Helvetica-Bold' },
-  itemSku: { fontSize: 8, color: FAINT, marginTop: 1 },
-  itemDesc: { fontSize: 8, color: SOFT, lineHeight: 1.3 },
+  itemTextCol: { flexDirection: 'column', marginLeft: 8, flexShrink: 1 },
+  itemName: { fontSize: 9.5, fontFamily: 'Helvetica-Bold', flexShrink: 1 },
+  itemSku: { fontSize: 7.5, color: FAINT, marginTop: 2 },
+  itemDesc: { fontSize: 8, color: SOFT, lineHeight: 1.4, flexShrink: 1 },
   cellText: { fontSize: 9 },
 
-  // Feature strip
-  featureRow: { flexDirection: 'row', marginTop: 18, marginBottom: 6 },
-  featureCol: { flexGrow: 1, flexBasis: 0, alignItems: 'center' },
-  featureBadge: { width: 30, height: 30, borderRadius: 15, backgroundColor: PEACH, borderWidth: 1, borderColor: PEACH_BORDER, alignItems: 'center', justifyContent: 'center', marginBottom: 6 },
-  featureLabel: { fontSize: 7.5, fontFamily: 'Helvetica-Bold', color: INK, textAlign: 'center', textTransform: 'uppercase', letterSpacing: 0.3 },
-
-  // Totals
-  totalsBox: { marginTop: 12, alignSelf: 'flex-end', width: 230 },
+  // ---------- Totals ----------
+  totalsBox: { flexDirection: 'column', marginTop: 20, alignSelf: 'flex-end', width: 220 },
   totalsRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 3 },
   totalsLabel: { fontSize: 9.5, color: SOFT },
   totalsValue: { fontSize: 9.5, color: INK },
   totalsDiscountValue: { fontSize: 9.5, color: GREEN },
-  grandRow: { flexDirection: 'row', justifyContent: 'space-between', backgroundColor: PEACH, borderRadius: 8, marginTop: 6, paddingVertical: 8, paddingHorizontal: 10 },
-  grandLabel: { fontSize: 12, fontFamily: 'Helvetica-Bold', color: INK },
+  grandRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: PEACH, borderRadius: 8, marginTop: 7, paddingVertical: 9, paddingHorizontal: 11 },
+  grandLabel: { fontSize: 11.5, fontFamily: 'Helvetica-Bold', color: INK },
   grandValue: { fontSize: 13, fontFamily: 'Helvetica-Bold', color: ORANGE },
 
-  note: { fontSize: 9, color: SOFT, marginTop: 20, lineHeight: 1.5 },
+  // ---------- Feature strip (sits BELOW totals, matching the approved design) ----------
+  featureRow: { flexDirection: 'row', marginTop: 24, marginBottom: 4 },
+  featureCol: { flexDirection: 'column', alignItems: 'center', width: '25%' },
+  featureBadge: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', width: 28, height: 28, borderRadius: 14, backgroundColor: PEACH, borderWidth: 1, borderColor: PEACH_BORDER, marginBottom: 7 },
+  featureLabel: { fontSize: 7, fontFamily: 'Helvetica-Bold', color: INK, textAlign: 'center', textTransform: 'uppercase', letterSpacing: 0.3 },
 
-  footer: { position: 'absolute', bottom: 26, left: 32, right: 32, borderTopWidth: 1, borderTopColor: BORDER, paddingTop: 10 },
+  note: { fontSize: 9, color: SOFT, marginTop: 16, lineHeight: 1.5, flexShrink: 1 },
+
+  // ---------- Footer ----------
+  footer: { position: 'absolute', bottom: 28, left: 40, right: 40, borderTopWidth: 1, borderTopColor: BORDER, paddingTop: 11 },
   footerBrandRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' },
+  footerBrandCol: { flexDirection: 'column' },
   footerBrand: { fontSize: 9.5, fontFamily: 'Helvetica-Bold', color: INK },
-  footerTagline: { fontSize: 8, color: FAINT, marginTop: 1 },
+  footerTagline: { fontSize: 8, color: FAINT, marginTop: 2 },
+  footerThanksCol: { flexDirection: 'column', alignItems: 'flex-end' },
   footerThanks: { fontSize: 13, fontFamily: 'Helvetica-Oblique', color: ORANGE },
-  footerValidity: { fontSize: 7.5, color: FAINT, textAlign: 'center', marginTop: 8 },
+  footerThanksDash: { width: 26, height: 1.5, backgroundColor: ORANGE, marginTop: 2 },
+  footerValidity: { fontSize: 7.5, color: FAINT, textAlign: 'center', marginTop: 10 },
 });
 
 function brandLogoDataUri() {
@@ -295,16 +326,6 @@ function Icon({ name, size = 14, color = ORANGE, strokeWidth = 1.4 }) {
       </Svg>
     );
   }
-  if (name === 'calendar') {
-    return (
-      <Svg {...box}>
-        <Rect x={3} y={5} width={18} height={16} rx={2} stroke={color} strokeWidth={strokeWidth} fill="none" />
-        <Line x1={3} y1={10} x2={21} y2={10} stroke={color} strokeWidth={strokeWidth} />
-        <Line x1={7} y1={2} x2={7} y2={6} stroke={color} strokeWidth={strokeWidth} />
-        <Line x1={17} y1={2} x2={17} y2={6} stroke={color} strokeWidth={strokeWidth} />
-      </Svg>
-    );
-  }
   if (name === 'house') {
     return (
       <Svg {...box}>
@@ -372,7 +393,10 @@ export default function QuotationPdfDocument({
     <Document title={`Quotation - ${safeText(lead.name)}`}>
       <Page size="A4" style={styles.page}>
         <View style={styles.letterhead}>
-          <View>{logo ? <Image src={logo} style={styles.logo} /> : <Text style={styles.customerName}>{safeText(brandName)}</Text>}</View>
+          <View style={styles.logoCol}>
+            {logo ? <Image src={logo} style={styles.logo} /> : <Text style={styles.customerName}>{safeText(brandName)}</Text>}
+            <Text style={styles.logoSub}>Lighting Ahead</Text>
+          </View>
           <View style={styles.taglineCol}>
             <Text style={styles.taglineLine}>Smart Homes.</Text>
             <Text style={styles.taglineLine}>Stronger People.</Text>
@@ -389,8 +413,7 @@ export default function QuotationPdfDocument({
             <Text style={styles.headingLine}>Smart Solutions</Text>
             <Text style={styles.headingLineOrange}>for a Smarter You</Text>
             <View style={styles.introBlock}>
-              <Text style={styles.intro}>Thank you for considering {safeText(brandName).toUpperCase()} for your smart home journey.</Text>
-              <Text style={styles.intro}>We are pleased to share the quotation as per your requirement.</Text>
+              <Text style={styles.intro}>Thank you for considering {safeText(brandName).toUpperCase()} for your smart home journey. We are pleased to share the quotation as per your requirement.</Text>
             </View>
           </View>
           <View style={styles.heroRight}>
@@ -398,7 +421,7 @@ export default function QuotationPdfDocument({
               <View style={styles.heroImageWrap}>
                 <Image src={hero} style={styles.heroImage} />
                 <View style={styles.heroOverlay} />
-                <Text style={styles.heroCaption}>A Smarter Way to Live</Text>
+                <Text style={styles.heroCaption}>A Smarter{'\n'}Way to Live</Text>
               </View>
             ) : null}
           </View>
@@ -412,34 +435,30 @@ export default function QuotationPdfDocument({
                 <View style={styles.personHead} />
                 <View style={styles.personBody} />
               </View>
-              <Text style={styles.customerName}>{safeText(lead.name)}</Text>
+              <View style={styles.customerNameWrap}>
+                <Text style={styles.customerName}>{safeText(lead.name)}</Text>
+              </View>
             </View>
             <Text style={styles.customerLine}>{safeText(lead.phone)}</Text>
             {lead.city ? <Text style={styles.customerLine}>{safeText(lead.city)}</Text> : null}
           </View>
 
           <View style={styles.panel}>
-            <View style={styles.quoteMetaItem}>
-              <View style={styles.quoteMetaIconWrap}><Icon name="document" size={14} /></View>
-              <View>
-                <Text style={styles.quoteMetaLabel}>Quotation No.</Text>
-                <Text style={styles.quoteMetaValue}>{lead.id}-v{revision?.revision || 1}</Text>
-              </View>
+            <View style={styles.metaIconWrap}><Icon name="document" size={13} /></View>
+            <View style={styles.metaItem}>
+              <Text style={styles.metaLabel}>Quotation No.</Text>
+              <Text style={styles.metaValue}>{lead.id}-v{revision?.revision || 1}</Text>
             </View>
-            <View style={styles.quoteMetaItem}>
-              <View style={styles.quoteMetaIconWrap}><Icon name="calendar" size={14} /></View>
-              <View>
-                <Text style={styles.quoteMetaLabel}>Date</Text>
-                <Text style={styles.quoteMetaValue}>{dateLabel || '-'}</Text>
-              </View>
+            <View style={styles.metaItem}>
+              <Text style={styles.metaLabel}>Date</Text>
+              <Text style={styles.metaValue}>{dateLabel || '-'}</Text>
             </View>
           </View>
 
           <View style={styles.panelLast}>
-            <View style={styles.taglinePanelIconRow}><Icon name="house" size={16} /></View>
-            <Text style={styles.taglinePanelText}>Smarter Homes,</Text>
-            <Text style={styles.taglinePanelText}>Happier Lives</Text>
-            <View style={styles.taglinePanelDash} />
+            <View style={styles.houseIconWrap}><Icon name="house" size={16} /></View>
+            <Text style={styles.peachText}>Smarter Homes,{'\n'}Happier Lives</Text>
+            <View style={styles.peachDash} />
           </View>
         </View>
 
@@ -485,15 +504,6 @@ export default function QuotationPdfDocument({
           </View>
         )}
 
-        <View style={styles.featureRow}>
-          {FEATURES.map((f) => (
-            <View style={styles.featureCol} key={f.label}>
-              <View style={styles.featureBadge}><Icon name={f.icon} size={15} /></View>
-              <Text style={styles.featureLabel}>{f.label}</Text>
-            </View>
-          ))}
-        </View>
-
         <View style={styles.totalsBox}>
           {hasItems && (
             <>
@@ -513,15 +523,27 @@ export default function QuotationPdfDocument({
           </View>
         </View>
 
+        <View style={styles.featureRow}>
+          {FEATURES.map((f) => (
+            <View style={styles.featureCol} key={f.label}>
+              <View style={styles.featureBadge}><Icon name={f.icon} size={14} /></View>
+              <Text style={styles.featureLabel}>{f.label}</Text>
+            </View>
+          ))}
+        </View>
+
         {revision?.note ? <Text style={styles.note}>Note: {safeText(revision.note)}</Text> : null}
 
         <View style={styles.footer}>
           <View style={styles.footerBrandRow}>
-            <View>
+            <View style={styles.footerBrandCol}>
               <Text style={styles.footerBrand}>{safeText(brandName)}</Text>
               <Text style={styles.footerTagline}>{safeText(tagline)}</Text>
             </View>
-            <Text style={styles.footerThanks}>Thank you</Text>
+            <View style={styles.footerThanksCol}>
+              <Text style={styles.footerThanks}>Thank you</Text>
+              <View style={styles.footerThanksDash} />
+            </View>
           </View>
           <Text style={styles.footerValidity}>This quotation is valid for 15 days from the date above. For any queries, feel free to contact us.</Text>
         </View>
