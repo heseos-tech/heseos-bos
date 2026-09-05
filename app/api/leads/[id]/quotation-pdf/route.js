@@ -10,7 +10,7 @@
 // stay a plain .js route handler like its siblings — it's a function component with no hooks,
 // so calling it returns the same React element tree JSX would.
 import { renderToBuffer } from '@react-pdf/renderer';
-import { dbGetById } from '@/lib/db';
+import { dbGetById, dbList } from '@/lib/db';
 import { getEmployee } from '@/lib/auth';
 import QuotationPdfDocument from '@/lib/quotationPdf';
 
@@ -36,9 +36,11 @@ export async function GET(request, { params }) {
     : revisions[revisions.length - 1];
   if (!revision) return Response.json({ error: 'Revision not found' }, { status: 404 });
 
+  const products = await dbList('products').catch(() => []);
+
   let buffer;
   try {
-    buffer = await renderToBuffer(QuotationPdfDocument({ lead, revision }));
+    buffer = await renderToBuffer(QuotationPdfDocument({ lead, revision, products }));
   } catch (e) {
     // Was an unhandled crash before (a bare 500 with no body — useless both to whoever clicked
     // Download and to us trying to diagnose it after the fact). Logging the full error here
