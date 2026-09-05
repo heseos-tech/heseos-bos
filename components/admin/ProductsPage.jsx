@@ -6,13 +6,52 @@
 import { useMemo, useState } from 'react';
 import { PRODUCT_CATEGORY, PRODUCT_CATEGORY_LABEL } from '@/lib/formOptions';
 import { StatCard, Modal } from './ui';
-import { IconSearch, IconPlus, IconProducts, IconTrash, IconUpload, IconX } from './icons';
+import { IconSearch, IconPlus, IconProducts, IconTrash, IconUpload, IconDownload, IconX } from './icons';
 import { useApiResource, invalidate } from '@/lib/useApiResource';
+import { parseCsv, toCsv, downloadCsv } from '@/lib/csv';
 
 const PRODUCTS_URL = '/api/products';
 const MAX_PHOTOS = 8;
 const MAX_DIM = 1100; // px, longest side after client-side downscale
 const JPEG_QUALITY = 0.82;
+
+const TEMPLATE_COLUMNS = [
+  { key: 'sku', label: 'SKU' },
+  { key: 'name', label: 'Name' },
+  { key: 'category', label: 'Category' },
+  { key: 'price', label: 'Price' },
+  { key: 'unit', label: 'Unit' },
+  { key: 'description', label: 'Description' },
+  { key: 'active', label: 'Active' },
+];
+
+// A CSV template with the exact columns app/api/products/bulk-import/route.js expects, plus two
+// example rows using real category codes — so a spreadsheet edited from this file matches on
+// re-upload without any guessing about column names or valid category values.
+function downloadTemplate() {
+  const example = [
+    { sku: 'HES-TP-4G', name: '4-Gang Touch Panel Switch', category: 'touch_panel_switches', price: 2500, unit: 'piece', description: 'Capacitive touch wall switch, 4 gang', active: 'true' },
+    { sku: 'HES-DL-01', name: 'Smart Fingerprint Door Lock', category: 'smart_door_locks', price: 8500, unit: 'piece', description: 'Fingerprint + PIN smart door lock', active: 'true' },
+  ];
+  downloadCsv('heseos-products-template.csv', toCsv(example, TEMPLATE_COLUMNS));
+}
+
+// Mirrors app/api/products/bulk-import/route.js's server-side validateRow exactly, so the preview
+// table's error column matches what the server will actually accept — the server re-validates
+// regardless, this is purely for fast feedback before the user submits.
+function validateImportRow(r) {
+  const name = String(r.name || '').trim();
+  const sku = String(r.sku || '').trim();
+  if (!name || !sku) return 'Name and SKU are required';
+  const category = String(r.category || '').trim();
+  if (category && !PRODUCT_CATEGORY.some((c) => c.v === category)) return `Unknown category "${category}"`;
+  const rawPrice = String(r.price ?? '').trim();
+  if (rawPrice) {
+    const price = Number(rawPrice);
+    if (!Number.isFinite(price) || price < 0) return "Price must be a non-negative number, or blank";
+  }
+  return null;
+}
 
 // Downscales + re-encodes an image file to a capped-size JPEG data URL entirely client-side —
 // keeps a product row from ballooning in the database (base64 is the storage strategy for now;
@@ -84,6 +123,8 @@ export default function ProductsPage() {
       <div className="adm-page-head">
         <div><h1 className="adm-h1">Products</h1><p className="adm-page-sub">Your catalogue of SKUs, pricing and photos — feeds the quotation builder, and a customer/partner-facing catalogue down the line</p></div>
         <div className="adm-page-head-actions">
+          <button className="adm-chip-btn" onClick={downloadTemplate}><IconDownload size={15} /> Download Template</button>
+          <button className="adm-chip-btn" onClick={() => setModal({ type: 'import' })}><IconUpload size={15} /> Bulk Import</button>
           <button className="adm-btn-primary" onClick={() => setModal({ type: 'add' })}><IconPlus size={15} /> Add Product</button>
         </div>
       </div>
@@ -142,6 +183,9 @@ export default function ProductsPage() {
           onDelete={() => remove(modal.product)}
           onToggleActive={() => toggleActive(modal.product).then(() => setModal(null))}
         />
+      )}
+      {modal?.type === 'import' && (
+        <ImportModal onClose={() => setModal(null)} onDone={() => { setModal(null); load(); }} />
       )}
     </>
   );
@@ -259,6 +303,121 @@ function ProductModal({ product = null, onClose, onDone }) {
       <div className="lf-actions">
         <button className="lf-btn-back" onClick={onClose} disabled={saving}>Cancel</button>
         <button className="lf-btn-next" onClick={submit} disabled={saving || uploading || !name || !sku}>{saving ? 'Saving…' : editing ? 'Save changes' : 'Add product'}</button>
+      </div>
+    </Modal>
+  );
+}
+
+function ImportModal({ onClose, onDone }) {
+  const [rows, setRows] = useState([]); // parsed rows, each tagged with _error
+  const [fileName, setFileName] = useState('');
+  const [parsing, setParsing] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
+  const [result, setResult] = useState(null); // { created, updated, errors }
+
+  const validCount = useMemo(() => rows.filter((r) => !r._error).length, [rows]);
+  const errorCount = rows.length - validCount;
+
+  function handleFile(file) {
+    if (!file) return;
+    setFileName(file.name);
+    setError('');
+    setResult(null);
+    setRows([]);
+    setParsing(true);
+    const reader = new FileReader();
+    reader.onerror = () => { setError('Could not read that file'); setParsing(false); };
+    reader.onload = () => {
+      try {
+        const parsed = parseCsv(String(reader.result));
+        if (parsed.length === 0) setError('No data rows found in that file');
+        else setRows(parsed.map((r) => ({ ...r, _error: validateImportRow(r) })));
+      } catch (e) {
+        setError('Could not parse that file as CSV');
+      } finally {
+        setParsing(false);
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  async function submit() {
+    const good = rows.filter((r) => !r._error).map(({ _error, ...r }) => r);
+    if (good.length === 0) return;
+    setSubmitting(true);
+    setError('');
+    try {
+      const res = await fetch('/api/products/bulk-import', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ rows: good }) });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Import failed');
+      setResult(data);
+    } catch (e) { setError(e.message); } finally { setSubmitting(false); }
+  }
+
+  if (result) {
+    return (
+      <Modal title="Import complete" sub={fileName} onClose={onClose} wide>
+        <div className="adm-detail-grid">
+          <div><span className="adm-detail-label">Created</span>{result.created}</div>
+          <div><span className="adm-detail-label">Updated</span>{result.updated}</div>
+          <div><span className="adm-detail-label">Errors</span>{result.errors.length}</div>
+        </div>
+        {result.errors.length > 0 && (
+          <div className="adm-table-scroll" style={{ marginTop: 12 }}>
+            <table className="adm-table">
+              <thead><tr><th>Row</th><th>Error</th></tr></thead>
+              <tbody>{result.errors.map((e, i) => <tr key={i}><td>{e.row}</td><td>{e.error}</td></tr>)}</tbody>
+            </table>
+          </div>
+        )}
+        <div className="lf-actions">
+          <button className="lf-btn-next" onClick={onDone}>Done</button>
+        </div>
+      </Modal>
+    );
+  }
+
+  return (
+    <Modal title="Bulk import products" sub="Upload a CSV — see Download Template for the expected columns" onClose={onClose} wide>
+      <div className="lf-field">
+        <label className="lf-label">CSV file</label>
+        <input type="file" accept=".csv,text/csv" onChange={(e) => handleFile(e.target.files?.[0])} disabled={parsing || submitting} />
+      </div>
+
+      {error && <div className="lf-error">{error}</div>}
+
+      {rows.length > 0 && (
+        <>
+          <div className="adm-detail-grid" style={{ marginBottom: 12 }}>
+            <div><span className="adm-detail-label">Rows found</span>{rows.length}</div>
+            <div><span className="adm-detail-label">Valid</span>{validCount}</div>
+            <div><span className="adm-detail-label">Errors</span>{errorCount}</div>
+          </div>
+          <div className="adm-table-scroll" style={{ maxHeight: 320 }}>
+            <table className="adm-table">
+              <thead><tr><th>SKU</th><th>Name</th><th>Category</th><th>Price</th><th>Status</th></tr></thead>
+              <tbody>
+                {rows.map((r, i) => (
+                  <tr key={i} style={r._error ? { background: 'rgba(255,132,132,0.08)' } : undefined}>
+                    <td>{r.sku}</td>
+                    <td>{r.name}</td>
+                    <td>{r.category || '—'}</td>
+                    <td>{r.price || '—'}</td>
+                    <td>{r._error ? <span style={{ color: '#ff8484' }}>{r._error}</span> : 'OK'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+
+      <div className="lf-actions">
+        <button className="lf-btn-back" onClick={onClose} disabled={submitting}>Cancel</button>
+        <button className="lf-btn-next" onClick={submit} disabled={submitting || parsing || validCount === 0}>
+          {submitting ? 'Importing…' : `Import ${validCount || ''} product${validCount === 1 ? '' : 's'}`}
+        </button>
       </div>
     </Modal>
   );
