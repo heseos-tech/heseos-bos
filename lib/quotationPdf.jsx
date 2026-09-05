@@ -4,39 +4,38 @@
 // app/api/leads/[id]/quotation-pdf/route.js for both the in-app "Download PDF" button and the
 // file WhatsApp sends (lib/heseosNotify.js's sendHeseosQuotationPdf).
 //
-// This template was redesigned to match a branded reference layout (letterhead header + hero
-// photo, two-tone heading, a three-panel "Prepared For / Quotation No. / tagline" info row, a
-// product table with per-row photos, a four-badge feature strip, and a highlighted totals box).
-// A few details from that reference were DELIBERATELY simplified for reliability, because this
-// exact pipeline has already broken production twice this project (a font-encoding crash, and a
-// pdfkit/Vercel bundling failure) from assumptions that looked safe but weren't verified:
-//   - Rupee sign: still spelled "Rs." (see the long-standing note below) rather than a genuine
-//     ₹ glyph — the built-in Helvetica font doesn't reliably carry ₹, and fixing that for real
-//     needs either a bundled font file (none exists in this repo) or a Font.register() call to
-//     a remote font at render time, which reintroduces a network dependency into a code path
-//     that has already taken production down once before.
-//   - Hero photo: a rounded-corner rectangle instead of an exact wave-shaped cutout — react-pdf
-//     doesn't give us a reliable free-form clip path, but overflow:hidden + borderRadius on the
-//     wrapping View is a well-documented, low-risk way to round an image's corners.
-//   - Script-style accents ("A Smarter Way to Live", the "Thank you" sign-off): italic Helvetica
-//     instead of a true cursive font — no script font file exists anywhere in this repo, and
-//     there's no network access available to fetch one from wherever this is edited.
-//   - Icon badges (the four feature icons, the small panel accents): plain geometric shapes
-//     (circles, rects, and a CSS-style border-triangle) built only from View/StyleSheet — the
-//     same primitives already proven safe in this file — rather than illustrated icons, since
-//     there's no way to test-render an <Svg> path in this pipeline before it ships to
-//     production.
+// This template matches a branded reference layout: letterhead header, a two-column hero (heading
+// + intro on the left, a house photo with a rounded "wave" corner on the right), a three-panel
+// "Prepared For / Quotation No. / tagline" info row, a product table with per-row photos and a
+// real rupee sign, a four-icon feature strip, and a highlighted totals box.
 //
-// NOTE ON THE RUPEE SIGN: @react-pdf/renderer's built-in Helvetica font doesn't reliably carry
-// the ₹ glyph (it can render as a blank box), so this template spells it "Rs." instead — the
-// UI everywhere else keeps using ₹, this file is the one deliberate exception.
+// REAL RUPEE SIGN: the built-in PDF fonts (Helvetica etc.) only carry the WinAnsi/CP1252 set,
+// which does not include ₹ at all (it's a 2010 Unicode addition, no legacy codepage has it) — no
+// amount of care with Helvetica makes it appear, it takes an actual font with that glyph. Rather
+// than fetching one over the network at render time (a new failure mode, in a pipeline that has
+// already gone down once from a font-related assumption), DejaVu Sans/DejaVu Sans Bold — which do
+// contain ₹ (verified: codepoint U+20B9 maps to glyph "uni20B9" in both files) — are bundled
+// straight into the repo (public/fonts/) and registered from that LOCAL file, so there is no
+// network dependency at all, at render time or otherwise. Registration is wrapped in try/catch
+// and gated on the files actually being present (registerRupeeFont() below): if anything about it
+// ever fails, every "₹" in this document quietly falls back to "Rs." instead of breaking PDF
+// generation — the same safety net the rest of this file already relies on. Only the handful of
+// spots that actually show a currency symbol (table header labels, the totals box) opt into the
+// DejaVu font; everything else stays on the already-proven Helvetica family.
 //
-// NOTE ON VERIFICATION: nothing in this pipeline can be live-rendered from wherever this file is
-// edited (no network access to install @react-pdf/renderer there, and no way to preview a PDF),
-// so every style property used below is one already proven either elsewhere in this exact file
-// or by long-standing, well-documented @react-pdf/renderer behavior — nothing exotic (no
-// transforms, no gradients, no <Svg> paths) was introduced for this redesign.
-import { Document, Page, View, Text, Image, StyleSheet } from '@react-pdf/renderer';
+// OTHER DELIBERATE SIMPLIFICATIONS (kept from the previous pass, for the same reason — nothing in
+// this pipeline can be live-rendered from wherever this file is edited, so anything not already
+// proven either elsewhere in this file or by long-documented @react-pdf/renderer behavior is kept
+// simple enough that its failure mode is "looks slightly off", never "breaks the PDF"):
+//   - Hero photo: a large rounded corner (bottom-left) rather than an exact free-form wave cutout
+//     — react-pdf has no reliable free-form image clip path, but overflow:hidden + borderRadius
+//     is standard.
+//   - "A Smarter Way to Live" / "Thank you": italic Helvetica, not a true cursive font — no script
+//     font file exists anywhere in this repo.
+//   - Icon badges: built from Svg's straight-line primitives only (Rect/Line/Circle/Polygon) —
+//     no bezier curves — since a malformed curve is the one category of mistake that has no
+//     graceful fallback.
+import { Document, Page, View, Text, Image, StyleSheet, Font, Svg, Rect, Line, Circle, Polygon } from '@react-pdf/renderer';
 import fs from 'fs';
 import path from 'path';
 
@@ -50,26 +49,53 @@ const PEACH = '#fff1e6';
 const PEACH_BORDER = '#ffd9b8';
 const GREEN = '#178a4c';
 
+const RUPEE_FAMILY = 'HeseosPdfRupee';
+const RUPEE_FAMILY_BOLD = 'HeseosPdfRupeeBold';
+
+// Registers the bundled DejaVu Sans files (the only ones on this document that need to show a
+// genuine ₹) from a local path — never a URL — so there is nothing to fetch at render time.
+// Returns false (and registers nothing) if the files aren't there or anything about reading/
+// registering them throws, so callers can fall back to "Rs." instead of ₹ everywhere below.
+function registerRupeeFont() {
+  try {
+    const regular = path.join(process.cwd(), 'public', 'fonts', 'DejaVuSans.ttf');
+    const bold = path.join(process.cwd(), 'public', 'fonts', 'DejaVuSans-Bold.ttf');
+    if (!fs.existsSync(regular) || !fs.existsSync(bold)) return false;
+    Font.register({ family: RUPEE_FAMILY, src: regular });
+    Font.register({ family: RUPEE_FAMILY_BOLD, src: bold });
+    return true;
+  } catch {
+    return false;
+  }
+}
+const RUPEE_FONT_AVAILABLE = registerRupeeFont();
+const CUR = RUPEE_FONT_AVAILABLE ? '₹' : 'Rs.';
+
 const styles = StyleSheet.create({
   page: { padding: 32, fontSize: 10, color: INK, fontFamily: 'Helvetica' },
 
   // Letterhead
-  letterhead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 },
-  logo: { width: 108 },
+  letterhead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 },
+  logo: { width: 104 },
   taglineCol: { alignItems: 'flex-end' },
   taglineLine: { fontSize: 7.5, fontFamily: 'Helvetica-Bold', color: SOFT, letterSpacing: 1, textTransform: 'uppercase' },
 
-  // Hero photo
-  heroWrap: { width: '100%', height: 140, borderRadius: 18, overflow: 'hidden', position: 'relative', marginBottom: 18, backgroundColor: CARD_BG },
-  heroImage: { width: '100%', height: '100%' },
-  heroOverlay: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 60, backgroundColor: 'rgba(11,27,46,0.42)' },
-  heroCaption: { position: 'absolute', left: 18, bottom: 16, fontSize: 17, fontFamily: 'Helvetica-Oblique', color: '#ffffff', letterSpacing: 0.5 },
+  // Two-column hero
+  heroRow: { flexDirection: 'row', alignItems: 'stretch', marginBottom: 20 },
+  heroLeft: { flexGrow: 1.3, flexBasis: 0, paddingRight: 20, justifyContent: 'center' },
+  heroRight: { flexGrow: 1, flexBasis: 0, minHeight: 168 },
+  quotationLabelRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
+  quotationDash: { width: 16, height: 2, backgroundColor: ORANGE, marginRight: 6 },
+  quotationLabelText: { fontSize: 8, fontFamily: 'Helvetica-Bold', color: SOFT, textTransform: 'uppercase', letterSpacing: 2 },
+  headingLine: { fontSize: 22, fontFamily: 'Helvetica-Bold', color: INK },
+  headingLineOrange: { fontSize: 22, fontFamily: 'Helvetica-Bold', color: ORANGE, marginTop: 1 },
+  introBlock: { marginTop: 10 },
+  intro: { fontSize: 9.5, color: SOFT, lineHeight: 1.5 },
 
-  // Two-tone heading + intro
-  heading: { fontSize: 18, marginBottom: 6 },
-  headingBlack: { fontFamily: 'Helvetica-Bold', color: INK },
-  headingOrange: { fontFamily: 'Helvetica-Bold', color: ORANGE },
-  intro: { fontSize: 9.5, color: SOFT, lineHeight: 1.5, marginBottom: 16 },
+  heroImageWrap: { width: '100%', height: '100%', minHeight: 168, borderBottomLeftRadius: 90, overflow: 'hidden', position: 'relative', backgroundColor: CARD_BG },
+  heroImage: { width: '100%', height: '100%' },
+  heroOverlay: { position: 'absolute', left: 0, right: 0, bottom: 0, height: '55%', backgroundColor: 'rgba(11,27,46,0.40)' },
+  heroCaption: { position: 'absolute', right: 14, bottom: 18, width: 78, fontSize: 13, fontFamily: 'Helvetica-Oblique', color: '#ffffff', textAlign: 'right', lineHeight: 1.3 },
 
   // Three-panel info row
   panelRow: { flexDirection: 'row', marginBottom: 18 },
@@ -78,38 +104,41 @@ const styles = StyleSheet.create({
   panelLabel: { fontSize: 7.5, color: FAINT, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 },
 
   avatarRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 6 },
-  avatarCircle: { width: 28, height: 28, borderRadius: 14, backgroundColor: PEACH, borderWidth: 1, borderColor: PEACH_BORDER, alignItems: 'center', justifyContent: 'center', marginRight: 8 },
-  avatarInitial: { fontSize: 11, fontFamily: 'Helvetica-Bold', color: ORANGE },
+  avatarCircle: { width: 28, height: 28, borderRadius: 14, backgroundColor: PEACH, alignItems: 'center', overflow: 'hidden', marginRight: 8 },
+  personHead: { width: 9, height: 9, borderRadius: 4.5, backgroundColor: ORANGE, marginTop: 4 },
+  personBody: { width: 18, height: 11, borderTopLeftRadius: 9, borderTopRightRadius: 9, backgroundColor: ORANGE, marginTop: 1 },
   customerName: { fontSize: 11, fontFamily: 'Helvetica-Bold' },
   customerLine: { fontSize: 9, color: SOFT, marginTop: 2 },
 
-  quoteMetaRow: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 8 },
-  quoteMetaIcon: { width: 16, height: 16, borderRadius: 3, backgroundColor: '#eef1f5', borderWidth: 1, borderColor: BORDER, marginRight: 6 },
-  quoteMetaIconBar: { height: 4, backgroundColor: ORANGE, borderTopLeftRadius: 2, borderTopRightRadius: 2 },
+  quoteMetaItem: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
+  quoteMetaIconWrap: { marginRight: 7 },
   quoteMetaLabel: { fontSize: 7.5, color: FAINT, textTransform: 'uppercase', letterSpacing: 0.5 },
   quoteMetaValue: { fontSize: 9.5, fontFamily: 'Helvetica-Bold', color: INK, marginTop: 1 },
 
+  taglinePanelIconRow: { marginBottom: 8 },
   taglinePanelText: { fontSize: 10.5, fontFamily: 'Helvetica-Bold', color: INK, lineHeight: 1.4 },
-  houseIconWrap: { alignItems: 'center', justifyContent: 'flex-end', height: 20, marginBottom: 8 },
-  houseRoof: { width: 0, height: 0, borderLeftWidth: 9, borderRightWidth: 9, borderBottomWidth: 8, borderLeftColor: 'transparent', borderRightColor: 'transparent', borderBottomColor: ORANGE },
-  houseBase: { width: 14, height: 8, backgroundColor: ORANGE },
+  taglinePanelDash: { width: 20, height: 2, backgroundColor: ORANGE, marginTop: 6 },
 
   // Product table
   table: { borderTopWidth: 1, borderTopColor: BORDER, marginTop: 4 },
   tHeadRow: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: BORDER, paddingVertical: 6, backgroundColor: CARD_BG },
   tRow: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: BORDER, paddingVertical: 8, alignItems: 'center' },
-  colImage: { flexGrow: 0, flexBasis: 40, paddingHorizontal: 6 },
-  colItem: { flexGrow: 3, flexBasis: 0, paddingHorizontal: 6 },
-  colQty: { flexGrow: 0.7, flexBasis: 0, paddingHorizontal: 6, textAlign: 'right' },
-  colPrice: { flexGrow: 1.1, flexBasis: 0, paddingHorizontal: 6, textAlign: 'right' },
+  colIndex: { flexGrow: 0.4, flexBasis: 0, paddingHorizontal: 6 },
+  colProduct: { flexGrow: 2.6, flexBasis: 0, paddingHorizontal: 6 },
+  colDescription: { flexGrow: 2.4, flexBasis: 0, paddingHorizontal: 6 },
+  colQty: { flexGrow: 0.6, flexBasis: 0, paddingHorizontal: 6, textAlign: 'right' },
+  colPrice: { flexGrow: 1, flexBasis: 0, paddingHorizontal: 6, textAlign: 'right' },
   colDiscount: { flexGrow: 1.1, flexBasis: 0, paddingHorizontal: 6, textAlign: 'right' },
-  colTotal: { flexGrow: 1.2, flexBasis: 0, paddingHorizontal: 6, textAlign: 'right' },
-  thText: { fontSize: 8, fontFamily: 'Helvetica-Bold', color: FAINT, textTransform: 'uppercase' },
+  colTotal: { flexGrow: 1.1, flexBasis: 0, paddingHorizontal: 6, textAlign: 'right' },
+  thText: { fontSize: 7.5, fontFamily: 'Helvetica-Bold', color: FAINT, textTransform: 'uppercase' },
+  productRow: { flexDirection: 'row', alignItems: 'center' },
   itemThumbWrap: { width: 30, height: 30, borderRadius: 5, overflow: 'hidden', backgroundColor: CARD_BG, borderWidth: 1, borderColor: BORDER },
   itemThumb: { width: '100%', height: '100%' },
-  itemName: { fontSize: 10, fontFamily: 'Helvetica-Bold' },
+  itemTextCol: { marginLeft: 8 },
+  itemName: { fontSize: 9.5, fontFamily: 'Helvetica-Bold' },
   itemSku: { fontSize: 8, color: FAINT, marginTop: 1 },
-  itemDesc: { fontSize: 8, color: SOFT, marginTop: 2 },
+  itemDesc: { fontSize: 8, color: SOFT, lineHeight: 1.3 },
+  cellText: { fontSize: 9 },
 
   // Feature strip
   featureRow: { flexDirection: 'row', marginTop: 18, marginBottom: 6 },
@@ -117,20 +146,12 @@ const styles = StyleSheet.create({
   featureBadge: { width: 30, height: 30, borderRadius: 15, backgroundColor: PEACH, borderWidth: 1, borderColor: PEACH_BORDER, alignItems: 'center', justifyContent: 'center', marginBottom: 6 },
   featureLabel: { fontSize: 7.5, fontFamily: 'Helvetica-Bold', color: INK, textAlign: 'center', textTransform: 'uppercase', letterSpacing: 0.3 },
 
-  // Feature badge marks (built from plain shapes only)
-  markDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: ORANGE },
-  markSquareOutline: { width: 11, height: 11, borderWidth: 1.5, borderColor: ORANGE },
-  markTriangle: { width: 0, height: 0, borderLeftWidth: 6, borderRightWidth: 6, borderBottomWidth: 9, borderLeftColor: 'transparent', borderRightColor: 'transparent', borderBottomColor: ORANGE },
-  markBars: { flexDirection: 'row', alignItems: 'flex-end' },
-  markBarSm: { width: 4, height: 6, backgroundColor: ORANGE, marginRight: 2 },
-  markBarMd: { width: 4, height: 10, backgroundColor: ORANGE },
-
   // Totals
   totalsBox: { marginTop: 12, alignSelf: 'flex-end', width: 230 },
   totalsRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 3 },
   totalsLabel: { fontSize: 9.5, color: SOFT },
   totalsValue: { fontSize: 9.5, color: INK },
-  totalsDiscountValue: { fontSize: 9.5, color: GREEN, fontFamily: 'Helvetica-Bold' },
+  totalsDiscountValue: { fontSize: 9.5, color: GREEN },
   grandRow: { flexDirection: 'row', justifyContent: 'space-between', backgroundColor: PEACH, borderRadius: 8, marginTop: 6, paddingVertical: 8, paddingHorizontal: 10 },
   grandLabel: { fontSize: 12, fontFamily: 'Helvetica-Bold', color: INK },
   grandValue: { fontSize: 13, fontFamily: 'Helvetica-Bold', color: ORANGE },
@@ -169,8 +190,11 @@ function heroImageDataUri() {
   }
 }
 
-function money(n) {
-  return `Rs. ${Number(n || 0).toLocaleString('en-IN')}`;
+// Plain number formatting, no currency symbol — the product table's own rows never show a
+// currency mark (only the column headers and the totals box do), so this alone is what every
+// price/discount/total cell in the table uses.
+function numFmt(n) {
+  return Number(n || 0).toLocaleString('en-IN');
 }
 
 // The standard 14 PDF fonts (Helvetica included) only carry the WinAnsi/CP1252 character set —
@@ -184,8 +208,7 @@ function money(n) {
 // ellipsis or emoji (all common from a phone keyboard or copy-pasted from WhatsApp/Word) can end
 // up in a revision.note or item name and break PDF generation for that lead from then on. First
 // maps the common "smart" typography to its plain-ASCII equivalent (keeps the text reading the
-// same instead of just vanishing), then strips anything else outside the printable WinAnsi range
-// — this is the general form of the same fix already applied to the rupee sign below.
+// same instead of just vanishing), then strips anything else outside the printable WinAnsi range.
 const SMART_CHAR_MAP = {
   '‘': "'", '’': "'", '‚': "'", '′': "'",
   '“': '"', '”': '"', '„': '"', '″': '"',
@@ -234,25 +257,102 @@ function productPhotoDataUri(product) {
   return typeof url === 'string' && url.startsWith('data:image') ? url : null;
 }
 
-function FeatureBadgeMark({ shape }) {
-  if (shape === 'square') return <View style={styles.markSquareOutline} />;
-  if (shape === 'triangle') return <View style={styles.markTriangle} />;
-  if (shape === 'bars') {
+// A currency-prefixed amount ("₹ 12,000" / "Rs. 12,000"). Only text that actually shows a
+// currency mark opts into the bundled DejaVu font (see the big comment at the top of this file);
+// everything else in the document stays on the proven Helvetica family untouched.
+function CurrencyText({ value, style, negative, bold }) {
+  const fontOverride = RUPEE_FONT_AVAILABLE ? { fontFamily: bold ? RUPEE_FAMILY_BOLD : RUPEE_FAMILY } : null;
+  return (
+    <Text style={[style, fontOverride]}>
+      {negative ? '-' : ''}{CUR} {numFmt(value)}
+    </Text>
+  );
+}
+
+// A table header label with a "(₹)" suffix — the label itself stays in Helvetica-Bold (matching
+// every other header) and only the currency mark switches font, as an inline run.
+function CurrencyHeader({ label }) {
+  const fontOverride = RUPEE_FONT_AVAILABLE ? { fontFamily: RUPEE_FAMILY_BOLD } : null;
+  return (
+    <Text style={styles.thText}>
+      {label} (<Text style={fontOverride}>{CUR}</Text>)
+    </Text>
+  );
+}
+
+// Small line-art icons built only from Svg's straight-line/circle primitives (Rect, Line, Circle,
+// Polygon) — deliberately no bezier curve paths, so there's nothing here that can render as a
+// malformed shape.
+function Icon({ name, size = 14, color = ORANGE, strokeWidth = 1.4 }) {
+  const box = { width: size, height: size, viewBox: '0 0 24 24' };
+  if (name === 'document') {
     return (
-      <View style={styles.markBars}>
-        <View style={styles.markBarSm} />
-        <View style={styles.markBarMd} />
-      </View>
+      <Svg {...box}>
+        <Rect x={5} y={2} width={14} height={20} rx={2} stroke={color} strokeWidth={strokeWidth} fill="none" />
+        <Line x1={8} y1={8} x2={16} y2={8} stroke={color} strokeWidth={strokeWidth} />
+        <Line x1={8} y1={12} x2={16} y2={12} stroke={color} strokeWidth={strokeWidth} />
+        <Line x1={8} y1={16} x2={13} y2={16} stroke={color} strokeWidth={strokeWidth} />
+      </Svg>
     );
   }
-  return <View style={styles.markDot} />;
+  if (name === 'calendar') {
+    return (
+      <Svg {...box}>
+        <Rect x={3} y={5} width={18} height={16} rx={2} stroke={color} strokeWidth={strokeWidth} fill="none" />
+        <Line x1={3} y1={10} x2={21} y2={10} stroke={color} strokeWidth={strokeWidth} />
+        <Line x1={7} y1={2} x2={7} y2={6} stroke={color} strokeWidth={strokeWidth} />
+        <Line x1={17} y1={2} x2={17} y2={6} stroke={color} strokeWidth={strokeWidth} />
+      </Svg>
+    );
+  }
+  if (name === 'house') {
+    return (
+      <Svg {...box}>
+        <Polygon points="12,3 21,10 3,10" fill={color} />
+        <Rect x={6} y={10} width={12} height={9} stroke={color} strokeWidth={strokeWidth} fill="none" />
+      </Svg>
+    );
+  }
+  if (name === 'bulb') {
+    return (
+      <Svg {...box}>
+        <Circle cx={12} cy={9} r={6} stroke={color} strokeWidth={strokeWidth} fill="none" />
+        <Line x1={9} y1={17} x2={15} y2={17} stroke={color} strokeWidth={strokeWidth} />
+        <Line x1={10} y1={20} x2={14} y2={20} stroke={color} strokeWidth={strokeWidth} />
+      </Svg>
+    );
+  }
+  if (name === 'shield') {
+    return (
+      <Svg {...box}>
+        <Polygon points="12,3 20,6 20,12 12,21 4,12 4,6" stroke={color} strokeWidth={strokeWidth} fill="none" />
+        <Line x1={8} y1={12} x2={11} y2={15} stroke={color} strokeWidth={strokeWidth} />
+        <Line x1={11} y1={15} x2={16} y2={9} stroke={color} strokeWidth={strokeWidth} />
+      </Svg>
+    );
+  }
+  if (name === 'bolt') {
+    return (
+      <Svg {...box}>
+        <Polygon points="13,2 5,14 11,14 9,22 20,9 12,9" fill={color} />
+      </Svg>
+    );
+  }
+  if (name === 'arrow') {
+    return (
+      <Svg {...box}>
+        <Polygon points="3,10 14,10 14,5 21,13 14,21 14,16 3,16" fill={color} />
+      </Svg>
+    );
+  }
+  return null;
 }
 
 const FEATURES = [
-  { label: 'Smarter Living', shape: 'dot' },
-  { label: 'Safer Homes', shape: 'square' },
-  { label: 'Energy Efficient', shape: 'triangle' },
-  { label: 'Future Ready', shape: 'bars' },
+  { label: 'Smarter Living', icon: 'bulb' },
+  { label: 'Safer Homes', icon: 'shield' },
+  { label: 'Energy Efficient', icon: 'bolt' },
+  { label: 'Future Ready', icon: 'arrow' },
 ];
 
 export default function QuotationPdfDocument({
@@ -267,7 +367,6 @@ export default function QuotationPdfDocument({
   const items = Array.isArray(revision?.items) ? revision.items : [];
   const hasItems = items.length > 0;
   const dateLabel = revision?.at ? new Date(revision.at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '';
-  const customerInitial = safeText(lead?.name).trim().charAt(0).toUpperCase() || '?';
 
   return (
     <Document title={`Quotation - ${safeText(lead.name)}`}>
@@ -281,28 +380,38 @@ export default function QuotationPdfDocument({
           </View>
         </View>
 
-        {hero && (
-          <View style={styles.heroWrap}>
-            <Image src={hero} style={styles.heroImage} />
-            <View style={styles.heroOverlay} />
-            <Text style={styles.heroCaption}>A Smarter Way to Live</Text>
+        <View style={styles.heroRow}>
+          <View style={styles.heroLeft}>
+            <View style={styles.quotationLabelRow}>
+              <View style={styles.quotationDash} />
+              <Text style={styles.quotationLabelText}>Quotation</Text>
+            </View>
+            <Text style={styles.headingLine}>Smart Solutions</Text>
+            <Text style={styles.headingLineOrange}>for a Smarter You</Text>
+            <View style={styles.introBlock}>
+              <Text style={styles.intro}>Thank you for considering {safeText(brandName).toUpperCase()} for your smart home journey.</Text>
+              <Text style={styles.intro}>We are pleased to share the quotation as per your requirement.</Text>
+            </View>
           </View>
-        )}
-
-        <Text style={styles.heading}>
-          <Text style={styles.headingBlack}>Smart Solutions </Text>
-          <Text style={styles.headingOrange}>for a Smarter You</Text>
-        </Text>
-        <Text style={styles.intro}>
-          Thank you for considering {safeText(brandName)}. Here is a tailored smart-home quotation, put together
-          around your space and the products you asked about.
-        </Text>
+          <View style={styles.heroRight}>
+            {hero ? (
+              <View style={styles.heroImageWrap}>
+                <Image src={hero} style={styles.heroImage} />
+                <View style={styles.heroOverlay} />
+                <Text style={styles.heroCaption}>A Smarter Way to Live</Text>
+              </View>
+            ) : null}
+          </View>
+        </View>
 
         <View style={styles.panelRow}>
           <View style={styles.panel}>
             <Text style={styles.panelLabel}>Prepared For</Text>
             <View style={styles.avatarRow}>
-              <View style={styles.avatarCircle}><Text style={styles.avatarInitial}>{customerInitial}</Text></View>
+              <View style={styles.avatarCircle}>
+                <View style={styles.personHead} />
+                <View style={styles.personBody} />
+              </View>
               <Text style={styles.customerName}>{safeText(lead.name)}</Text>
             </View>
             <Text style={styles.customerLine}>{safeText(lead.phone)}</Text>
@@ -310,14 +419,15 @@ export default function QuotationPdfDocument({
           </View>
 
           <View style={styles.panel}>
-            <View style={styles.quoteMetaIcon}><View style={styles.quoteMetaIconBar} /></View>
-            <View style={styles.quoteMetaRow}>
+            <View style={styles.quoteMetaItem}>
+              <View style={styles.quoteMetaIconWrap}><Icon name="document" size={14} /></View>
               <View>
                 <Text style={styles.quoteMetaLabel}>Quotation No.</Text>
                 <Text style={styles.quoteMetaValue}>{lead.id}-v{revision?.revision || 1}</Text>
               </View>
             </View>
-            <View style={styles.quoteMetaRow}>
+            <View style={styles.quoteMetaItem}>
+              <View style={styles.quoteMetaIconWrap}><Icon name="calendar" size={14} /></View>
               <View>
                 <Text style={styles.quoteMetaLabel}>Date</Text>
                 <Text style={styles.quoteMetaValue}>{dateLabel || '-'}</Text>
@@ -326,23 +436,23 @@ export default function QuotationPdfDocument({
           </View>
 
           <View style={styles.panelLast}>
-            <View style={styles.houseIconWrap}>
-              <View style={styles.houseRoof} />
-              <View style={styles.houseBase} />
-            </View>
-            <Text style={styles.taglinePanelText}>Smarter Homes, Happier Lives</Text>
+            <View style={styles.taglinePanelIconRow}><Icon name="house" size={16} /></View>
+            <Text style={styles.taglinePanelText}>Smarter Homes,</Text>
+            <Text style={styles.taglinePanelText}>Happier Lives</Text>
+            <View style={styles.taglinePanelDash} />
           </View>
         </View>
 
         {hasItems && (
           <View style={styles.table}>
             <View style={styles.tHeadRow}>
-              <View style={styles.colImage} />
-              <View style={styles.colItem}><Text style={styles.thText}>Item</Text></View>
+              <View style={styles.colIndex}><Text style={styles.thText}>#</Text></View>
+              <View style={styles.colProduct}><Text style={styles.thText}>Product</Text></View>
+              <View style={styles.colDescription}><Text style={styles.thText}>Description</Text></View>
               <View style={styles.colQty}><Text style={styles.thText}>Qty</Text></View>
-              <View style={styles.colPrice}><Text style={styles.thText}>Price</Text></View>
-              <View style={styles.colDiscount}><Text style={styles.thText}>Discount</Text></View>
-              <View style={styles.colTotal}><Text style={styles.thText}>Total</Text></View>
+              <View style={styles.colPrice}><CurrencyHeader label="Price" /></View>
+              <View style={styles.colDiscount}><CurrencyHeader label="Discount" /></View>
+              <View style={styles.colTotal}><CurrencyHeader label="Total" /></View>
             </View>
             {items.map((it, i) => {
               const product = findProduct(it, products);
@@ -350,20 +460,25 @@ export default function QuotationPdfDocument({
               const description = product?.description ? safeText(product.description) : '';
               return (
                 <View style={styles.tRow} key={i}>
-                  <View style={styles.colImage}>
-                    <View style={styles.itemThumbWrap}>
-                      {photo ? <Image src={photo} style={styles.itemThumb} /> : null}
+                  <View style={styles.colIndex}><Text style={styles.cellText}>{String(i + 1).padStart(2, '0')}</Text></View>
+                  <View style={styles.colProduct}>
+                    <View style={styles.productRow}>
+                      <View style={styles.itemThumbWrap}>
+                        {photo ? <Image src={photo} style={styles.itemThumb} /> : null}
+                      </View>
+                      <View style={styles.itemTextCol}>
+                        <Text style={styles.itemName}>{safeText(it.name)}</Text>
+                        {it.sku ? <Text style={styles.itemSku}>{safeText(it.sku)}</Text> : null}
+                      </View>
                     </View>
                   </View>
-                  <View style={styles.colItem}>
-                    <Text style={styles.itemName}>{safeText(it.name)}</Text>
-                    {it.sku ? <Text style={styles.itemSku}>{safeText(it.sku)}</Text> : null}
+                  <View style={styles.colDescription}>
                     {description ? <Text style={styles.itemDesc}>{description}</Text> : null}
                   </View>
-                  <View style={styles.colQty}><Text>{it.qty}</Text></View>
-                  <View style={styles.colPrice}><Text>{money(it.price)}</Text></View>
-                  <View style={styles.colDiscount}><Text>{it.discount ? money(it.discount) : '-'}</Text></View>
-                  <View style={styles.colTotal}><Text>{money(it.lineTotal)}</Text></View>
+                  <View style={styles.colQty}><Text style={styles.cellText}>{it.qty}</Text></View>
+                  <View style={styles.colPrice}><Text style={styles.cellText}>{numFmt(it.price)}</Text></View>
+                  <View style={styles.colDiscount}><Text style={styles.cellText}>{it.discount ? numFmt(it.discount) : '-'}</Text></View>
+                  <View style={styles.colTotal}><Text style={styles.cellText}>{numFmt(it.lineTotal)}</Text></View>
                 </View>
               );
             })}
@@ -373,7 +488,7 @@ export default function QuotationPdfDocument({
         <View style={styles.featureRow}>
           {FEATURES.map((f) => (
             <View style={styles.featureCol} key={f.label}>
-              <View style={styles.featureBadge}><FeatureBadgeMark shape={f.shape} /></View>
+              <View style={styles.featureBadge}><Icon name={f.icon} size={15} /></View>
               <Text style={styles.featureLabel}>{f.label}</Text>
             </View>
           ))}
@@ -382,11 +497,20 @@ export default function QuotationPdfDocument({
         <View style={styles.totalsBox}>
           {hasItems && (
             <>
-              <View style={styles.totalsRow}><Text style={styles.totalsLabel}>Subtotal</Text><Text style={styles.totalsValue}>{money(revision.subtotal)}</Text></View>
-              <View style={styles.totalsRow}><Text style={styles.totalsLabel}>Discount</Text><Text style={styles.totalsDiscountValue}>-{money(revision.discountTotal)}</Text></View>
+              <View style={styles.totalsRow}>
+                <Text style={styles.totalsLabel}>Subtotal</Text>
+                <CurrencyText value={revision.subtotal} style={styles.totalsValue} />
+              </View>
+              <View style={styles.totalsRow}>
+                <Text style={styles.totalsLabel}>Discount</Text>
+                <CurrencyText value={revision.discountTotal} style={styles.totalsDiscountValue} negative />
+              </View>
             </>
           )}
-          <View style={styles.grandRow}><Text style={styles.grandLabel}>Total</Text><Text style={styles.grandValue}>{money(revision?.amount)}</Text></View>
+          <View style={styles.grandRow}>
+            <Text style={styles.grandLabel}>Total</Text>
+            <CurrencyText value={revision?.amount} style={styles.grandValue} bold />
+          </View>
         </View>
 
         {revision?.note ? <Text style={styles.note}>Note: {safeText(revision.note)}</Text> : null}
@@ -399,7 +523,7 @@ export default function QuotationPdfDocument({
             </View>
             <Text style={styles.footerThanks}>Thank you</Text>
           </View>
-          <Text style={styles.footerValidity}>This quotation is valid for 15 days from the date above.</Text>
+          <Text style={styles.footerValidity}>This quotation is valid for 15 days from the date above. For any queries, feel free to contact us.</Text>
         </View>
       </Page>
     </Document>
