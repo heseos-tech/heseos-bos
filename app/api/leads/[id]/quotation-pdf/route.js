@@ -42,7 +42,13 @@ export async function GET(request, { params }) {
   return new Response(buffer, {
     headers: {
       'Content-Type': 'application/pdf',
-      'Content-Disposition': `inline; filename="quotation-${safeName}-v${revision.revision}.pdf"`,
+      // 'attachment' (not 'inline') deliberately — an installed standalone PWA (both the
+      // Partner and Team apps are installable, see components/partner/InstallApp.jsx) has no
+      // tab/window chrome for the browser to open an inline PDF viewer into, so a target=_blank
+      // link to an inline-disposition PDF can silently do nothing there. 'attachment' makes the
+      // browser trigger its native download/save flow directly instead of needing to navigate
+      // anywhere — works the same on a normal desktop tab and inside a standalone PWA.
+      'Content-Disposition': `attachment; filename="quotation-${safeName}-v${revision.revision}.pdf"`,
     },
   });
 }

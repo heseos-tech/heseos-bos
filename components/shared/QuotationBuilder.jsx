@@ -136,7 +136,7 @@ export default function QuotationBuilderModal({ lead, onClose, onDone }) {
 
           {revisions.length > 0 && (
             <div className="qb-share-row">
-              <a className="qb-btn-outline" href={`/api/leads/${lead.id}/quotation-pdf`} target="_blank" rel="noopener noreferrer"><IconDownload size={14} /> Download last PDF</a>
+              <a className="qb-btn-outline" href={`/api/leads/${lead.id}/quotation-pdf`}><IconDownload size={14} /> Download last PDF</a>
               <button type="button" className="qb-btn-outline" onClick={sendOnWhatsApp} disabled={sending}><IconWhatsApp size={14} /> {sending ? 'Sending…' : 'Send on WhatsApp'}</button>
               {sendMsg && <span className="qb-share-msg">{sendMsg}</span>}
             </div>

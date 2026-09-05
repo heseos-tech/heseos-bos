@@ -141,7 +141,7 @@ export default function QuotationsPage() {
             ))}
           </div>
           <div className="lf-actions">
-            <a className="adm-btn-outline" href={`/api/leads/${modal.lead.id}/quotation-pdf`} target="_blank" rel="noopener noreferrer"><IconDownload size={15} /> Download PDF</a>
+            <a className="adm-btn-outline" href={`/api/leads/${modal.lead.id}/quotation-pdf`}><IconDownload size={15} /> Download PDF</a>
             <button className="adm-btn-primary" onClick={() => sendOnWhatsApp(modal.lead.id)} disabled={sending}><IconWhatsApp size={15} /> {sending ? 'Sending…' : 'Send on WhatsApp'}</button>
           </div>
         </Modal>
