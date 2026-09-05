@@ -8,11 +8,11 @@
 // the ₹ glyph (it can render as a blank box), so this template spells it "Rs." instead — the
 // UI everywhere else keeps using ₹, this file is the one deliberate exception.
 //
-// NOTE ON VERIFICATION: @react-pdf/renderer is listed in package.json but isn't installed in
-// this shell (no network access here to fetch it) — this file is written to the library's
-// documented API but hasn't been run. `npm install` (in your own terminal) plus a real
-// download is the first real test of it; see the chat for the full rundown of what's verified
-// this way vs. what isn't.
+// NOTE ON VERIFICATION: this sandbox still has no network access to actually install
+// @react-pdf/renderer or run a live render, so the safeText() fix below (added after a real
+// production PDF generation failure — see the commit this comment shipped in) is reasoned from
+// the library's documented WinAnsi/Helvetica font limitation and this file's own pre-existing
+// rupee-sign workaround, not verified by an actual render here.
 import { Document, Page, View, Text, Image, StyleSheet } from '@react-pdf/renderer';
 import fs from 'fs';
 import path from 'path';
@@ -69,6 +69,41 @@ function money(n) {
   return `Rs. ${Number(n || 0).toLocaleString('en-IN')}`;
 }
 
+// The standard 14 PDF fonts (Helvetica included) only carry the WinAnsi/CP1252 character set —
+// nothing outside it is guaranteed to render, and some ranges (emoji and other characters well
+// outside Latin-1 in particular) have been seen to throw during renderToBuffer() rather than
+// just render a blank box, which is a much worse failure than a missing glyph: it takes down
+// the WHOLE PDF (and, upstream, the WhatsApp send) instead of just looking a little off. Every
+// piece of free text that flows into this document is something a partner/employee typed (a
+// quotation note, a product name/SKU picked or typed into the catalogue, a lead's name/city) —
+// none of it is sanitized before it gets here, so a pasted em dash, curly quote, ellipsis or
+// emoji (all common from a phone keyboard or copy-pasted from WhatsApp/Word) can end up in a
+// revision.note or item name and break PDF generation for that lead from then on. First maps
+// the common "smart" typography to its plain-ASCII equivalent (keeps the text reading the same
+// instead of just vanishing), then strips anything else outside the printable WinAnsi range —
+// this is the general form of the same fix already applied to the rupee sign below.
+const SMART_CHAR_MAP = {
+  '‘': "'", '’': "'", '‚': "'", '′': "'",
+  '“': '"', '”': '"', '„': '"', '″': '"',
+  '–': '-', '—': '-', '−': '-',
+  '…': '...',
+  '•': '-', '·': '-',
+  ' ': ' ',
+};
+function safeText(v) {
+  const s = String(v ?? '');
+  let out = '';
+  for (const ch of s) {
+    const code = ch.codePointAt(0);
+    if (SMART_CHAR_MAP[ch]) { out += SMART_CHAR_MAP[ch]; continue; }
+    if (code >= 0x20 && code <= 0xff) { out += ch; continue; }
+    // Anything else (emoji, other scripts, stray control characters) is dropped rather than
+    // risking a crash — silently missing an emoji from a quotation note is a fine trade for
+    // the PDF actually generating.
+  }
+  return out;
+}
+
 export default function QuotationPdfDocument({ lead, revision, brandName = 'Heseos', tagline = 'Smart Home Automation' }) {
   const logo = brandLogoDataUri();
   const items = Array.isArray(revision?.items) ? revision.items : [];
@@ -76,10 +111,10 @@ export default function QuotationPdfDocument({ lead, revision, brandName = 'Hese
   const dateLabel = revision?.at ? new Date(revision.at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '';
 
   return (
-    <Document title={`Quotation - ${lead.name}`}>
+    <Document title={`Quotation - ${safeText(lead.name)}`}>
       <Page size="A4" style={styles.page}>
         <View style={styles.headerRow}>
-          <View>{logo ? <Image src={logo} style={styles.logo} /> : <Text style={styles.customerName}>{brandName}</Text>}</View>
+          <View>{logo ? <Image src={logo} style={styles.logo} /> : <Text style={styles.customerName}>{safeText(brandName)}</Text>}</View>
           <View>
             <Text style={styles.docTitle}>QUOTATION</Text>
             <Text style={styles.docMeta}>Ref: {lead.id}-v{revision?.revision || 1}</Text>
@@ -89,9 +124,9 @@ export default function QuotationPdfDocument({ lead, revision, brandName = 'Hese
 
         <View style={styles.section}>
           <Text style={styles.sectionLabel}>Prepared For</Text>
-          <Text style={styles.customerName}>{lead.name}</Text>
-          <Text style={styles.customerLine}>{lead.phone}</Text>
-          {lead.city ? <Text style={styles.customerLine}>{lead.city}</Text> : null}
+          <Text style={styles.customerName}>{safeText(lead.name)}</Text>
+          <Text style={styles.customerLine}>{safeText(lead.phone)}</Text>
+          {lead.city ? <Text style={styles.customerLine}>{safeText(lead.city)}</Text> : null}
         </View>
 
         {hasItems && (
@@ -106,8 +141,8 @@ export default function QuotationPdfDocument({ lead, revision, brandName = 'Hese
             {items.map((it, i) => (
               <View style={styles.tRow} key={i}>
                 <View style={styles.colItem}>
-                  <Text style={styles.itemName}>{it.name}</Text>
-                  {it.sku ? <Text style={styles.itemSku}>{it.sku}</Text> : null}
+                  <Text style={styles.itemName}>{safeText(it.name)}</Text>
+                  {it.sku ? <Text style={styles.itemSku}>{safeText(it.sku)}</Text> : null}
                 </View>
                 <View style={styles.colQty}><Text>{it.qty}</Text></View>
                 <View style={styles.colPrice}><Text>{money(it.price)}</Text></View>
@@ -128,9 +163,9 @@ export default function QuotationPdfDocument({ lead, revision, brandName = 'Hese
           <View style={styles.grandRow}><Text style={styles.grandLabel}>Total</Text><Text style={styles.grandValue}>{money(revision?.amount)}</Text></View>
         </View>
 
-        {revision?.note ? <Text style={styles.note}>Note: {revision.note}</Text> : null}
+        {revision?.note ? <Text style={styles.note}>Note: {safeText(revision.note)}</Text> : null}
 
-        <Text style={styles.footer}>{brandName} · {tagline} · This quotation is valid for 15 days from the date above.</Text>
+        <Text style={styles.footer}>{safeText(brandName)} · {safeText(tagline)} · This quotation is valid for 15 days from the date above.</Text>
       </Page>
     </Document>
   );
