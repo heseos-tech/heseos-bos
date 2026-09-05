@@ -13,6 +13,7 @@ import { ScreenHeader } from './ui';
 import { IconSearch, IconProducts, IconWhatsApp, IconX } from '@/components/admin/icons';
 import { PRODUCT_CATEGORY, PRODUCT_CATEGORY_LABEL } from '@/lib/formOptions';
 import { useApiResource } from '@/lib/useApiResource';
+import Portal from '@/components/shared/Portal';
 
 function currency(n) {
   return `₹${Number(n || 0).toLocaleString('en-IN')}`;
@@ -101,37 +102,39 @@ function ProductDetailSheet({ product, onClose }) {
   ].filter(Boolean).join('\n');
 
   return (
-    <div className="hp-sheet-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="hp-sheet">
-        <div className="hp-sheet-handle" />
-        <div className="hp-sheet-title">{product.name}</div>
-        <div className="hp-sheet-sub">{product.sku}{product.category ? ` · ${PRODUCT_CATEGORY_LABEL[product.category] || product.category}` : ''}</div>
+    <Portal>
+      <div className="hp-sheet-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
+        <div className="hp-sheet">
+          <div className="hp-sheet-handle" />
+          <div className="hp-sheet-title">{product.name}</div>
+          <div className="hp-sheet-sub">{product.sku}{product.category ? ` · ${PRODUCT_CATEGORY_LABEL[product.category] || product.category}` : ''}</div>
 
-        {photos.length > 0 && (
-          <div className="hp-cat-detail-photos" style={{ padding: '4px 0 16px' }}>
-            {photos.map((ph) => <img key={ph.id} src={ph.dataUrl} alt={ph.name || product.name} />)}
+          {photos.length > 0 && (
+            <div className="hp-cat-detail-photos" style={{ padding: '4px 0 16px' }}>
+              {photos.map((ph) => <img key={ph.id} src={ph.dataUrl} alt={ph.name || product.name} />)}
+            </div>
+          )}
+
+          <div className="hp-summary-row">
+            <span className="hp-summary-label">Price</span>
+            <span className="hp-summary-val">{product.price != null ? `${currency(product.price)}${product.unit ? ` / ${product.unit}` : ''}` : 'On request'}</span>
           </div>
-        )}
 
-        <div className="hp-summary-row">
-          <span className="hp-summary-label">Price</span>
-          <span className="hp-summary-val">{product.price != null ? `${currency(product.price)}${product.unit ? ` / ${product.unit}` : ''}` : 'On request'}</span>
-        </div>
+          {product.description && <p className="hp-cat-detail-desc" style={{ padding: '14px 0 0' }}>{product.description}</p>}
 
-        {product.description && <p className="hp-cat-detail-desc" style={{ padding: '14px 0 0' }}>{product.description}</p>}
-
-        <div className="hp-sheet-actions">
-          <button type="button" className="hp-btn hp-btn-outline hp-btn-block" onClick={onClose}><IconX size={16} /> Close</button>
-          <a
-            className="hp-btn hp-btn-primary hp-btn-block"
-            href={`https://wa.me/?text=${encodeURIComponent(shareText)}`}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <IconWhatsApp size={16} /> Share
-          </a>
+          <div className="hp-sheet-actions">
+            <button type="button" className="hp-btn hp-btn-outline hp-btn-block" onClick={onClose}><IconX size={16} /> Close</button>
+            <a
+              className="hp-btn hp-btn-primary hp-btn-block"
+              href={`https://wa.me/?text=${encodeURIComponent(shareText)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <IconWhatsApp size={16} /> Share
+            </a>
+          </div>
         </div>
       </div>
-    </div>
+    </Portal>
   );
 }

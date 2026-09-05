@@ -18,6 +18,7 @@
 // subtotal/discount/total, never trusting a client-sent number. What's shown here while
 // building is a live preview of that same math, so the number never surprises anyone at submit.
 import { useMemo, useState } from 'react';
+import Portal from './Portal';
 import { useApiResource } from '@/lib/useApiResource';
 import { IconSearch, IconX, IconProducts, IconDownload, IconWhatsApp } from '@/components/admin/icons';
 
@@ -122,98 +123,100 @@ export default function QuotationBuilderModal({ lead, onClose, onDone }) {
   }
 
   return (
-    <div className="qb-modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="qb-modal-card">
-        <div className="qb-modal-head">
-          <div>
-            <div className="qb-modal-title">{revisions.length ? `Revise quotation (v${revisions.length + 1})` : 'Build quotation'}</div>
-            <div className="qb-modal-sub">{lead.name} · {lead.phone}</div>
-          </div>
-          <button className="qb-modal-close" onClick={onClose}><IconX size={18} /></button>
-        </div>
-
-        {revisions.length > 0 && (
-          <div className="qb-share-row">
-            <a className="qb-btn-outline" href={`/api/leads/${lead.id}/quotation-pdf`} target="_blank" rel="noopener noreferrer"><IconDownload size={14} /> Download last PDF</a>
-            <button type="button" className="qb-btn-outline" onClick={sendOnWhatsApp} disabled={sending}><IconWhatsApp size={14} /> {sending ? 'Sending…' : 'Send on WhatsApp'}</button>
-            {sendMsg && <span className="qb-share-msg">{sendMsg}</span>}
-          </div>
-        )}
-
-        <div className="qb-layout">
-          <div>
-            <div className="qb-search"><IconSearch size={16} /><input placeholder="Search products by name or SKU…" value={pq} onChange={(e) => setPq(e.target.value)} /></div>
-            <div className="qb-product-list">
-              {productsLoading ? (
-                <div className="qb-empty">Loading catalogue…</div>
-              ) : filteredProducts.length === 0 ? (
-                <div className="qb-empty">{activeProducts.length === 0 ? 'No products in the catalogue yet — add some in Admin → Products.' : 'No products match.'}</div>
-              ) : filteredProducts.map((p) => (
-                <div className="qb-product-row" key={p.id}>
-                  {p.photos?.[0]?.dataUrl
-                    ? <img className="qb-product-thumb" src={p.photos[0].dataUrl} alt={p.name} />
-                    : <div className="qb-product-thumb-placeholder"><IconProducts size={18} /></div>}
-                  <div className="qb-product-info">
-                    <div className="qb-product-name">{p.name}</div>
-                    <div className="qb-product-meta">{p.sku} · {p.price != null ? currency(p.price) : 'Price on request'}</div>
-                  </div>
-                  <button type="button" className="qb-add-btn" onClick={() => addProduct(p)}>+</button>
-                </div>
-              ))}
+    <Portal>
+      <div className="qb-modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
+        <div className="qb-modal-card">
+          <div className="qb-modal-head">
+            <div>
+              <div className="qb-modal-title">{revisions.length ? `Revise quotation (v${revisions.length + 1})` : 'Build quotation'}</div>
+              <div className="qb-modal-sub">{lead.name} · {lead.phone}</div>
             </div>
+            <button className="qb-modal-close" onClick={onClose}><IconX size={18} /></button>
           </div>
 
-          <div>
-            {lines.length === 0 ? (
-              <>
-                <div className="qb-empty-lines">No line items added — pick products on the left, or enter a one-off amount below.</div>
-                <div className="lf-field"><label className="lf-label">Amount (₹)</label><input className="lf-input" type="number" min="0" value={manualAmount} onChange={(e) => setManualAmount(e.target.value)} placeholder="e.g. 185000" /></div>
-              </>
-            ) : (
-              <>
-                <div className="qb-line qb-line-head">
-                  <span>Item</span><span>Qty</span><span>Price</span><span>Disc.</span><span></span>
-                </div>
-                {lines.map((l) => (
-                  <div className="qb-line" key={l._key}>
-                    <div>
-                      <div className="qb-line-name">{l.name}</div>
-                      {l.sku && <div className="qb-line-sku">{l.sku}</div>}
-                      <div className="qb-line-total">= {currency(Math.max(0, (Number(l.price) || 0) * (Number(l.qty) || 0) - (Number(l.discount) || 0)))}</div>
+          {revisions.length > 0 && (
+            <div className="qb-share-row">
+              <a className="qb-btn-outline" href={`/api/leads/${lead.id}/quotation-pdf`} target="_blank" rel="noopener noreferrer"><IconDownload size={14} /> Download last PDF</a>
+              <button type="button" className="qb-btn-outline" onClick={sendOnWhatsApp} disabled={sending}><IconWhatsApp size={14} /> {sending ? 'Sending…' : 'Send on WhatsApp'}</button>
+              {sendMsg && <span className="qb-share-msg">{sendMsg}</span>}
+            </div>
+          )}
+
+          <div className="qb-layout">
+            <div>
+              <div className="qb-search"><IconSearch size={16} /><input placeholder="Search products by name or SKU…" value={pq} onChange={(e) => setPq(e.target.value)} /></div>
+              <div className="qb-product-list">
+                {productsLoading ? (
+                  <div className="qb-empty">Loading catalogue…</div>
+                ) : filteredProducts.length === 0 ? (
+                  <div className="qb-empty">{activeProducts.length === 0 ? 'No products in the catalogue yet — add some in Admin → Products.' : 'No products match.'}</div>
+                ) : filteredProducts.map((p) => (
+                  <div className="qb-product-row" key={p.id}>
+                    {p.photos?.[0]?.dataUrl
+                      ? <img className="qb-product-thumb" src={p.photos[0].dataUrl} alt={p.name} />
+                      : <div className="qb-product-thumb-placeholder"><IconProducts size={18} /></div>}
+                    <div className="qb-product-info">
+                      <div className="qb-product-name">{p.name}</div>
+                      <div className="qb-product-meta">{p.sku} · {p.price != null ? currency(p.price) : 'Price on request'}</div>
                     </div>
-                    <input className="qb-line-qty" type="number" min="0" value={l.qty} onChange={(e) => updateLine(l._key, 'qty', e.target.value)} />
-                    <input className="qb-line-price" type="number" min="0" value={l.price} onChange={(e) => updateLine(l._key, 'price', e.target.value)} />
-                    <input className="qb-line-discount" type="number" min="0" value={l.discount} onChange={(e) => updateLine(l._key, 'discount', e.target.value)} />
-                    <button type="button" className="qb-line-remove" onClick={() => removeLine(l._key)}><IconX size={14} /></button>
+                    <button type="button" className="qb-add-btn" onClick={() => addProduct(p)}>+</button>
                   </div>
                 ))}
-                <div className="lf-field" style={{ marginTop: 12 }}>
-                  <label className="lf-label">Extra discount (₹, optional)</label>
-                  <input className="lf-input" type="number" min="0" value={extraDiscount} onChange={(e) => setExtraDiscount(e.target.value)} placeholder="Flat amount off the whole quotation" />
-                </div>
-              </>
-            )}
-
-            <div className="lf-field"><label className="lf-label">Note (optional)</label><input className="lf-input" value={note} onChange={(e) => setNote(e.target.value)} placeholder="e.g. Valid for 15 days" /></div>
-
-            {lines.length > 0 && (
-              <div className="qb-totals">
-                <div className="qb-totals-row"><span>Subtotal</span><span>{currency(totals.subtotal)}</span></div>
-                <div className="qb-totals-row"><span>Discount</span><span>-{currency(totals.discountTotal)}</span></div>
-                <div className="qb-totals-row qb-total-final"><span>Total</span><span>{currency(totals.total)}</span></div>
               </div>
-            )}
+            </div>
 
-            {error && <div className="lf-error">{error}</div>}
-            <div className="qb-actions">
-              <button className="qb-btn-outline" onClick={onClose} disabled={saving}>Cancel</button>
-              <button className="qb-btn-primary" onClick={submit} disabled={saving || (lines.length === 0 && manualAmount === '')}>
-                {saving ? 'Saving…' : revisions.length ? 'Save Revision' : 'Send Quotation'}
-              </button>
+            <div>
+              {lines.length === 0 ? (
+                <>
+                  <div className="qb-empty-lines">No line items added — pick products on the left, or enter a one-off amount below.</div>
+                  <div className="lf-field"><label className="lf-label">Amount (₹)</label><input className="lf-input" type="number" min="0" value={manualAmount} onChange={(e) => setManualAmount(e.target.value)} placeholder="e.g. 185000" /></div>
+                </>
+              ) : (
+                <>
+                  <div className="qb-line qb-line-head">
+                    <span>Item</span><span>Qty</span><span>Price</span><span>Disc.</span><span></span>
+                  </div>
+                  {lines.map((l) => (
+                    <div className="qb-line" key={l._key}>
+                      <div>
+                        <div className="qb-line-name">{l.name}</div>
+                        {l.sku && <div className="qb-line-sku">{l.sku}</div>}
+                        <div className="qb-line-total">= {currency(Math.max(0, (Number(l.price) || 0) * (Number(l.qty) || 0) - (Number(l.discount) || 0)))}</div>
+                      </div>
+                      <input className="qb-line-qty" type="number" min="0" value={l.qty} onChange={(e) => updateLine(l._key, 'qty', e.target.value)} />
+                      <input className="qb-line-price" type="number" min="0" value={l.price} onChange={(e) => updateLine(l._key, 'price', e.target.value)} />
+                      <input className="qb-line-discount" type="number" min="0" value={l.discount} onChange={(e) => updateLine(l._key, 'discount', e.target.value)} />
+                      <button type="button" className="qb-line-remove" onClick={() => removeLine(l._key)}><IconX size={14} /></button>
+                    </div>
+                  ))}
+                  <div className="lf-field" style={{ marginTop: 12 }}>
+                    <label className="lf-label">Extra discount (₹, optional)</label>
+                    <input className="lf-input" type="number" min="0" value={extraDiscount} onChange={(e) => setExtraDiscount(e.target.value)} placeholder="Flat amount off the whole quotation" />
+                  </div>
+                </>
+              )}
+
+              <div className="lf-field"><label className="lf-label">Note (optional)</label><input className="lf-input" value={note} onChange={(e) => setNote(e.target.value)} placeholder="e.g. Valid for 15 days" /></div>
+
+              {lines.length > 0 && (
+                <div className="qb-totals">
+                  <div className="qb-totals-row"><span>Subtotal</span><span>{currency(totals.subtotal)}</span></div>
+                  <div className="qb-totals-row"><span>Discount</span><span>-{currency(totals.discountTotal)}</span></div>
+                  <div className="qb-totals-row qb-total-final"><span>Total</span><span>{currency(totals.total)}</span></div>
+                </div>
+              )}
+
+              {error && <div className="lf-error">{error}</div>}
+              <div className="qb-actions">
+                <button className="qb-btn-outline" onClick={onClose} disabled={saving}>Cancel</button>
+                <button className="qb-btn-primary" onClick={submit} disabled={saving || (lines.length === 0 && manualAmount === '')}>
+                  {saving ? 'Saving…' : revisions.length ? 'Save Revision' : 'Send Quotation'}
+                </button>
+              </div>
             </div>
           </div>
         </div>
       </div>
-    </div>
+    </Portal>
   );
 }

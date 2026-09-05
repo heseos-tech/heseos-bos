@@ -22,6 +22,7 @@
 // or Chrome's 'appinstalled' event has fired) the menu item renders nothing — there's nothing
 // left to install.
 import { useEffect, useState, useCallback, useRef } from 'react';
+import Portal from '@/components/shared/Portal';
 import { Button } from './ui';
 import { IconDownload, IconShare, IconPlus } from './icons';
 
@@ -119,29 +120,31 @@ function InstallStepsSheet({ appName, isIOS, onClose }) {
       ];
 
   return (
-    <div className="hp-sheet-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="hp-sheet">
-        <div className="hp-sheet-handle" />
-        <div className="hp-sheet-title">Install Heseos {appName}</div>
-        <div className="hp-sheet-sub">
-          {isIOS ? 'Open this page in Safari, then:' : 'Add this app to your home screen for one-tap access:'}
-        </div>
-        <div className="hp-menu-list" style={{ marginBottom: 4 }}>
-          {steps.map((s, i) => {
-            const Icon = s.icon;
-            return (
-              <div className="hp-menu-item" style={{ cursor: 'default' }} key={i}>
-                <span className="hp-menu-icon"><Icon size={16} /></span>
-                <span className="hp-menu-label">{i + 1}. {s.text}</span>
-              </div>
-            );
-          })}
-        </div>
-        <div className="hp-sheet-actions">
-          <Button variant="outline" block onClick={onClose}>Got it</Button>
+    <Portal>
+      <div className="hp-sheet-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
+        <div className="hp-sheet">
+          <div className="hp-sheet-handle" />
+          <div className="hp-sheet-title">Install Heseos {appName}</div>
+          <div className="hp-sheet-sub">
+            {isIOS ? 'Open this page in Safari, then:' : 'Add this app to your home screen for one-tap access:'}
+          </div>
+          <div className="hp-menu-list" style={{ marginBottom: 4 }}>
+            {steps.map((s, i) => {
+              const Icon = s.icon;
+              return (
+                <div className="hp-menu-item" style={{ cursor: 'default' }} key={i}>
+                  <span className="hp-menu-icon"><Icon size={16} /></span>
+                  <span className="hp-menu-label">{i + 1}. {s.text}</span>
+                </div>
+              );
+            })}
+          </div>
+          <div className="hp-sheet-actions">
+            <Button variant="outline" block onClick={onClose}>Got it</Button>
+          </div>
         </div>
       </div>
-    </div>
+    </Portal>
   );
 }
 

@@ -11,6 +11,7 @@ import { fmtDate, fmtDateTime } from "@/lib/date";
 import { stageOf, displayStatus, subUpdateOf, needsReschedule, CONTACT_STAGES, DEMO_OUTCOMES } from "@/lib/leadStage";
 import { PRODUCT_INTEREST, PROPERTY_TYPE, TIMELINE, LEAD_SOURCES, budgetOptionsFor } from "@/lib/formOptions";
 import QuotationBuilderModal from "@/components/shared/QuotationBuilder";
+import Portal from "@/components/shared/Portal";
 
 const PI_LABEL = Object.fromEntries(PRODUCT_INTEREST.map((p) => [p.v, p.l]));
 const PT_LABEL = Object.fromEntries(PROPERTY_TYPE.map((p) => [p.v, p.l]));
@@ -260,80 +261,82 @@ function TeamActionSheet({ type, lead, onClose, onDone }) {
   }
 
   return (
-    <div className="hp-sheet-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="hp-sheet">
-        <div className="hp-sheet-handle" />
+    <Portal>
+      <div className="hp-sheet-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
+        <div className="hp-sheet">
+          <div className="hp-sheet-handle" />
 
-        {type === "contact" && (
-          <>
-            <div className="hp-sheet-title">Log contact outcome</div>
-            <div className="hp-sheet-sub">{lead.name} · {lead.phone}</div>
-            <div className="hp-pill-grid">
-              {CONTACT_STAGES.filter((c) => c.key !== "qualified").map((c) => (
-                <button key={c.key} type="button" className={`hp-pill${contactStage === c.key ? " active" : ""}`} onClick={() => setContactStage(c.key)}>{c.label}</button>
-              ))}
-            </div>
-            {contactStage === "follow_up" && (
-              <div className="hp-field" style={{ marginTop: 14 }}>
-                <label className="hp-field-label">Follow up at</label>
-                <div className="hp-input-wrap"><input className="hp-input" type="datetime-local" value={followUpAt} onChange={(e) => setFollowUpAt(e.target.value)} /></div>
+          {type === "contact" && (
+            <>
+              <div className="hp-sheet-title">Log contact outcome</div>
+              <div className="hp-sheet-sub">{lead.name} · {lead.phone}</div>
+              <div className="hp-pill-grid">
+                {CONTACT_STAGES.filter((c) => c.key !== "qualified").map((c) => (
+                  <button key={c.key} type="button" className={`hp-pill${contactStage === c.key ? " active" : ""}`} onClick={() => setContactStage(c.key)}>{c.label}</button>
+                ))}
               </div>
-            )}
-            <div className="hp-field" style={{ marginTop: 14 }}>
-              <label className="hp-field-label">Note (optional)</label>
-              <div className="hp-input-wrap"><input className="hp-input" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Any context for the next call" /></div>
-            </div>
-          </>
-        )}
-
-        {type === "schedule" && (
-          <>
-            <div className="hp-sheet-title">Schedule demo</div>
-            <div className="hp-sheet-sub">{lead.name} · {lead.phone} · {lead.city}</div>
-            <div className="hp-field"><label className="hp-field-label">Demo address</label><div className="hp-input-wrap"><input className="hp-input" value={demoAddress} onChange={(e) => setDemoAddress(e.target.value)} placeholder="Full address for the visit" /></div></div>
-            <div className="hp-field"><label className="hp-field-label">Date</label><div className="hp-input-wrap"><input className="hp-input" type="date" value={demoDate} onChange={(e) => setDemoDate(e.target.value)} /></div></div>
-            <div className="hp-field"><label className="hp-field-label">Time</label><div className="hp-input-wrap"><input className="hp-input" type="time" value={demoTime} onChange={(e) => setDemoTime(e.target.value)} /></div></div>
-          </>
-        )}
-
-        {type === "outcome" && (
-          <>
-            <div className="hp-sheet-title">{needsReschedule(lead) ? "Reschedule demo" : "Mark demo outcome"}</div>
-            <div className="hp-sheet-sub">{lead.name} · {fmtDate(lead.demoDate)} {lead.demoTime}</div>
-            <div className="hp-pill-grid">
-              {DEMO_OUTCOMES.map((d) => (
-                <button key={d.key} type="button" className={`hp-pill${outcome === d.key ? " active" : ""}`} onClick={() => setOutcome(d.key)}>{d.label}</button>
-              ))}
-            </div>
-            {(outcome === "out_of_station" || outcome === "future_demo") && (
-              <>
-                <div className="hp-field" style={{ marginTop: 14 }}><label className="hp-field-label">New date</label><div className="hp-input-wrap"><input className="hp-input" type="date" value={demoDate} onChange={(e) => setDemoDate(e.target.value)} /></div></div>
-                <div className="hp-field"><label className="hp-field-label">New time</label><div className="hp-input-wrap"><input className="hp-input" type="time" value={demoTime} onChange={(e) => setDemoTime(e.target.value)} /></div></div>
-                <div className="hp-field"><label className="hp-field-label">Address (if changed)</label><div className="hp-input-wrap"><input className="hp-input" value={demoAddress} onChange={(e) => setDemoAddress(e.target.value)} /></div></div>
-              </>
-            )}
-            {outcome === "converted" && (
+              {contactStage === "follow_up" && (
+                <div className="hp-field" style={{ marginTop: 14 }}>
+                  <label className="hp-field-label">Follow up at</label>
+                  <div className="hp-input-wrap"><input className="hp-input" type="datetime-local" value={followUpAt} onChange={(e) => setFollowUpAt(e.target.value)} /></div>
+                </div>
+              )}
               <div className="hp-field" style={{ marginTop: 14 }}>
-                <label className="hp-field-label">Final price (₹) — after negotiation</label>
-                <div className="hp-input-wrap"><input className="hp-input" type="number" value={finalPrice} onChange={(e) => setFinalPrice(e.target.value)} placeholder="The price the deal actually closed at" /></div>
-                {lead.quotationAmount != null && <div className="hp-hint">Last quoted: ₹{lead.quotationAmount}</div>}
+                <label className="hp-field-label">Note (optional)</label>
+                <div className="hp-input-wrap"><input className="hp-input" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Any context for the next call" /></div>
               </div>
-            )}
-            <div className="hp-field" style={{ marginTop: 14 }}>
-              <label className="hp-field-label">Note (optional)</label>
-              <div className="hp-input-wrap"><input className="hp-input" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Any context" /></div>
-            </div>
-          </>
-        )}
+            </>
+          )}
 
-        {error && <div className="hp-error">{error}</div>}
+          {type === "schedule" && (
+            <>
+              <div className="hp-sheet-title">Schedule demo</div>
+              <div className="hp-sheet-sub">{lead.name} · {lead.phone} · {lead.city}</div>
+              <div className="hp-field"><label className="hp-field-label">Demo address</label><div className="hp-input-wrap"><input className="hp-input" value={demoAddress} onChange={(e) => setDemoAddress(e.target.value)} placeholder="Full address for the visit" /></div></div>
+              <div className="hp-field"><label className="hp-field-label">Date</label><div className="hp-input-wrap"><input className="hp-input" type="date" value={demoDate} onChange={(e) => setDemoDate(e.target.value)} /></div></div>
+              <div className="hp-field"><label className="hp-field-label">Time</label><div className="hp-input-wrap"><input className="hp-input" type="time" value={demoTime} onChange={(e) => setDemoTime(e.target.value)} /></div></div>
+            </>
+          )}
 
-        <div className="hp-sheet-actions">
-          <Button block variant="outline" onClick={onClose} disabled={submitting}>Cancel</Button>
-          <Button block onClick={submit} disabled={submitting}>{submitting ? "Saving…" : "Save"}</Button>
+          {type === "outcome" && (
+            <>
+              <div className="hp-sheet-title">{needsReschedule(lead) ? "Reschedule demo" : "Mark demo outcome"}</div>
+              <div className="hp-sheet-sub">{lead.name} · {fmtDate(lead.demoDate)} {lead.demoTime}</div>
+              <div className="hp-pill-grid">
+                {DEMO_OUTCOMES.map((d) => (
+                  <button key={d.key} type="button" className={`hp-pill${outcome === d.key ? " active" : ""}`} onClick={() => setOutcome(d.key)}>{d.label}</button>
+                ))}
+              </div>
+              {(outcome === "out_of_station" || outcome === "future_demo") && (
+                <>
+                  <div className="hp-field" style={{ marginTop: 14 }}><label className="hp-field-label">New date</label><div className="hp-input-wrap"><input className="hp-input" type="date" value={demoDate} onChange={(e) => setDemoDate(e.target.value)} /></div></div>
+                  <div className="hp-field"><label className="hp-field-label">New time</label><div className="hp-input-wrap"><input className="hp-input" type="time" value={demoTime} onChange={(e) => setDemoTime(e.target.value)} /></div></div>
+                  <div className="hp-field"><label className="hp-field-label">Address (if changed)</label><div className="hp-input-wrap"><input className="hp-input" value={demoAddress} onChange={(e) => setDemoAddress(e.target.value)} /></div></div>
+                </>
+              )}
+              {outcome === "converted" && (
+                <div className="hp-field" style={{ marginTop: 14 }}>
+                  <label className="hp-field-label">Final price (₹) — after negotiation</label>
+                  <div className="hp-input-wrap"><input className="hp-input" type="number" value={finalPrice} onChange={(e) => setFinalPrice(e.target.value)} placeholder="The price the deal actually closed at" /></div>
+                  {lead.quotationAmount != null && <div className="hp-hint">Last quoted: ₹{lead.quotationAmount}</div>}
+                </div>
+              )}
+              <div className="hp-field" style={{ marginTop: 14 }}>
+                <label className="hp-field-label">Note (optional)</label>
+                <div className="hp-input-wrap"><input className="hp-input" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Any context" /></div>
+              </div>
+            </>
+          )}
+
+          {error && <div className="hp-error">{error}</div>}
+
+          <div className="hp-sheet-actions">
+            <Button block variant="outline" onClick={onClose} disabled={submitting}>Cancel</Button>
+            <Button block onClick={submit} disabled={submitting}>{submitting ? "Saving…" : "Save"}</Button>
+          </div>
         </div>
       </div>
-    </div>
+    </Portal>
   );
 }
 

@@ -15,6 +15,7 @@ import { IconPlus, IconCheck } from '@/components/partner/icons';
 import { IconTasks, IconX, IconTrash } from '@/components/admin/icons';
 import { fmtDate } from '@/lib/date';
 import { useApiResource, invalidate } from '@/lib/useApiResource';
+import Portal from '@/components/shared/Portal';
 
 const PRIORITY_LABEL = { low: 'Low', medium: 'Medium', high: 'High' };
 const PRIORITY_COLOR = { low: '#8a97a6', medium: '#f5a524', high: '#ff8484' };
@@ -146,64 +147,66 @@ function TaskSheet({ task = null, employee, leads, onClose, onDone }) {
   }
 
   return (
-    <div className="hp-sheet-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="hp-sheet">
-        <div className="hp-sheet-handle" />
-        <div className="hp-sheet-title">{editing ? 'Edit task' : 'Add task'}</div>
-        <div className="hp-sheet-sub">Just for you — this won&rsquo;t show up on a teammate&rsquo;s list.</div>
+    <Portal>
+      <div className="hp-sheet-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
+        <div className="hp-sheet">
+          <div className="hp-sheet-handle" />
+          <div className="hp-sheet-title">{editing ? 'Edit task' : 'Add task'}</div>
+          <div className="hp-sheet-sub">Just for you — this won&rsquo;t show up on a teammate&rsquo;s list.</div>
 
-        <div className="hp-field">
-          <label className="hp-field-label">Title</label>
-          <div className="hp-input-wrap"><input className="hp-input" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Call back about pending quotation" /></div>
-        </div>
-        <div className="hp-field">
-          <label className="hp-field-label">Description (optional)</label>
-          <div className="hp-input-wrap"><input className="hp-input" value={description} onChange={(e) => setDescription(e.target.value)} /></div>
-        </div>
-        <div style={{ display: 'flex', gap: 12 }}>
-          <div className="hp-field" style={{ flex: 1 }}>
-            <label className="hp-field-label">Due date</label>
-            <div className="hp-input-wrap"><input className="hp-input" type="date" value={dueAt} onChange={(e) => setDueAt(e.target.value)} /></div>
+          <div className="hp-field">
+            <label className="hp-field-label">Title</label>
+            <div className="hp-input-wrap"><input className="hp-input" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Call back about pending quotation" /></div>
           </div>
-          <div className="hp-field" style={{ flex: 1 }}>
-            <label className="hp-field-label">Priority</label>
-            <div className="hp-input-wrap">
-              <select className="hp-input" value={priority} onChange={(e) => setPriority(e.target.value)}>
-                <option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option>
-              </select>
+          <div className="hp-field">
+            <label className="hp-field-label">Description (optional)</label>
+            <div className="hp-input-wrap"><input className="hp-input" value={description} onChange={(e) => setDescription(e.target.value)} /></div>
+          </div>
+          <div style={{ display: 'flex', gap: 12 }}>
+            <div className="hp-field" style={{ flex: 1 }}>
+              <label className="hp-field-label">Due date</label>
+              <div className="hp-input-wrap"><input className="hp-input" type="date" value={dueAt} onChange={(e) => setDueAt(e.target.value)} /></div>
+            </div>
+            <div className="hp-field" style={{ flex: 1 }}>
+              <label className="hp-field-label">Priority</label>
+              <div className="hp-input-wrap">
+                <select className="hp-input" value={priority} onChange={(e) => setPriority(e.target.value)}>
+                  <option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option>
+                </select>
+              </div>
             </div>
           </div>
-        </div>
-        <div className="hp-field">
-          <label className="hp-field-label">Linked lead (optional)</label>
-          {selectedLead ? (
-            <div className="hp-lead-picker-chip">{selectedLead.name} · {selectedLead.phone} <button type="button" onClick={() => setLeadId('')}><IconX size={12} /></button></div>
-          ) : (
-            <>
-              <div className="hp-input-wrap"><input className="hp-input" value={leadQuery} onChange={(e) => setLeadQuery(e.target.value)} placeholder="Search by lead name or phone…" /></div>
-              {leadMatches.length > 0 && (
-                <div className="hp-lead-picker-matches">
-                  {leadMatches.map((l) => (
-                    <button type="button" key={l.id} className="hp-lead-picker-match" onClick={() => { setLeadId(l.id); setLeadQuery(''); }}>{l.name} · {l.phone}</button>
-                  ))}
-                </div>
-              )}
-            </>
+          <div className="hp-field">
+            <label className="hp-field-label">Linked lead (optional)</label>
+            {selectedLead ? (
+              <div className="hp-lead-picker-chip">{selectedLead.name} · {selectedLead.phone} <button type="button" onClick={() => setLeadId('')}><IconX size={12} /></button></div>
+            ) : (
+              <>
+                <div className="hp-input-wrap"><input className="hp-input" value={leadQuery} onChange={(e) => setLeadQuery(e.target.value)} placeholder="Search by lead name or phone…" /></div>
+                {leadMatches.length > 0 && (
+                  <div className="hp-lead-picker-matches">
+                    {leadMatches.map((l) => (
+                      <button type="button" key={l.id} className="hp-lead-picker-match" onClick={() => { setLeadId(l.id); setLeadQuery(''); }}>{l.name} · {l.phone}</button>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+
+          {error && <div className="hp-summary-label" style={{ color: '#ff8484', marginBottom: 10 }}>{error}</div>}
+
+          <div className="hp-sheet-actions">
+            <button type="button" className="hp-btn hp-btn-outline hp-btn-block" onClick={onClose} disabled={saving}>Cancel</button>
+            <button type="button" className="hp-btn hp-btn-primary hp-btn-block" onClick={submit} disabled={saving}>{saving ? 'Saving…' : editing ? 'Save' : 'Add'}</button>
+          </div>
+          {editing && (
+            <button type="button" className="hp-btn hp-btn-ghost hp-btn-block" style={{ marginTop: 10, color: '#ff8484' }} onClick={remove} disabled={saving}>
+              <IconTrash size={15} /> Delete task
+            </button>
           )}
         </div>
-
-        {error && <div className="hp-summary-label" style={{ color: '#ff8484', marginBottom: 10 }}>{error}</div>}
-
-        <div className="hp-sheet-actions">
-          <button type="button" className="hp-btn hp-btn-outline hp-btn-block" onClick={onClose} disabled={saving}>Cancel</button>
-          <button type="button" className="hp-btn hp-btn-primary hp-btn-block" onClick={submit} disabled={saving}>{saving ? 'Saving…' : editing ? 'Save' : 'Add'}</button>
-        </div>
-        {editing && (
-          <button type="button" className="hp-btn hp-btn-ghost hp-btn-block" style={{ marginTop: 10, color: '#ff8484' }} onClick={remove} disabled={saving}>
-            <IconTrash size={15} /> Delete task
-          </button>
-        )}
       </div>
-    </div>
+    </Portal>
   );
 }
