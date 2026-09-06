@@ -9,7 +9,7 @@
 // The active tab lives in the URL (?tab=leads) so it's still bookmarkable/shareable and
 // survives a refresh — it just no longer causes a full navigation between sections.
 import { Suspense, useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useDashboardTab } from "@/components/partner/ui";
 import DashboardPage from "./DashboardPage";
 import LeadsPage from "./LeadsPage";
 import PartnersPage from "./PartnersPage";
@@ -48,8 +48,7 @@ function renderTab(tab, employee) {
 const KNOWN_TABS = new Set(["dashboard", "leads", "partners", "sales-engineers", "presales", "reports", "settings", "growth", "products", "quotations", "tasks", "demo-schedule", "conversions", "payouts"]);
 
 export default function AdminHome({ employee }) {
-  const searchParams = useSearchParams();
-  const rawTab = searchParams.get("tab") || "dashboard";
+  const { tab: rawTab } = useDashboardTab();
   const active = KNOWN_TABS.has(rawTab) ? rawTab : "dashboard";
 
   // Every tab that's ever been opened stays in this set for the life of the page — that's the

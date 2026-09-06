@@ -170,23 +170,24 @@ export function useDashboardTab() {
   return ctx;
 }
 
-// Shared by AppShell (Partner) and TeamAppShell (components/team/ui.jsx) — homePath is the one
-// difference between the two apps' dashboards.
-export function useDashboardTabState(homePath) {
+// Shared by AppShell (Partner), TeamAppShell (components/team/ui.jsx) and AdminShell
+// (components/admin/ui.jsx) — homePath and defaultTab are the only differences between the
+// three: Partner/Team's un-tabbed URL means "home", Admin's means "dashboard".
+export function useDashboardTabState(homePath, defaultTab = 'home') {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const isHome = pathname === homePath;
-  const [tab, setTab] = useState(() => searchParams.get('tab') || 'home');
+  const [tab, setTab] = useState(() => searchParams.get('tab') || defaultTab);
 
   // Only sync FROM the URL — never the other way — and only while genuinely on the dashboard
   // route, so a real navigation that lands here (a deep link, a stat-card link with its own
   // ?tab=, browser back/forward) still opens on the right tab.
   useEffect(() => {
-    if (isHome) setTab(searchParams.get('tab') || 'home');
+    if (isHome) setTab(searchParams.get('tab') || defaultTab);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isHome, searchParams]);
 
-  return { tab, setTab, isHome, homePath };
+  return { tab, setTab, isHome, homePath, defaultTab };
 }
 
 // ── Bottom navigation — consistent across all authenticated tab screens ───

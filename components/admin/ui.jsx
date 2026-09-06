@@ -5,7 +5,8 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useRouter } from 'next/navigation';
+import { useDashboardTab, useDashboardTabState, DashboardTabContext } from '@/components/partner/ui';
 import {
   IconDashboard, IconLeads, IconPartners, IconSalesEngineer, IconPresales, IconDemo,
   IconProducts, IconQuotation, IconConversions, IconReports, IconPayouts, IconTasks, IconSettings,
@@ -34,9 +35,14 @@ export const NAV_ITEMS = [
 
 const ROLE_LABEL = { admin: 'Super Admin', presales: 'Pre-Sales', sales_engineer: 'Sales Engineer' };
 
-export function AdminShell({ employee, children }) {
-  const searchParams = useSearchParams();
-  const activeTab = searchParams.get('tab') || 'dashboard';
+// AdminShell owns the Context (see components/partner/ui.jsx's DashboardTabContext /
+// useDashboardTabState comment) — the (app)-style layout at app/admin/layout.jsx is
+// force-dynamic (it reads cookies() to authenticate), so a real Next.js navigation on every
+// sidebar click re-ran that auth check from scratch before the section could even switch.
+// Dashboard/Leads/Partners/... now flip client-side with zero network calls instead.
+function AdminShellInner({ employee, children }) {
+  const { tab, setTab, isHome, homePath, defaultTab } = useDashboardTab();
+  const activeTab = isHome ? tab : null;
   const router = useRouter();
   const [collapsed, setCollapsed] = useState(false);
   const [userMenu, setUserMenu] = useState(false);
@@ -58,6 +64,22 @@ export function AdminShell({ employee, children }) {
         <nav className="adm-nav">
           {NAV_ITEMS.map((item) => {
             const active = item.tab === activeTab;
+            if (isHome) {
+              return (
+                <button
+                  key={item.tab}
+                  type="button"
+                  className={`adm-nav-link${active ? ' active' : ''}`}
+                  onClick={() => {
+                    setTab(item.tab);
+                    window.history.replaceState(null, '', item.tab === defaultTab ? homePath : `${homePath}?tab=${item.tab}`);
+                  }}
+                >
+                  <item.Icon size={18} />
+                  <span className="adm-nav-label">{item.label}</span>
+                </button>
+              );
+            }
             return (
               <Link key={item.tab} href={item.href} className={`adm-nav-link${active ? ' active' : ''}`}>
                 <item.Icon size={18} />
@@ -100,6 +122,15 @@ export function AdminShell({ employee, children }) {
         <main className="adm-content">{children}</main>
       </div>
     </div>
+  );
+}
+
+export function AdminShell({ employee, children }) {
+  const tabState = useDashboardTabState('/admin', 'dashboard');
+  return (
+    <DashboardTabContext.Provider value={tabState}>
+      <AdminShellInner employee={employee}>{children}</AdminShellInner>
+    </DashboardTabContext.Provider>
   );
 }
 

@@ -30,6 +30,11 @@
 .adm-nav-link { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 10px; color: var(--adm-text-soft); font-size: 14px; font-weight: 600; text-decoration: none; white-space: nowrap; }
 .adm-nav-link:hover { background: var(--adm-bg); color: var(--adm-ink); }
 .adm-nav-link.active { background: rgba(255, 122, 0, 0.1); color: var(--adm-orange); box-shadow: inset 3px 0 0 var(--adm-orange); }
+/* .adm-nav-link is also used on a <button> now (instant client-side tab switching — see
+   components/admin/ui.jsx's AdminShellInner) — reset the native button chrome so it's visually
+   identical to the <a> version above. */
+button.adm-nav-link { background: none; border: none; cursor: pointer; font: inherit; text-align: left; width: 100%; }
+
 .adm-collapsed .adm-nav-label { display: none; }
 .adm-collapse-btn { display: flex; align-items: center; gap: 10px; padding: 10px 12px; margin-top: 12px; border-top: 1px solid var(--adm-border); background: none; border-left: none; border-right: none; border-bottom: none; color: var(--adm-text-faint); font-size: 13px; font-weight: 600; cursor: pointer; }
 .adm-collapsed .adm-collapse-btn svg { transform: rotate(180deg); }
