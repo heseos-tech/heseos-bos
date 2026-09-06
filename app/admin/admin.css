@@ -413,3 +413,15 @@
   .adm-qr-tile { break-inside: avoid; }
   .adm-qr-print-noprint, .adm-modal-head { display: none !important; }
 }
+
+/* ─────────────────────────────────────────
+   LOCATION QR — MULTI-ROW CREATE FORM
+   (Growth tab -> "Create Location QR")
+───────────────────────────────────────── */
+.adm-qrloc-col-headers { display: flex; gap: 8px; font-size: 11px; font-weight: 700; color: var(--adm-text-faint); text-transform: uppercase; letter-spacing: 0.02em; padding-bottom: 6px; }
+.adm-qrloc-col-headers span:first-child { flex: 1; }
+.adm-qrloc-col-headers span:last-child { width: 110px; flex-shrink: 0; }
+.adm-qrloc-rows { display: flex; flex-direction: column; gap: 8px; margin-bottom: 4px; }
+.adm-qrloc-row { display: flex; align-items: center; gap: 8px; }
+.adm-qrloc-label-input { flex: 1; }
+.adm-qrloc-pincode-input { width: 110px; flex-shrink: 0; }

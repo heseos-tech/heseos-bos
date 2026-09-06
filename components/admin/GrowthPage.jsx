@@ -8,7 +8,7 @@ import { useMemo, useState } from 'react';
 import { useApiResource } from '@/lib/useApiResource';
 import { ATTR_KIND_LABEL } from '@/lib/attributionConstants';
 import { StatCard, Modal } from './ui';
-import { IconQrCode, IconLink, IconLeads, IconConversions, IconSearch, IconPlus, IconDownload } from './icons';
+import { IconQrCode, IconLink, IconLeads, IconConversions, IconSearch, IconPlus, IconDownload, IconTrash } from './icons';
 
 // Kind (the table's own column) only ever shows "QR Code" or "Referral Link" — which of the
 // four underlying kinds it is (qr_partner, qr_location, referral_partner, referral_customer)
@@ -31,7 +31,7 @@ function ownerTypeLabel(l) {
 
 function ownerLabel(l) {
   if (l.kind === 'qr_partner' || l.kind === 'referral_partner') return l.partnerName || l.label || l.partnerId || '—';
-  if (l.kind === 'qr_location') return l.label || '—';
+  if (l.kind === 'qr_location') return l.pincode ? `${l.label || '—'} — ${l.pincode}` : (l.label || '—');
   return l.customerName || l.label || '—';
 }
 
@@ -126,7 +126,18 @@ export default function GrowthPage() {
       </div>
 
       {modal?.type === 'create' && (
-        <CreateLinkModal onClose={() => setModal(null)} onDone={(link) => { setModal({ type: 'view', link: { ...link, funnel: { visits: 0, leads: 0, converted: 0 } } }); flash('Link created'); refresh(); }} />
+        <CreateLinkModal
+          onClose={() => setModal(null)}
+          onDone={(links) => {
+            if (links.length === 1) {
+              setModal({ type: 'view', link: { ...links[0], funnel: { visits: 0, leads: 0, converted: 0 } } });
+            } else {
+              setModal(null);
+            }
+            flash(links.length === 1 ? 'Link created' : `${links.length} location QR codes created`);
+            refresh();
+          }}
+        />
       )}
       {modal?.type === 'view' && <LinkDetailModal link={modal.link} onClose={() => setModal(null)} onCopied={() => flash('Link copied')} />}
       {modal?.type === 'blank-qr' && <BlankQrModal onClose={() => setModal(null)} />}
@@ -166,6 +177,7 @@ function LinkDetailModal({ link, onClose, onCopied }) {
         </div>
       </div>
       <div className="adm-detail-grid">
+        {link.kind === 'qr_location' && <div><span className="adm-detail-label">Pincode</span>{link.pincode || '—'}</div>}
         <div><span className="adm-detail-label">Scans / Clicks</span>{link.funnel?.visits ?? '—'}</div>
         <div><span className="adm-detail-label">Leads</span>{link.funnel?.leads ?? '—'}</div>
         <div><span className="adm-detail-label">Converted</span>{link.funnel?.converted ?? '—'}</div>
@@ -182,19 +194,32 @@ function LinkDetailModal({ link, onClose, onCopied }) {
 // here any more — see "Pre-Print Partner QR Codes" below; a partner code always starts out blank and is
 // claimed by the partner themselves, never pre-assigned by admin, so it can be handed out
 // before anyone's decided which shop gets which sticker.
+const PINCODE_RE = /^\d{6}$/;
+function emptyLocationRow() { return { label: '', pincode: '' }; }
+
+// One row per location — every location QR needs BOTH a label (what it's called on the table/
+// print sheet) and a pincode (which area it's actually placed in, for reporting by area later).
+// "Add another location" lets admin create a whole batch (e.g. every standee going out this
+// week) in one save instead of reopening this modal per location.
 function CreateLinkModal({ onClose, onDone }) {
-  const [label, setLabel] = useState('');
+  const [rows, setRows] = useState([emptyLocationRow()]);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
 
-  const canSave = label.trim().length > 0;
+  function updateRow(i, field, value) {
+    setRows((rs) => rs.map((r, idx) => (idx === i ? { ...r, [field]: value } : r)));
+  }
+  function addRow() { setRows((rs) => [...rs, emptyLocationRow()]); }
+  function removeRow(i) { setRows((rs) => rs.filter((_, idx) => idx !== i)); }
+
+  const canSave = rows.length > 0 && rows.every((r) => r.label.trim() && PINCODE_RE.test(r.pincode.trim()));
 
   async function submit() {
     setError(''); setSaving(true);
     try {
       const res = await fetch('/api/admin/attribution', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ kind: 'qr_location', label }),
+        body: JSON.stringify({ kind: 'qr_location', locations: rows.map((r) => ({ label: r.label.trim(), pincode: r.pincode.trim() })) }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed');
@@ -203,13 +228,46 @@ function CreateLinkModal({ onClose, onDone }) {
   }
 
   return (
-    <Modal title="Create a Location QR Code" sub="For a billboard, standee or shop window — tracked by placement, not by partner. Every scan routes into WhatsApp and the resulting chat becomes an attributed lead. Partner QR codes are pre-printed in bulk instead — see “Pre-Print Partner QR Codes”." onClose={onClose}>
-      <div className="lf-field"><label className="lf-label">Location label</label><input className="lf-input" value={label} onChange={(e) => setLabel(e.target.value)} placeholder='e.g. "Koramangala Billboard" or "HSR Standee 2"' /></div>
+    <Modal title="Create Location QR Codes" sub="For a billboard, standee or shop window — tracked by placement, not by partner. Every scan routes into WhatsApp and the resulting chat becomes an attributed lead. Partner QR codes are pre-printed in bulk instead — see “Pre-Print Partner QR Codes”." onClose={onClose}>
+      <div className="adm-qrloc-col-headers"><span>Location label</span><span>Pincode</span></div>
+      <div className="adm-qrloc-rows">
+        {rows.map((r, i) => (
+          <div className="adm-qrloc-row" key={i}>
+            <input
+              className="lf-input adm-qrloc-label-input"
+              value={r.label}
+              onChange={(e) => updateRow(i, 'label', e.target.value)}
+              placeholder='e.g. "Koramangala Billboard"'
+            />
+            <input
+              className="lf-input adm-qrloc-pincode-input"
+              value={r.pincode}
+              onChange={(e) => updateRow(i, 'pincode', e.target.value.replace(/[^0-9]/g, '').slice(0, 6))}
+              placeholder="560034"
+              inputMode="numeric"
+              maxLength={6}
+            />
+            <button
+              type="button"
+              className="adm-tier-remove"
+              aria-label="Remove location"
+              onClick={() => removeRow(i)}
+              disabled={rows.length === 1}
+              style={rows.length === 1 ? { visibility: 'hidden' } : undefined}
+            >
+              <IconTrash size={13} />
+            </button>
+          </div>
+        ))}
+      </div>
+      <button type="button" className="adm-payout-add-tier" onClick={addRow}>+ Add another location</button>
 
       {error && <div className="lf-error">{error}</div>}
       <div className="lf-actions">
         <button className="lf-btn-back" onClick={onClose} disabled={saving}>Cancel</button>
-        <button className="lf-btn-next" onClick={submit} disabled={saving || !canSave}>{saving ? 'Creating…' : 'Create'}</button>
+        <button className="lf-btn-next" onClick={submit} disabled={saving || !canSave}>
+          {saving ? 'Creating…' : rows.length > 1 ? `Create ${rows.length} QR Codes` : 'Create'}
+        </button>
       </div>
     </Modal>
   );
