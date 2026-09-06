@@ -1,14 +1,17 @@
 'use client';
-// Profile → My Profile. Name and phone are fixed here (phone is the login identifier, changing
-// it is a support-desk job, not self-service) — this screen is for the two things a partner
-// really does own: their business name and their partner category. Category writes to the same
-// `type` field Admin → Partners already filters and reports by (lib/formOptions.js's
-// PARTNER_CATEGORY), so setting it here is exactly what admin sees there too — new signups just
-// start out uncategorised until they fill this in.
+// Profile → My Profile. Name and phone stay fixed here (phone is the login identifier, changing
+// it is a support-desk job, not self-service) — everything else here is self-service: the
+// partner's own name, their business's name, their category, and their address. Category writes
+// to the same `type` field Admin → Partners already filters and reports by (lib/formOptions.js's
+// PARTNER_CATEGORY); city/pincode/state/addressLine likewise write to the same flat fields
+// Admin → Partners already has a City column for (components/admin/PartnersPage.jsx) — so
+// filling this in from here is exactly what shows up there too.
 import { useState, useEffect, useCallback } from 'react';
 import { ScreenHeader, TextField, SelectField, Button } from './ui';
-import { IconBuilding, IconTag, IconUser, IconPhone } from './icons';
+import { IconBuilding, IconTag, IconUser, IconPhone, IconMapPin } from './icons';
 import { PARTNER_CATEGORY } from '@/lib/formOptions';
+
+const PINCODE_RE = /^\d{6}$/;
 
 function formatJoined(iso) {
   if (!iso) return '—';
@@ -19,10 +22,20 @@ function formatJoined(iso) {
   }
 }
 
+// `partner.businessName` is the pre-existing field name (Admin → Partners and elsewhere already
+// read it) — it's just labelled "Partner Name" here now, alongside a genuinely new, separate
+// "Partner Business Name" (`shopName`) for partners whose shop/company name differs from their
+// own name. Renaming the field key itself would mean touching every other place that reads
+// it, so the label changes, the storage doesn't.
 export default function MyProfileScreen() {
   const [partner, setPartner] = useState(null);
-  const [businessName, setBusinessName] = useState('');
+  const [partnerName, setPartnerName] = useState('');
+  const [shopName, setShopName] = useState('');
   const [category, setCategory] = useState('');
+  const [addressLine, setAddressLine] = useState('');
+  const [pincode, setPincode] = useState('');
+  const [city, setCity] = useState('');
+  const [state, setState] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [toast, setToast] = useState('');
@@ -31,25 +44,47 @@ export default function MyProfileScreen() {
     fetch('/api/partner/profile').then((r) => (r.ok ? r.json() : null)).then((p) => {
       if (!p) return;
       setPartner(p);
-      setBusinessName(p.businessName || '');
+      setPartnerName(p.businessName || '');
+      setShopName(p.shopName || '');
       setCategory(PARTNER_CATEGORY.some((c) => c.v === p.type) ? p.type : '');
+      setAddressLine(p.addressLine || '');
+      setPincode(p.pincode || '');
+      setCity(p.city || '');
+      setState(p.state || '');
     });
   }, []);
   useEffect(() => { load(); }, [load]);
 
   function flash(msg) { setToast(msg); setTimeout(() => setToast(''), 2500); }
 
-  const dirty = partner && (businessName.trim() !== (partner.businessName || '') || category !== (PARTNER_CATEGORY.some((c) => c.v === partner.type) ? partner.type : ''));
+  const dirty = partner && (
+    partnerName.trim() !== (partner.businessName || '')
+    || shopName.trim() !== (partner.shopName || '')
+    || category !== (PARTNER_CATEGORY.some((c) => c.v === partner.type) ? partner.type : '')
+    || addressLine.trim() !== (partner.addressLine || '')
+    || pincode.trim() !== (partner.pincode || '')
+    || city.trim() !== (partner.city || '')
+    || state.trim() !== (partner.state || '')
+  );
 
   async function save() {
-    if (!businessName.trim()) { setError('Business name cannot be empty'); return; }
+    if (!partnerName.trim()) { setError('Partner name cannot be empty'); return; }
     if (!category) { setError('Please choose your partner category'); return; }
+    if (pincode.trim() && !PINCODE_RE.test(pincode.trim())) { setError('Pincode must be 6 digits'); return; }
     setError(''); setSaving(true);
     try {
       const res = await fetch('/api/partner/profile', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ businessName: businessName.trim(), type: category }),
+        body: JSON.stringify({
+          businessName: partnerName.trim(),
+          shopName: shopName.trim(),
+          type: category,
+          addressLine: addressLine.trim(),
+          pincode: pincode.trim(),
+          city: city.trim(),
+          state: state.trim(),
+        }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || 'Could not save your profile');
@@ -72,13 +107,20 @@ export default function MyProfileScreen() {
         ) : (
           <>
             <div className="hp-card">
-              <div className="hp-card-title">Business Details</div>
+              <div className="hp-card-title">Partner Details</div>
               <TextField
-                label="Business Name"
+                label="Partner Name"
+                icon={<IconUser size={18} />}
+                value={partnerName}
+                onChange={(e) => setPartnerName(e.target.value)}
+                placeholder="Your name"
+              />
+              <TextField
+                label="Partner Business Name"
                 icon={<IconBuilding size={18} />}
-                value={businessName}
-                onChange={(e) => setBusinessName(e.target.value)}
-                placeholder="e.g. Sharma Electricals"
+                value={shopName}
+                onChange={(e) => setShopName(e.target.value)}
+                placeholder='e.g. "Sharma Electricals"'
               />
               <SelectField
                 label="Partner Category"
@@ -87,6 +129,33 @@ export default function MyProfileScreen() {
                 onChange={(e) => setCategory(e.target.value)}
                 options={PARTNER_CATEGORY}
                 placeholder="Select your category"
+              />
+              <TextField
+                label="Address Line"
+                icon={<IconMapPin size={18} />}
+                value={addressLine}
+                onChange={(e) => setAddressLine(e.target.value)}
+                placeholder="Shop / building, street, area"
+              />
+              <TextField
+                label="Pincode"
+                value={pincode}
+                onChange={(e) => setPincode(e.target.value.replace(/[^0-9]/g, '').slice(0, 6))}
+                inputMode="numeric"
+                maxLength={6}
+                placeholder="560034"
+              />
+              <TextField
+                label="City"
+                value={city}
+                onChange={(e) => setCity(e.target.value)}
+                placeholder="e.g. Pune"
+              />
+              <TextField
+                label="State"
+                value={state}
+                onChange={(e) => setState(e.target.value)}
+                placeholder="e.g. Maharashtra"
               />
               {error && <div className="hp-error">{error}</div>}
               <Button block onClick={save} disabled={saving || !dirty} style={{ marginTop: 4 }}>

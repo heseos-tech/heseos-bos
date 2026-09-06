@@ -1,8 +1,12 @@
 // app/api/partner/profile/route.js — a partner's own account details (Profile → My Profile /
 // Bank Details). Name and phone stay fixed here on purpose (phone is the login identifier and
-// changing it is a support-desk action, not a self-service one) — this only ever touches the
-// business-facing bits: business name, partner category (the same `type` field admin's
-// Partners page filters and reports by, so setting it here shows up there too), and bank
+// changing it is a support-desk action, not a self-service one) — everything else here is
+// self-service: `businessName` (labelled "Partner Name" in the UI — kept as this pre-existing
+// field name since Admin → Partners and elsewhere already read it), `shopName` ("Partner
+// Business Name" — a separate, genuinely new field for partners whose shop/company name isn't
+// their own), partner category (the same `type` field admin's Partners page filters and reports
+// by), address (addressLine/pincode/city/state — city and pincode are the same flat fields
+// Admin → Partners' City column already reads, just never populated until now), and bank
 // details for reference when a payout gets settled manually (see app/api/admin/payouts — there
 // is no payment gateway anywhere in this app, so these fields are never used to move money,
 // only so an admin has somewhere to look them up).
@@ -14,6 +18,7 @@ export const dynamic = 'force-dynamic';
 
 const CATEGORY_VALUES = new Set(PARTNER_CATEGORY.map((c) => c.v));
 const IFSC_RE = /^[A-Z]{4}0[A-Z0-9]{6}$/;
+const PINCODE_RE = /^\d{6}$/;
 
 // Never hand the password hash (or anything else internal) to the client.
 function publicPartner(p) {
@@ -44,6 +49,28 @@ export async function PATCH(request) {
     const type = String(body.type || '').trim();
     if (!CATEGORY_VALUES.has(type)) return Response.json({ error: 'Please choose a valid partner category' }, { status: 400 });
     patch.type = type;
+  }
+
+  if (body.shopName !== undefined) {
+    patch.shopName = String(body.shopName || '').trim();
+  }
+
+  if (body.addressLine !== undefined) {
+    patch.addressLine = String(body.addressLine || '').trim();
+  }
+
+  if (body.city !== undefined) {
+    patch.city = String(body.city || '').trim();
+  }
+
+  if (body.state !== undefined) {
+    patch.state = String(body.state || '').trim();
+  }
+
+  if (body.pincode !== undefined) {
+    const pincode = String(body.pincode || '').trim();
+    if (pincode && !PINCODE_RE.test(pincode)) return Response.json({ error: 'Pincode must be 6 digits' }, { status: 400 });
+    patch.pincode = pincode;
   }
 
   if (body.bankDetails !== undefined) {
