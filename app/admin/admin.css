@@ -400,8 +400,8 @@ button.adm-nav-link { background: none; border: none; cursor: pointer; text-alig
 .demo-row-unclaimed { color: var(--adm-orange); font-weight: 600; }
 
 /* ─────────────────────────────────────────
-   PRE-PRINTED (BLANK) PARTNER QR CODES
-   (Growth tab -> "Pre-Print QR Codes")
+   BLANK/UNCLAIMED PARTNER QR CODES
+   (Growth tab -> "Create Partner QR Codes"; printed via "Print QR Codes" below)
 ───────────────────────────────────────── */
 .adm-qr-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 16px; max-height: 420px; overflow-y: auto; padding: 4px 2px; }
 .adm-qr-tile { border: 1px solid var(--adm-border); border-radius: 10px; padding: 14px 10px; text-align: center; background: var(--adm-bg); }
@@ -420,12 +420,13 @@ button.adm-nav-link { background: none; border: none; cursor: pointer; text-alig
 }
 
 /* ─────────────────────────────────────────
-   PRE-PRINTED LOCATION QR CODES — one sheet of every location QR code created via
-   "Create Location QR", laid out at a chosen physical size (in inches) on a chosen paper
-   size (A4/A5/Letter/Legal). Unlike .adm-qr-grid above (a screen-only auto-fill grid), each
-   tile here is sized in real inches so what prints is the size the admin actually picked —
-   the flex-wrap container just lets the browser's own print pagination add pages as needed.
-   (Growth tab -> "Pre-Print Location QR Codes")
+   PRINTED QR CODES — location QR codes created via "Create Location QR", or a batch of
+   unclaimed partner QR codes from "Create Partner QR Codes", laid out at a chosen physical
+   size (in inches) on a chosen paper size (A4/A5/Letter/Legal). Unlike .adm-qr-grid above (a
+   screen-only auto-fill grid used for the partner-code creation preview), each tile here is
+   sized in real inches so what prints is the size the admin actually picked — the flex-wrap
+   container just lets the browser's own print pagination add pages as needed. Shared by both
+   QR kinds (Growth tab -> "Print QR Codes").
 ───────────────────────────────────────── */
 .adm-qr-print-flow { display: flex; flex-wrap: wrap; gap: 6mm; align-content: flex-start; }
 .adm-qr-print-tile { display: flex; flex-direction: column; align-items: center; text-align: center; box-sizing: border-box; padding: 3mm 2mm; }
