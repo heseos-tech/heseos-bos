@@ -69,7 +69,7 @@ export default function GrowthPage() {
       <div className="adm-page-head">
         <div><h1 className="adm-h1">QR Codes &amp; Referral Links</h1><p className="adm-page-sub">Partner QR codes, billboard/standee QR codes, and referral links — every scan and click, and every lead and conversion it drives</p></div>
         <div className="adm-page-head-actions">
-          <button className="adm-btn-outline" onClick={() => setModal({ type: 'blank-qr' })}><IconDownload size={15} /> Pre-Print QR Codes</button>
+          <button className="adm-btn-outline" onClick={() => setModal({ type: 'blank-qr' })}><IconDownload size={15} /> Pre-Print Partner QR Codes</button>
           <button className="adm-btn-primary" onClick={() => setModal({ type: 'create' })}><IconPlus size={15} /> Create Location QR</button>
         </div>
       </div>
@@ -179,7 +179,7 @@ function LinkDetailModal({ link, onClose, onCopied }) {
 // partner/attribution), and customer referral links will eventually be self-requested from the
 // WhatsApp bot once those flows exist. qr_location is the only kind still created here, because
 // there's no partner/customer to self-serve it in the first place. qr_partner is NOT creatable
-// here any more — see "Pre-Print QR Codes" below; a partner code always starts out blank and is
+// here any more — see "Pre-Print Partner QR Codes" below; a partner code always starts out blank and is
 // claimed by the partner themselves, never pre-assigned by admin, so it can be handed out
 // before anyone's decided which shop gets which sticker.
 function CreateLinkModal({ onClose, onDone }) {
@@ -203,7 +203,7 @@ function CreateLinkModal({ onClose, onDone }) {
   }
 
   return (
-    <Modal title="Create a Location QR Code" sub="For a billboard, standee or shop window — tracked by placement, not by partner. Every scan routes into WhatsApp and the resulting chat becomes an attributed lead. Partner QR codes are pre-printed in bulk instead — see “Pre-Print QR Codes”." onClose={onClose}>
+    <Modal title="Create a Location QR Code" sub="For a billboard, standee or shop window — tracked by placement, not by partner. Every scan routes into WhatsApp and the resulting chat becomes an attributed lead. Partner QR codes are pre-printed in bulk instead — see “Pre-Print Partner QR Codes”." onClose={onClose}>
       <div className="lf-field"><label className="lf-label">Location label</label><input className="lf-input" value={label} onChange={(e) => setLabel(e.target.value)} placeholder='e.g. "Koramangala Billboard" or "HSR Standee 2"' /></div>
 
       {error && <div className="lf-error">{error}</div>}
@@ -242,7 +242,7 @@ function BlankQrModal({ onClose }) {
 
   return (
     <Modal
-      title="Pre-Print QR Codes"
+      title="Pre-Print Partner QR Codes"
       sub="Generate a batch of blank partner QR codes to print and hand out — each partner links their own sticker from the Partner App."
       onClose={onClose}
       wide
