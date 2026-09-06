@@ -1,8 +1,28 @@
 apply plugin: 'com.android.application'
 
+// Release signing — reads android/keystore.properties (never committed; see
+// android/keystore.properties.example) so the actual keystore path and passwords never touch
+// source control. Falls back to unsigned when that file doesn't exist yet, so a plain
+// `./gradlew bundleRelease` still works before you've set up signing.
+def keystorePropertiesFile = rootProject.file("keystore.properties")
+def keystoreProperties = new Properties()
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+}
+
 android {
     namespace = "com.heseos.partner"
     compileSdk = rootProject.ext.compileSdkVersion
+    signingConfigs {
+        release {
+            if (keystorePropertiesFile.exists()) {
+                storeFile file(keystoreProperties['storeFile'])
+                storePassword keystoreProperties['storePassword']
+                keyAlias keystoreProperties['keyAlias']
+                keyPassword keystoreProperties['keyPassword']
+            }
+        }
+    }
     defaultConfig {
         applicationId "com.heseos.partner"
         minSdkVersion rootProject.ext.minSdkVersion
@@ -20,6 +40,9 @@ android {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            if (keystorePropertiesFile.exists()) {
+                signingConfig signingConfigs.release
+            }
         }
     }
 }

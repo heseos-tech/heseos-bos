@@ -30,3 +30,4 @@ android/build/
 android/local.properties
 *.keystore
 *.jks
+android/keystore.properties
