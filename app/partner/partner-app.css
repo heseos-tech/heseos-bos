@@ -280,14 +280,13 @@ html:has(.hp-root), body:has(.hp-root) {
    compact, native tab-bar height. */
 /* Background matches .hp-shell's own (var(--hp-bg), not the slightly lighter var(--hp-bg2)) so
    any residual safe-area gap is invisible instead of a two-tone seam — same root cause as the
-   "uncovered sliver" above. That color match alone doesn't shrink anything, though: on a real
-   iPhone the reserved safe-area gap below the icons was still visibly tall (env(safe-area-
-   inset-bottom) is 34px on notch/Dynamic-Island devices), making the whole bar read as too
-   tall for a native-feeling tab bar even once it was a single color. Capped hard at 6px now —
-   enough clearance to keep labels off the home-indicator gesture bar without reserving anywhere
-   near the device's full safe-area height — for a visibly shorter, more compact nav. */
+   "uncovered sliver" above. The safe-area reservation itself is gone now, not just capped — no
+   more env(safe-area-inset-bottom) at all in this padding, just the same flat 6px used on every
+   other side, so nothing is reserved below the labels beyond that. On a notch/Dynamic-Island
+   iPhone this means the labels sit right at the edge of the home-indicator gesture area instead
+   of leaving dedicated clearance above it — a deliberate trade for the shortest possible bar. */
 
-.hp-bottom-nav { position: fixed; left: 50%; bottom: 0; transform: translateX(-50%); width: 100%; max-width: 480px; z-index: 40; flex-shrink: 0; display: flex; align-items: flex-end; justify-content: space-around; background: var(--hp-bg); border-top: 1px solid var(--hp-border); padding: 6px 6px calc(4px + min(env(safe-area-inset-bottom, 0px), 6px)); }
+.hp-bottom-nav { position: fixed; left: 50%; bottom: 0; transform: translateX(-50%); width: 100%; max-width: 480px; z-index: 40; flex-shrink: 0; display: flex; align-items: flex-end; justify-content: space-around; background: var(--hp-bg); border-top: 1px solid var(--hp-border); padding: 6px; }
 .hp-nav-item { display: flex; flex-direction: column; align-items: center; gap: 4px; background: none; border: none; color: var(--hp-text-faint); font-size: 10.5px; font-weight: 600; padding: 4px 8px; flex: 1; cursor: pointer; transition: transform 0.1s ease, opacity 0.1s ease; }
 .hp-nav-item.active { color: var(--hp-orange); }
 .hp-nav-item:active { transform: scale(0.9); opacity: 0.6; }
