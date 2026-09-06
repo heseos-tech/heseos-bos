@@ -19,49 +19,49 @@ async function requireAdmin() {
 }
 
 export async function GET(request) {
-  // Employees see the full catalogue (including inactive products, for editing); partners see
-  // only what's active — a partner-facing catalogue view, same product data everyone else uses
-  // to build a quotation, filtered the same way the Products page's own "Active" filter would.
-  // Employees (Admin's ProductsPage, QuotationBuilder) keep getting the plain flat array they
-  // always have — unpaginated, unfiltered here (each of those screens does its own client-side
-  // filtering already). Pagination is partner-only, and only kicks in when a `page` param is
-  // present, so the shape stays backward-compatible for any partner-side caller that doesn't
-  // ask for it.
+  // Employees see the full catalogue (including inactive products, for editing/reference);
+  // partners see only what's active — filtered the same way the Products page's own "Active"
+  // filter would. Both branches support the SAME optional pagination (page/pageSize/q/category)
+  // — CatalogueScreen.jsx (components/partner/CatalogueScreen.jsx) is mounted from both the
+  // Partner app AND the Team app (an employee-authenticated route), so it always gets back the
+  // same paginated {products,total,...} shape regardless of which kind of account is asking.
+  // Admin's ProductsPage and QuotationBuilder never send a `page` param, so they're unaffected
+  // and keep getting the plain flat array they always have (backward-compatible either way).
   const employee = await getEmployee();
-  if (employee) {
-    const products = await dbList('products');
-    return Response.json(products);
+  const partner = employee ? null : await getPartner();
+  if (!employee && !partner) {
+    return Response.json({ error: 'Unauthorized' }, { status: 401 });
   }
-  const partner = await getPartner();
-  if (partner) {
-    const active = (await dbList('products')).filter((p) => p.active !== false);
-    const url = new URL(request.url);
-    const pageParam = url.searchParams.get('page');
-    if (!pageParam) {
-      return Response.json(active);
-    }
-    // Distinct categories from the FULL active catalogue (before search/category narrows it
-    // down), so the Catalogue screen's category tabs don't disappear once a filter is applied.
-    const categories = Array.from(new Set(active.map((p) => p.category).filter(Boolean))).sort();
-    const category = url.searchParams.get('category') || '';
-    const q = (url.searchParams.get('q') || '').trim().toLowerCase();
-    let filtered = category ? active.filter((p) => p.category === category) : active;
-    if (q) {
-      filtered = filtered.filter((p) => (
-        String(p.name || '').toLowerCase().includes(q)
-        || String(p.sku || '').toLowerCase().includes(q)
-        || String(p.description || '').toLowerCase().includes(q)
-      ));
-    }
-    const pageSize = Math.min(50, Math.max(1, Number(url.searchParams.get('pageSize')) || 10));
-    const total = filtered.length;
-    const totalPages = Math.max(1, Math.ceil(total / pageSize));
-    const page = Math.min(Math.max(1, Number(pageParam) || 1), totalPages);
-    const start = (page - 1) * pageSize;
-    const products = filtered.slice(start, start + pageSize);
-    return Response.json({ products, total, page, pageSize, totalPages, categories });
+
+  const all = await dbList('products');
+  const base = employee ? all : all.filter((p) => p.active !== false);
+
+  const url = new URL(request.url);
+  const pageParam = url.searchParams.get('page');
+  if (!pageParam) {
+    return Response.json(base);
   }
-  return Response.json({ error: 'Unauthorized' }, { status: 401 });
+
+  // Distinct categories from the FULL base list (before search/category narrows it down), so
+  // the Catalogue screen's category tabs don't disappear once a filter is applied.
+  const categories = Array.from(new Set(base.map((p) => p.category).filter(Boolean))).sort();
+  const category = url.searchParams.get('category') || '';
+  const q = (url.searchParams.get('q') || '').trim().toLowerCase();
+  let filtered = category ? base.filter((p) => p.category === category) : base;
+  if (q) {
+    filtered = filtered.filter((p) => (
+      String(p.name || '').toLowerCase().includes(q)
+      || String(p.sku || '').toLowerCase().includes(q)
+      || String(p.description || '').toLowerCase().includes(q)
+    ));
+  }
+  const pageSize = Math.min(50, Math.max(1, Number(url.searchParams.get('pageSize')) || 10));
+  const total = filtered.length;
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const page = Math.min(Math.max(1, Number(pageParam) || 1), totalPages);
+  const start = (page - 1) * pageSize;
+  const products = filtered.slice(start, start + pageSize);
+  return Response.json({ products, total, page, pageSize, totalPages, categories });
 }
 
 export async function POST(request) {
