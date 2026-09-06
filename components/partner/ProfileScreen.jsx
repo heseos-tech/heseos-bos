@@ -3,11 +3,12 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Avatar } from './ui';
-import { IconUser, IconBank, IconHistory, IconHelp, IconFile, IconShield, IconLogout, IconChevronRight, IconLink } from './icons';
+import { IconUser, IconBank, IconHistory, IconHelp, IconFile, IconShield, IconLogout, IconChevronRight, IconLink, IconQrCode } from './icons';
 import InstallAppMenuItem from './InstallApp';
 
 const MENU = [
   { icon: IconUser, label: 'My Profile' },
+  { icon: IconQrCode, label: 'QR Code', href: '/partner/qr' },
   { icon: IconLink, label: 'Referral Link', href: '/partner/refer' },
   { icon: IconBank, label: 'Bank Details' },
   { icon: IconHistory, label: 'Payout History' },

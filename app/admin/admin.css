@@ -393,3 +393,23 @@
 .demo-row-meta { font-size: 11.5px; color: var(--adm-text-faint); margin-top: 2px; }
 .demo-row-engineer { font-size: 12.5px; color: var(--adm-ink); flex-shrink: 0; width: 130px; text-align: right; }
 .demo-row-unclaimed { color: var(--adm-orange); font-weight: 600; }
+
+/* ─────────────────────────────────────────
+   PRE-PRINTED (BLANK) PARTNER QR CODES
+   (Growth tab -> "Pre-Print QR Codes")
+───────────────────────────────────────── */
+.adm-qr-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 16px; max-height: 420px; overflow-y: auto; padding: 4px 2px; }
+.adm-qr-tile { border: 1px solid var(--adm-border); border-radius: 10px; padding: 14px 10px; text-align: center; background: var(--adm-bg); }
+.adm-qr-tile img { border-radius: 6px; background: #fff; padding: 6px; max-width: 100%; height: auto; }
+.adm-qr-tile-code { margin-top: 8px; font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 13px; font-weight: 700; letter-spacing: 0.5px; color: var(--adm-ink); }
+.adm-qr-tile-batch { margin-top: 2px; font-size: 11px; color: var(--adm-text-faint); }
+.adm-qr-tile-scanned { margin-top: 6px; font-size: 10.5px; color: #B7791F; font-weight: 600; }
+
+@media print {
+  body * { visibility: hidden; }
+  .adm-qr-print-sheet, .adm-qr-print-sheet * { visibility: visible; }
+  .adm-qr-print-sheet { position: absolute; left: 0; top: 0; width: 100%; }
+  .adm-qr-grid { max-height: none; overflow: visible; }
+  .adm-qr-tile { break-inside: avoid; }
+  .adm-qr-print-noprint, .adm-modal-head { display: none !important; }
+}

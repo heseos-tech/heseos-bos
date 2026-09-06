@@ -8,7 +8,7 @@ import { useMemo, useState } from 'react';
 import { useApiResource } from '@/lib/useApiResource';
 import { ATTR_KIND_LABEL } from '@/lib/attributionConstants';
 import { StatCard, Modal } from './ui';
-import { IconQrCode, IconLink, IconLeads, IconConversions, IconSearch, IconPlus } from './icons';
+import { IconQrCode, IconLink, IconLeads, IconConversions, IconSearch, IconPlus, IconDownload } from './icons';
 
 // Kind (the table's own column) only ever shows "QR Code" or "Referral Link" — which of the
 // four underlying kinds it is (qr_partner, qr_location, referral_partner, referral_customer)
@@ -69,7 +69,8 @@ export default function GrowthPage() {
       <div className="adm-page-head">
         <div><h1 className="adm-h1">QR Codes &amp; Referral Links</h1><p className="adm-page-sub">Partner QR codes, billboard/standee QR codes, and referral links — every scan and click, and every lead and conversion it drives</p></div>
         <div className="adm-page-head-actions">
-          <button className="adm-btn-primary" onClick={() => setModal({ type: 'create' })}><IconPlus size={15} /> Create QR Code</button>
+          <button className="adm-btn-outline" onClick={() => setModal({ type: 'blank-qr' })}><IconDownload size={15} /> Pre-Print QR Codes</button>
+          <button className="adm-btn-primary" onClick={() => setModal({ type: 'create' })}><IconPlus size={15} /> Create Location QR</button>
         </div>
       </div>
 
@@ -128,6 +129,7 @@ export default function GrowthPage() {
         <CreateLinkModal onClose={() => setModal(null)} onDone={(link) => { setModal({ type: 'view', link: { ...link, funnel: { visits: 0, leads: 0, converted: 0 } } }); flash('Link created'); refresh(); }} />
       )}
       {modal?.type === 'view' && <LinkDetailModal link={modal.link} onClose={() => setModal(null)} onCopied={() => flash('Link copied')} />}
+      {modal?.type === 'blank-qr' && <BlankQrModal onClose={() => setModal(null)} />}
     </>
   );
 }
@@ -173,36 +175,26 @@ function LinkDetailModal({ link, onClose, onCopied }) {
 }
 
 // Referral links (partner and customer) are deliberately NOT creatable from here — partners
-// self-provision their own from the Partner App's "Share & Earn" page (app/api/partner/
-// attribution), and customer referral links will eventually be self-requested from the
-// WhatsApp bot once those flows exist. Only QR codes go through admin, since those need
-// printing/placing physically — qr_partner because a partner may want Heseos to print one for
-// them, qr_location because there's no partner/customer to self-serve it in the first place.
-const KIND_OPTIONS = [
-  { v: 'qr_location', l: 'QR — Location', hint: 'A billboard, standee or shop window — tracked by placement' },
-  { v: 'qr_partner', l: 'QR — Partner', hint: "A partner's QR code — they already have one in their own app; use this only to print/hand one out yourself" },
-];
-
+// self-provision their own from the Partner App's Profile → Referral Link screen (app/api/
+// partner/attribution), and customer referral links will eventually be self-requested from the
+// WhatsApp bot once those flows exist. qr_location is the only kind still created here, because
+// there's no partner/customer to self-serve it in the first place. qr_partner is NOT creatable
+// here any more — see "Pre-Print QR Codes" below; a partner code always starts out blank and is
+// claimed by the partner themselves, never pre-assigned by admin, so it can be handed out
+// before anyone's decided which shop gets which sticker.
 function CreateLinkModal({ onClose, onDone }) {
-  const { data: partners } = useApiResource('/api/admin/partners');
-
-  const [kind, setKind] = useState('qr_location');
   const [label, setLabel] = useState('');
-  const [partnerId, setPartnerId] = useState('');
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
 
-  const canSave = (
-    (kind === 'qr_location' && label.trim()) ||
-    (kind === 'qr_partner' && partnerId)
-  );
+  const canSave = label.trim().length > 0;
 
   async function submit() {
     setError(''); setSaving(true);
     try {
       const res = await fetch('/api/admin/attribution', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ kind, label, partnerId: partnerId || undefined }),
+        body: JSON.stringify({ kind: 'qr_location', label }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed');
@@ -211,35 +203,92 @@ function CreateLinkModal({ onClose, onDone }) {
   }
 
   return (
-    <Modal title="Create a QR code" sub="Every scan routes into WhatsApp and the resulting chat becomes an attributed lead. Referral links are self-service — see the Partner App (and, soon, the WhatsApp bot for customers)." onClose={onClose}>
-      <div className="lf-field">
-        <label className="lf-label">Type</label>
-        <div className="lf-pills">
-          {KIND_OPTIONS.map((k) => (
-            <button key={k.v} type="button" className={`lf-pill${kind === k.v ? ' active' : ''}`} onClick={() => setKind(k.v)}>{k.l}</button>
-          ))}
-        </div>
-        <div className="adm-meta-hint" style={{ marginTop: 6 }}>{KIND_OPTIONS.find((k) => k.v === kind)?.hint}</div>
-      </div>
-
-      {kind === 'qr_location' && (
-        <div className="lf-field"><label className="lf-label">Location label</label><input className="lf-input" value={label} onChange={(e) => setLabel(e.target.value)} placeholder='e.g. "Koramangala Billboard" or "HSR Standee 2"' /></div>
-      )}
-
-      {kind === 'qr_partner' && (
-        <div className="lf-field">
-          <label className="lf-label">Partner</label>
-          <select className="lf-input" value={partnerId} onChange={(e) => setPartnerId(e.target.value)}>
-            <option value="">Select partner…</option>
-            {partners.map((p) => <option key={p.id} value={p.id}>{p.businessName || p.name}</option>)}
-          </select>
-        </div>
-      )}
+    <Modal title="Create a Location QR Code" sub="For a billboard, standee or shop window — tracked by placement, not by partner. Every scan routes into WhatsApp and the resulting chat becomes an attributed lead. Partner QR codes are pre-printed in bulk instead — see “Pre-Print QR Codes”." onClose={onClose}>
+      <div className="lf-field"><label className="lf-label">Location label</label><input className="lf-input" value={label} onChange={(e) => setLabel(e.target.value)} placeholder='e.g. "Koramangala Billboard" or "HSR Standee 2"' /></div>
 
       {error && <div className="lf-error">{error}</div>}
       <div className="lf-actions">
         <button className="lf-btn-back" onClick={onClose} disabled={saving}>Cancel</button>
         <button className="lf-btn-next" onClick={submit} disabled={saving || !canSave}>{saving ? 'Creating…' : 'Create'}</button>
+      </div>
+    </Modal>
+  );
+}
+
+// Pre-printed (blank/unclaimed) partner QR codes — admin generates a batch here, prints the
+// sheet, and hands one sticker per partner at onboarding. The partner links it to their account
+// from the Partner App's Profile → QR Code screen (app/api/partner/attribution/qr) by typing in
+// the code printed on it — see lib/attribution.js's createBlankPartnerQrCodes/claimPartnerQrCode.
+function BlankQrModal({ onClose }) {
+  const { data: unclaimed, loading, refresh } = useApiResource('/api/admin/attribution/blank-qr');
+  const [count, setCount] = useState(10);
+  const [batchLabel, setBatchLabel] = useState('');
+  const [generating, setGenerating] = useState(false);
+  const [error, setError] = useState('');
+
+  async function generate() {
+    setError(''); setGenerating(true);
+    try {
+      const res = await fetch('/api/admin/attribution/blank-qr', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ count, batchLabel }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed');
+      setBatchLabel('');
+      refresh();
+    } catch (e) { setError(e.message); } finally { setGenerating(false); }
+  }
+
+  return (
+    <Modal
+      title="Pre-Print QR Codes"
+      sub="Generate a batch of blank partner QR codes to print and hand out — each partner links their own sticker from the Partner App."
+      onClose={onClose}
+      wide
+    >
+      <div className="adm-qr-print-noprint">
+        <div className="lf-field-row">
+          <div className="lf-field">
+            <label className="lf-label">How many</label>
+            <input className="lf-input" type="number" min={1} max={200} value={count} onChange={(e) => setCount(e.target.value)} />
+          </div>
+          <div className="lf-field">
+            <label className="lf-label">Batch label (optional)</label>
+            <input className="lf-input" value={batchLabel} onChange={(e) => setBatchLabel(e.target.value)} placeholder='e.g. "Sep 2026 onboarding run"' />
+          </div>
+        </div>
+        {error && <div className="lf-error">{error}</div>}
+        <div className="lf-actions" style={{ marginBottom: 18 }}>
+          <button className="adm-btn-primary" onClick={generate} disabled={generating}>{generating ? 'Generating…' : 'Generate Batch'}</button>
+          <button className="adm-btn-outline" onClick={() => window.print()} disabled={!unclaimed.length}>Print This Sheet</button>
+        </div>
+        <div className="adm-meta-hint">
+          {loading ? 'Loading unclaimed codes…' : `${unclaimed.length} code${unclaimed.length === 1 ? '' : 's'} generated and not yet claimed by a partner.`}
+        </div>
+      </div>
+
+      <div className="adm-qr-print-sheet">
+        {unclaimed.length === 0 && !loading ? (
+          <div className="adm-empty">No unclaimed codes yet — generate a batch above.</div>
+        ) : (
+          <div className="adm-qr-grid">
+            {unclaimed.map((l) => {
+              const shareUrl = l.url || `${typeof window !== 'undefined' ? window.location.origin : ''}/go/${l.id}`;
+              const qrImg = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(shareUrl)}`;
+              return (
+                <div className="adm-qr-tile" key={l.id}>
+                  <img src={qrImg} alt={l.id} width={140} height={140} />
+                  <div className="adm-qr-tile-code">{l.id}</div>
+                  {l.batchLabel && <div className="adm-qr-tile-batch">{l.batchLabel}</div>}
+                  {(l.funnel?.visits || 0) > 0 && (
+                    <div className="adm-qr-tile-scanned">Scanned {l.funnel.visits}× already — unclaimed</div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </Modal>
   );
