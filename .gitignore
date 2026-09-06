@@ -17,3 +17,16 @@ out/
 *.pem
 npm-debug.log*
 *.log
+
+# Capacitor iOS/Android native shells (scripts/setup-mobile-app.sh) — the projects themselves
+# are committed (Xcode/Gradle project files), but generated build output and dependency caches
+# aren't.
+ios/App/Pods/
+ios/App/build/
+ios/App/DerivedData/
+android/.gradle/
+android/app/build/
+android/build/
+android/local.properties
+*.keystore
+*.jks
