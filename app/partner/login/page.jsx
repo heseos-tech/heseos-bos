@@ -46,8 +46,16 @@ export default function PartnerLoginPage() {
       <div className="hp-hero">
         <div className="hp-hero-bg" style={{ backgroundImage: "url('/Login_screen.webp')" }} />
         <div className="hp-hero-scrim-full" />
-        <div className="hp-hero-content" style={{ justifyContent: 'flex-end' }}>
-          <img src="/brand/lockup-white.png" alt="Heseos — Lighting Ahead" className="hp-brand-logo" style={{ position: 'absolute', top: 28, left: 22 }} />
+        {/* space-between (not flex-end) so the logo can be a normal, non-absolutely-positioned
+            flex child again — it used to be pinned with a hardcoded `top: 28`, which ignored
+            env(safe-area-inset-top) entirely and sat too high / got clipped under the status
+            bar on notch/Dynamic-Island iPhones. As a normal child it inherits .hp-hero-content's
+            own safe-area-aware padding-top (see partner-app.css) instead of a fixed pixel value,
+            and space-between keeps the form flush at the bottom exactly like flex-end did when
+            the logo didn't count toward layout (align-self/flex-none for it already exists in
+            partner-app.css, added for exactly this normal-flow case). */}
+        <div className="hp-hero-content" style={{ justifyContent: 'space-between', paddingBottom: 18 }}>
+          <img src="/brand/lockup-white.png" alt="Heseos — Lighting Ahead" className="hp-brand-logo" />
 
           <div>
             <h1 className="hp-h2">Welcome Back!</h1>

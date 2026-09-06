@@ -43,8 +43,12 @@ export default function TeamLoginPage() {
       <div className="hp-hero">
         <div className="hp-hero-bg" style={{ backgroundImage: "url('/Login_screen.webp')" }} />
         <div className="hp-hero-scrim-full" />
-        <div className="hp-hero-content" style={{ justifyContent: "flex-end" }}>
-          <img src="/brand/lockup-white.png" alt="Heseos — Lighting Ahead" className="hp-brand-logo" style={{ position: "absolute", top: 28, left: 22 }} />
+        {/* space-between (not flex-end) so the logo is a normal, non-absolutely-positioned flex
+            child — matches the same fix on the Partner login page: the old hardcoded `top: 28`
+            ignored env(safe-area-inset-top) and sat too high / got clipped under the status bar
+            on notch/Dynamic-Island iPhones. */}
+        <div className="hp-hero-content" style={{ justifyContent: "space-between", paddingBottom: 18 }}>
+          <img src="/brand/lockup-white.png" alt="Heseos — Lighting Ahead" className="hp-brand-logo" />
 
           <div>
             <h1 className="hp-h2">Welcome Back!</h1>
