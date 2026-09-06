@@ -31,7 +31,10 @@ function ownerTypeLabel(l) {
 
 function ownerLabel(l) {
   if (l.kind === 'qr_partner' || l.kind === 'referral_partner') return l.partnerName || l.label || l.partnerId || '—';
-  if (l.kind === 'qr_location') return l.pincode ? `${l.label || '—'} — ${l.pincode}` : (l.label || '—');
+  if (l.kind === 'qr_location') {
+    const area = [l.locality, l.city, l.pincode].filter(Boolean).join(', ');
+    return area ? `${l.label || '—'} — ${area}` : (l.label || '—');
+  }
   return l.customerName || l.label || '—';
 }
 
@@ -177,6 +180,8 @@ function LinkDetailModal({ link, onClose, onCopied }) {
         </div>
       </div>
       <div className="adm-detail-grid">
+        {link.kind === 'qr_location' && <div><span className="adm-detail-label">City</span>{link.city || '—'}</div>}
+        {link.kind === 'qr_location' && <div><span className="adm-detail-label">Locality</span>{link.locality || '—'}</div>}
         {link.kind === 'qr_location' && <div><span className="adm-detail-label">Pincode</span>{link.pincode || '—'}</div>}
         <div><span className="adm-detail-label">Scans / Clicks</span>{link.funnel?.visits ?? '—'}</div>
         <div><span className="adm-detail-label">Leads</span>{link.funnel?.leads ?? '—'}</div>
@@ -195,12 +200,12 @@ function LinkDetailModal({ link, onClose, onCopied }) {
 // claimed by the partner themselves, never pre-assigned by admin, so it can be handed out
 // before anyone's decided which shop gets which sticker.
 const PINCODE_RE = /^\d{6}$/;
-function emptyLocationRow() { return { label: '', pincode: '' }; }
+function emptyLocationRow() { return { label: '', city: '', locality: '', pincode: '' }; }
 
-// One row per location — every location QR needs BOTH a label (what it's called on the table/
-// print sheet) and a pincode (which area it's actually placed in, for reporting by area later).
-// "Add another location" lets admin create a whole batch (e.g. every standee going out this
-// week) in one save instead of reopening this modal per location.
+// One row per location — every location QR needs a label (what it's called on the table/print
+// sheet) plus city, locality and pincode (so a placement can be reported on by area, not just by
+// its own name). "Add another location" lets admin create a whole batch (e.g. every standee
+// going out this week) in one save instead of reopening this modal per location.
 function CreateLinkModal({ onClose, onDone }) {
   const [rows, setRows] = useState([emptyLocationRow()]);
   const [error, setError] = useState('');
@@ -212,14 +217,14 @@ function CreateLinkModal({ onClose, onDone }) {
   function addRow() { setRows((rs) => [...rs, emptyLocationRow()]); }
   function removeRow(i) { setRows((rs) => rs.filter((_, idx) => idx !== i)); }
 
-  const canSave = rows.length > 0 && rows.every((r) => r.label.trim() && PINCODE_RE.test(r.pincode.trim()));
+  const canSave = rows.length > 0 && rows.every((r) => r.label.trim() && r.city.trim() && r.locality.trim() && PINCODE_RE.test(r.pincode.trim()));
 
   async function submit() {
     setError(''); setSaving(true);
     try {
       const res = await fetch('/api/admin/attribution', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ kind: 'qr_location', locations: rows.map((r) => ({ label: r.label.trim(), pincode: r.pincode.trim() })) }),
+        body: JSON.stringify({ kind: 'qr_location', locations: rows.map((r) => ({ label: r.label.trim(), city: r.city.trim(), locality: r.locality.trim(), pincode: r.pincode.trim() })) }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed');
@@ -228,8 +233,8 @@ function CreateLinkModal({ onClose, onDone }) {
   }
 
   return (
-    <Modal title="Create Location QR Codes" sub="For a billboard, standee or shop window — tracked by placement, not by partner. Every scan routes into WhatsApp and the resulting chat becomes an attributed lead. Partner QR codes are pre-printed in bulk instead — see “Pre-Print Partner QR Codes”." onClose={onClose}>
-      <div className="adm-qrloc-col-headers"><span>Location label</span><span>Pincode</span></div>
+    <Modal title="Create Location QR Codes" sub="For a billboard, standee or shop window — tracked by placement, not by partner. Every scan routes into WhatsApp and the resulting chat becomes an attributed lead. Partner QR codes are pre-printed in bulk instead — see “Pre-Print Partner QR Codes”." onClose={onClose} wide>
+      <div className="adm-qrloc-col-headers"><span>Location label</span><span>City</span><span>Locality</span><span>Pincode</span></div>
       <div className="adm-qrloc-rows">
         {rows.map((r, i) => (
           <div className="adm-qrloc-row" key={i}>
@@ -238,6 +243,18 @@ function CreateLinkModal({ onClose, onDone }) {
               value={r.label}
               onChange={(e) => updateRow(i, 'label', e.target.value)}
               placeholder='e.g. "Koramangala Billboard"'
+            />
+            <input
+              className="lf-input adm-qrloc-city-input"
+              value={r.city}
+              onChange={(e) => updateRow(i, 'city', e.target.value)}
+              placeholder="Bengaluru"
+            />
+            <input
+              className="lf-input adm-qrloc-locality-input"
+              value={r.locality}
+              onChange={(e) => updateRow(i, 'locality', e.target.value)}
+              placeholder="Koramangala 4th Block"
             />
             <input
               className="lf-input adm-qrloc-pincode-input"

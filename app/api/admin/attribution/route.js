@@ -68,9 +68,9 @@ export async function POST(request) {
         : 'Only a Location QR code can be created here; referral links are self-service.' }, { status: 400 });
   }
 
-  // `locations`: an array of { label, pincode } — one row per QR code, so the Growth tab's
-  // "Create Location QR" modal can create a whole batch (every standee going out this week) in
-  // a single save instead of reopening the modal per location.
+  // `locations`: an array of { label, city, locality, pincode } — one row per QR code, so the
+  // Growth tab's "Create Location QR" modal can create a whole batch (every standee going out
+  // this week) in a single save instead of reopening the modal per location.
   const locations = Array.isArray(body.locations) ? body.locations : [];
   if (!locations.length) {
     return Response.json({ error: 'At least one location is required' }, { status: 400 });
@@ -79,11 +79,18 @@ export async function POST(request) {
     return Response.json({ error: 'Create at most 100 at a time — run it again for a bigger batch' }, { status: 400 });
   }
   for (const loc of locations) {
-    if (!String(loc?.label || '').trim()) {
+    const label = String(loc?.label || '').trim();
+    if (!label) {
       return Response.json({ error: 'Every location needs a label (e.g. "Koramangala Billboard")' }, { status: 400 });
     }
+    if (!String(loc?.city || '').trim()) {
+      return Response.json({ error: `A city is required for "${label}"` }, { status: 400 });
+    }
+    if (!String(loc?.locality || '').trim()) {
+      return Response.json({ error: `A locality is required for "${label}"` }, { status: 400 });
+    }
     if (!PINCODE_RE.test(String(loc?.pincode || '').trim())) {
-      return Response.json({ error: `A 6-digit pincode is required for "${String(loc.label).trim()}"` }, { status: 400 });
+      return Response.json({ error: `A 6-digit pincode is required for "${label}"` }, { status: 400 });
     }
   }
 
@@ -97,6 +104,8 @@ export async function POST(request) {
     const link = await createAttributionLink({
       kind: 'qr_location',
       label: String(loc.label).trim(),
+      city: String(loc.city).trim(),
+      locality: String(loc.locality).trim(),
       pincode: String(loc.pincode).trim(),
       createdBy: `employee:${employee.id}`,
     });

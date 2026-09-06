@@ -419,9 +419,13 @@
    (Growth tab -> "Create Location QR")
 ───────────────────────────────────────── */
 .adm-qrloc-col-headers { display: flex; gap: 8px; font-size: 11px; font-weight: 700; color: var(--adm-text-faint); text-transform: uppercase; letter-spacing: 0.02em; padding-bottom: 6px; }
-.adm-qrloc-col-headers span:first-child { flex: 1; }
-.adm-qrloc-col-headers span:last-child { width: 110px; flex-shrink: 0; }
+.adm-qrloc-col-headers span:nth-child(1) { flex: 1; }
+.adm-qrloc-col-headers span:nth-child(2) { width: 130px; flex-shrink: 0; }
+.adm-qrloc-col-headers span:nth-child(3) { width: 160px; flex-shrink: 0; }
+.adm-qrloc-col-headers span:nth-child(4) { width: 100px; flex-shrink: 0; }
 .adm-qrloc-rows { display: flex; flex-direction: column; gap: 8px; margin-bottom: 4px; }
 .adm-qrloc-row { display: flex; align-items: center; gap: 8px; }
-.adm-qrloc-label-input { flex: 1; }
-.adm-qrloc-pincode-input { width: 110px; flex-shrink: 0; }
+.adm-qrloc-label-input { flex: 1; min-width: 0; }
+.adm-qrloc-city-input { width: 130px; flex-shrink: 0; }
+.adm-qrloc-locality-input { width: 160px; flex-shrink: 0; }
+.adm-qrloc-pincode-input { width: 100px; flex-shrink: 0; }
