@@ -23,9 +23,9 @@ function isDueToday(t) {
 }
 
 export default function TasksPage() {
-  const { data: tasks, loading, refresh } = useApiResource('/api/tasks');
-  const { data: employees } = useApiResource('/api/admin/employees');
-  const { data: leads } = useApiResource('/api/leads');
+  const { data: tasks, loading, refresh } = useApiResource('/api/tasks', { pollMs: 20000 });
+  const { data: employees } = useApiResource('/api/admin/employees', { pollMs: 20000 });
+  const { data: leads } = useApiResource('/api/leads', { pollMs: 20000 });
   const [q, setQ] = useState('');
   const [status, setStatus] = useState('open');
   const [assignee, setAssignee] = useState('all');

@@ -14,8 +14,8 @@ import QuotationBuilderModal, { currency } from '@/components/shared/QuotationBu
 const PAGE_SIZE = 8;
 
 export default function QuotationsPage() {
-  const { data: leads, loading, refresh } = useApiResource('/api/leads');
-  const { data: employees } = useApiResource('/api/admin/employees');
+  const { data: leads, loading, refresh } = useApiResource('/api/leads', { pollMs: 20000 });
+  const { data: employees } = useApiResource('/api/admin/employees', { pollMs: 20000 });
   const [q, setQ] = useState('');
   const [status, setStatus] = useState('all');
   const [page, setPage] = useState(1);

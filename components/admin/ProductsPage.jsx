@@ -81,7 +81,7 @@ function fileToCompressedDataUrl(file) {
 }
 
 export default function ProductsPage() {
-  const { data: products, loading, refresh } = useApiResource(PRODUCTS_URL);
+  const { data: products, loading, refresh } = useApiResource(PRODUCTS_URL, { pollMs: 20000 });
   const [q, setQ] = useState('');
   const [category, setCategory] = useState('all');
   const [status, setStatus] = useState('all');

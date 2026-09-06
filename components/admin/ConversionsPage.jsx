@@ -19,8 +19,8 @@ import { useApiResource, invalidate } from '@/lib/useApiResource';
 function currency(n) { return `₹${Number(n || 0).toLocaleString('en-IN')}`; }
 
 export default function ConversionsPage() {
-  const { data: leads, loading: leadsLoading, refresh } = useApiResource('/api/leads');
-  const { data: employees, loading: employeesLoading } = useApiResource('/api/admin/employees');
+  const { data: leads, loading: leadsLoading, refresh } = useApiResource('/api/leads', { pollMs: 20000 });
+  const { data: employees, loading: employeesLoading } = useApiResource('/api/admin/employees', { pollMs: 20000 });
   const loading = leadsLoading || employeesLoading;
   const [q, setQ] = useState('');
   const [installFilter, setInstallFilter] = useState('all');

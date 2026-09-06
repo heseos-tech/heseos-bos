@@ -43,7 +43,7 @@ function latestRevision(lead) {
 }
 
 export default function QuotationBuilderModal({ lead, onClose, onDone }) {
-  const { data: products, loading: productsLoading } = useApiResource('/api/products');
+  const { data: products, loading: productsLoading } = useApiResource('/api/products', { pollMs: 20000 });
   const [pq, setPq] = useState('');
   const last = useMemo(() => latestRevision(lead), [lead]);
   const [lines, setLines] = useState(() => (last?.items?.length

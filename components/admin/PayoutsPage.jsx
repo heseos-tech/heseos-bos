@@ -21,10 +21,10 @@ const STATUS_META = {
 };
 
 export default function PayoutsPage() {
-  const { data: payouts, loading: payoutsLoading, refresh: refreshPayouts } = useApiResource('/api/admin/payouts');
-  const { data: partners, loading: partnersLoading } = useApiResource('/api/admin/partners');
-  const { data: leads, loading: leadsLoading } = useApiResource('/api/leads');
-  const { data: payoutConfig, loading: configLoading } = useApiResource('/api/payout-settings');
+  const { data: payouts, loading: payoutsLoading, refresh: refreshPayouts } = useApiResource('/api/admin/payouts', { pollMs: 20000 });
+  const { data: partners, loading: partnersLoading } = useApiResource('/api/admin/partners', { pollMs: 20000 });
+  const { data: leads, loading: leadsLoading } = useApiResource('/api/leads', { pollMs: 20000 });
+  const { data: payoutConfig, loading: configLoading } = useApiResource('/api/payout-settings', { pollMs: 20000 });
   const loading = payoutsLoading || partnersLoading || leadsLoading || configLoading;
 
   const [statusFilter, setStatusFilter] = useState('all');

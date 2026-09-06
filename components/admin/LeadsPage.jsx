@@ -16,13 +16,13 @@ export default function LeadsPage() {
   const searchParams = useSearchParams();
   // Shared with every other Admin tab via useApiResource (lib/useApiResource.js) — see
   // DashboardPage.jsx for why.
-  const { data: leads, loading: leadsLoading, refresh: refreshLeads } = useApiResource('/api/leads');
-  const { data: partners, loading: partnersLoading, refresh: refreshPartners } = useApiResource('/api/admin/partners');
-  const { data: employees, loading: employeesLoading, refresh: refreshEmployees } = useApiResource('/api/admin/employees');
+  const { data: leads, loading: leadsLoading, refresh: refreshLeads } = useApiResource('/api/leads', { pollMs: 20000 });
+  const { data: partners, loading: partnersLoading, refresh: refreshPartners } = useApiResource('/api/admin/partners', { pollMs: 20000 });
+  const { data: employees, loading: employeesLoading, refresh: refreshEmployees } = useApiResource('/api/admin/employees', { pollMs: 20000 });
   // Only needed to resolve a "QR — Location" link's own label (e.g. "Viman Nagar") for the
   // Partner column below — see attributionInfo(). Growth's own table already fetches this same
   // endpoint for the identical reason.
-  const { data: attributionLinks, loading: attributionLoading } = useApiResource('/api/admin/attribution');
+  const { data: attributionLinks, loading: attributionLoading } = useApiResource('/api/admin/attribution', { pollMs: 20000 });
   const loading = leadsLoading || partnersLoading || employeesLoading || attributionLoading;
   const [q, setQ] = useState('');
   const [source, setSource] = useState('all');

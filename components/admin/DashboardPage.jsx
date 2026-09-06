@@ -12,8 +12,8 @@ export default function DashboardPage({ employee }) {
   // Admin's tabs all stay mounted after their first visit (AdminHome), visiting Dashboard after
   // Leads (or vice versa) now reuses the already-cached /api/leads response instead of
   // re-fetching the whole table again.
-  const { data: leads, loading: leadsLoading } = useApiResource('/api/leads');
-  const { data: partners, loading: partnersLoading } = useApiResource('/api/admin/partners');
+  const { data: leads, loading: leadsLoading } = useApiResource('/api/leads', { pollMs: 20000 });
+  const { data: partners, loading: partnersLoading } = useApiResource('/api/admin/partners', { pollMs: 20000 });
   const loading = leadsLoading || partnersLoading;
 
   const funnel = useMemo(() => funnelData(leads), [leads]);

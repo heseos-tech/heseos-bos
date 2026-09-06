@@ -39,7 +39,7 @@ function ownerLabel(l) {
 }
 
 export default function GrowthPage() {
-  const { data: links, loading, refresh } = useApiResource('/api/admin/attribution');
+  const { data: links, loading, refresh } = useApiResource('/api/admin/attribution', { pollMs: 20000 });
   const [kind, setKind] = useState('all');
   const [q, setQ] = useState('');
   const [modal, setModal] = useState(null);
@@ -295,7 +295,7 @@ function CreateLinkModal({ onClose, onDone }) {
 // from the Partner App's Profile → QR Code screen (app/api/partner/attribution/qr) by typing in
 // the code printed on it — see lib/attribution.js's createBlankPartnerQrCodes/claimPartnerQrCode.
 function BlankQrModal({ onClose }) {
-  const { data: unclaimed, loading, refresh } = useApiResource('/api/admin/attribution/blank-qr');
+  const { data: unclaimed, loading, refresh } = useApiResource('/api/admin/attribution/blank-qr', { pollMs: 20000 });
   const [count, setCount] = useState(10);
   const [batchLabel, setBatchLabel] = useState('');
   const [generating, setGenerating] = useState(false);

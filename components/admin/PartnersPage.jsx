@@ -11,12 +11,12 @@ const PAGE_SIZE = 8;
 export default function PartnersPage() {
   // Shared with every other Admin tab via useApiResource (lib/useApiResource.js) — see
   // DashboardPage.jsx for why.
-  const { data: partners, loading: partnersLoading, refresh: refreshPartners } = useApiResource('/api/admin/partners');
-  const { data: leads, loading: leadsLoading, refresh: refreshLeads } = useApiResource('/api/leads');
+  const { data: partners, loading: partnersLoading, refresh: refreshPartners } = useApiResource('/api/admin/partners', { pollMs: 20000 });
+  const { data: leads, loading: leadsLoading, refresh: refreshLeads } = useApiResource('/api/leads', { pollMs: 20000 });
   // Shared, admin-configured tiered payout ladder (Settings → Lead Conversion Payout) — same
   // ladder Partner Rewards and the Team App compute their own numbers from. normalizeConfig
   // (called inside partnerStats via payoutFor) handles the pre-load `[]` default safely.
-  const { data: payoutConfig } = useApiResource('/api/payout-settings');
+  const { data: payoutConfig } = useApiResource('/api/payout-settings', { pollMs: 20000 });
   const loading = partnersLoading || leadsLoading;
   const load = () => { refreshPartners(); refreshLeads(); };
   const [q, setQ] = useState('');

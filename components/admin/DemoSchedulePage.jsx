@@ -19,8 +19,8 @@ const DAY = 24 * 60 * 60 * 1000;
 function dateKey(d) { return new Date(d).toDateString(); }
 
 export default function DemoSchedulePage() {
-  const { data: leads, loading: leadsLoading } = useApiResource('/api/leads');
-  const { data: employees, loading: employeesLoading } = useApiResource('/api/admin/employees');
+  const { data: leads, loading: leadsLoading } = useApiResource('/api/leads', { pollMs: 20000 });
+  const { data: employees, loading: employeesLoading } = useApiResource('/api/admin/employees', { pollMs: 20000 });
   const loading = leadsLoading || employeesLoading;
   const [scope, setScope] = useState('upcoming'); // upcoming | today | reschedule | past | all
   const [engineerId, setEngineerId] = useState('all');

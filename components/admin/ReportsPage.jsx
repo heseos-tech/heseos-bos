@@ -26,8 +26,8 @@ function inr(n) {
 export default function ReportsPage() {
   // Shared with every other Admin tab via useApiResource (lib/useApiResource.js) — see
   // DashboardPage.jsx for why.
-  const { data: leads, loading: leadsLoading } = useApiResource('/api/leads');
-  const { data: employees, loading: employeesLoading } = useApiResource('/api/admin/employees');
+  const { data: leads, loading: leadsLoading } = useApiResource('/api/leads', { pollMs: 20000 });
+  const { data: employees, loading: employeesLoading } = useApiResource('/api/admin/employees', { pollMs: 20000 });
   const loading = leadsLoading || employeesLoading;
   const [range, setRange] = useState('all');
 

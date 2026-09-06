@@ -11,8 +11,8 @@ const PAGE_SIZE = 8;
 export default function PresalesPage() {
   // Shared with every other Admin tab via useApiResource (lib/useApiResource.js) — see
   // DashboardPage.jsx for why.
-  const { data: allEmployees, loading: employeesLoading, refresh: refreshEmployees } = useApiResource('/api/admin/employees');
-  const { data: leads, loading: leadsLoading, refresh: refreshLeads } = useApiResource('/api/leads');
+  const { data: allEmployees, loading: employeesLoading, refresh: refreshEmployees } = useApiResource('/api/admin/employees', { pollMs: 20000 });
+  const { data: leads, loading: leadsLoading, refresh: refreshLeads } = useApiResource('/api/leads', { pollMs: 20000 });
   const employees = useMemo(() => allEmployees.filter((x) => x.role === 'presales'), [allEmployees]);
   const loading = employeesLoading || leadsLoading;
   const load = () => { refreshEmployees(); refreshLeads(); };
