@@ -278,7 +278,16 @@ html:has(.hp-root), body:has(.hp-root) {
    left:50%/translateX centers it under .hp-root's own max-width:480px card on wide
    screens the same way .hp-root centers itself. Padding trimmed slightly for a more
    compact, native tab-bar height. */
-.hp-bottom-nav { position: fixed; left: 50%; bottom: 0; transform: translateX(-50%); width: 100%; max-width: 480px; z-index: 40; flex-shrink: 0; display: flex; align-items: flex-end; justify-content: space-around; background: var(--hp-bg2); border-top: 1px solid var(--hp-border); padding: 7px 6px calc(6px + env(safe-area-inset-bottom, 0px)); }
+/* Background matches .hp-shell's own (var(--hp-bg), not the slightly lighter var(--hp-bg2))
+   and the safe-area inset is capped at 14px: on some devices/WebViews env(safe-area-inset-
+   bottom) is reported larger than the actual home-indicator/gesture-bar really needs, which
+   was showing as a visibly taller, differently-shaded "ribbon" block below the nav icons
+   instead of a normal, unnoticeable safe-area gap — same root cause as the "uncovered sliver"
+   above, just a bigger version of it. Matching the color means any residual gap is invisible
+   instead of a two-tone seam, and the cap keeps the reserved height sane regardless of what a
+   given device reports. */
+
+.hp-bottom-nav { position: fixed; left: 50%; bottom: 0; transform: translateX(-50%); width: 100%; max-width: 480px; z-index: 40; flex-shrink: 0; display: flex; align-items: flex-end; justify-content: space-around; background: var(--hp-bg); border-top: 1px solid var(--hp-border); padding: 7px 6px calc(6px + min(env(safe-area-inset-bottom, 0px), 14px)); }
 .hp-nav-item { display: flex; flex-direction: column; align-items: center; gap: 4px; background: none; border: none; color: var(--hp-text-faint); font-size: 10.5px; font-weight: 600; padding: 4px 8px; flex: 1; cursor: pointer; transition: transform 0.1s ease, opacity 0.1s ease; }
 .hp-nav-item.active { color: var(--hp-orange); }
 .hp-nav-item:active { transform: scale(0.9); opacity: 0.6; }
