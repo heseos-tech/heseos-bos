@@ -22,6 +22,12 @@ const KIND_FILTERS = [
 
 function isQr(kind) { return kind === 'qr_partner' || kind === 'qr_location'; }
 
+// A qr_partner code with no partnerId is a blank/unclaimed sticker still waiting to be handed
+// out and linked (see "Create Partner QR Codes") — not a real, working code yet, so it doesn't
+// belong in the main table below (which is about links that are actually live). It still shows
+// up in the "Create Partner QR Codes"/"Print QR Codes" modals, which is where it's managed.
+function isUnclaimedPartnerQr(l) { return l.kind === 'qr_partner' && !l.partnerId; }
+
 // Partner / Location / Customer — whose link this is, shown as a small tag beside the name.
 function ownerTypeLabel(l) {
   if (l.kind === 'qr_partner' || l.kind === 'referral_partner') return 'Partner';
@@ -48,6 +54,7 @@ export default function GrowthPage() {
   function flash(msg) { setNotice(msg); setTimeout(() => setNotice(''), 2500); }
 
   const filtered = useMemo(() => links.filter((l) => {
+    if (isUnclaimedPartnerQr(l)) return false;
     if (kind !== 'all' && isQr(l.kind) !== (kind === 'qr')) return false;
     if (q.trim()) {
       const s = q.trim().toLowerCase();
