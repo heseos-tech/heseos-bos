@@ -33,7 +33,7 @@
 /* .adm-nav-link is also used on a <button> now (instant client-side tab switching — see
    components/admin/ui.jsx's AdminShellInner) — reset the native button chrome so it's visually
    identical to the <a> version above. */
-button.adm-nav-link { background: none; border: none; cursor: pointer; font: inherit; text-align: left; width: 100%; }
+button.adm-nav-link { background: none; border: none; cursor: pointer; text-align: left; width: 100%; font-family: inherit; font-size: 14px; font-weight: 600; }
 
 .adm-collapsed .adm-nav-label { display: none; }
 .adm-collapse-btn { display: flex; align-items: center; gap: 10px; padding: 10px 12px; margin-top: 12px; border-top: 1px solid var(--adm-border); background: none; border-left: none; border-right: none; border-bottom: none; color: var(--adm-text-faint); font-size: 13px; font-weight: 600; cursor: pointer; }
