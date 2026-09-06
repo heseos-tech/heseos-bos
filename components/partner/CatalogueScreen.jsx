@@ -3,8 +3,7 @@
 // (app/api/products, the same data Admin's Products tab manages and the quotation builder
 // picks from), so a partner can show real photos, pricing and specs to a customer right from
 // their phone instead of describing a product from memory. Reached from the Dashboard's
-// "Browse Catalogue" card (not a bottom-nav tab — the nav is already full at five slots), same
-// pattern as Share & Earn (components/partner/ReferAndEarnScreen.jsx).
+// "Browse Catalogue" card (not a bottom-nav tab — the nav is already full at five slots).
 //
 // Only ACTIVE products come back for a partner (app/api/products/route.js filters them out
 // server-side) — a product an admin has paused isn't ready to be shown to a customer yet.

@@ -1,12 +1,14 @@
 'use client';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { Avatar } from './ui';
-import { IconUser, IconBank, IconHistory, IconHelp, IconFile, IconShield, IconLogout, IconChevronRight } from './icons';
+import { IconUser, IconBank, IconHistory, IconHelp, IconFile, IconShield, IconLogout, IconChevronRight, IconLink } from './icons';
 import InstallAppMenuItem from './InstallApp';
 
 const MENU = [
   { icon: IconUser, label: 'My Profile' },
+  { icon: IconLink, label: 'Referral Link', href: '/partner/refer' },
   { icon: IconBank, label: 'Bank Details' },
   { icon: IconHistory, label: 'Payout History' },
   { icon: IconShield, label: 'How It Works' },
@@ -43,11 +45,23 @@ export default function ProfileScreen({ partner }) {
         <InstallAppMenuItem appName="Partner App" />
         {MENU.map((m) => {
           const Icon = m.icon;
-          return (
-            <button key={m.label} className="hp-menu-item" onClick={() => { setToast(`${m.label} coming soon`); setTimeout(() => setToast(''), 2000); }}>
+          const inner = (
+            <>
               <span className="hp-menu-icon"><Icon size={17} /></span>
               <span className="hp-menu-label">{m.label}</span>
               <IconChevronRight size={16} style={{ color: 'var(--hp-text-faint)' }} />
+            </>
+          );
+          if (m.href) {
+            return (
+              <Link key={m.label} href={m.href} className="hp-menu-item">
+                {inner}
+              </Link>
+            );
+          }
+          return (
+            <button key={m.label} className="hp-menu-item" onClick={() => { setToast(`${m.label} coming soon`); setTimeout(() => setToast(''), 2000); }}>
+              {inner}
             </button>
           );
         })}

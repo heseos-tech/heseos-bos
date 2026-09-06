@@ -1,13 +1,16 @@
 'use client';
-// Partner self-service "Share & Earn" — auto-provisions this partner's own QR code + referral
-// link on first visit (see app/api/partner/attribution and lib/attribution.js's
-// getOrCreatePartnerLink) so there's nothing for an admin to set up. Any lead that comes in
-// through either of these already shows up on Home/Leads/Rewards — those all read /api/leads
-// scoped to this partner (app/api/leads/route.js), and a QR/referral lead gets partnerId set
-// exactly like a lead this partner punched themselves.
+// Partner self-service referral link — auto-provisions this partner's own referral link on
+// first visit (see app/api/partner/attribution and lib/attribution.js's getOrCreatePartnerLink)
+// so there's nothing for an admin to set up. Any lead that comes in through it already shows up
+// on Home/Leads/Rewards — those all read /api/leads scoped to this partner
+// (app/api/leads/route.js), and a referral lead gets partnerId set exactly like a lead this
+// partner punched themselves.
+//
+// QR-code self-service used to live here too, but partners now get a pre-printed QR code
+// assigned at onboarding instead of generating their own — see lib/attribution.js.
 import { useEffect, useState } from 'react';
 import { ScreenHeader } from './ui';
-import { IconCopy, IconShare, IconQrCode, IconLink, IconLeads, IconConversions } from './icons';
+import { IconCopy, IconShare, IconLink } from './icons';
 
 function LinkCard({ title, hint, icon, link, visitLabel, onToast }) {
   const Icon = icon;
@@ -34,18 +37,11 @@ function LinkCard({ title, hint, icon, link, visitLabel, onToast }) {
   }
 
   const f = link?.funnel || { visits: 0, leads: 0, converted: 0 };
-  const qrImg = link?.url ? `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(link.url)}` : null;
 
   return (
     <div className="hp-card">
       <div className="hp-card-title" style={{ display: 'flex', alignItems: 'center', gap: 8 }}><Icon size={17} /> {title}</div>
       <div style={{ fontSize: 12.5, color: 'var(--hp-text-soft)', lineHeight: 1.5, marginBottom: 12 }}>{hint}</div>
-
-      {icon === IconQrCode && qrImg && (
-        <div style={{ textAlign: 'center', marginBottom: 12 }}>
-          <img src={qrImg} alt="Your QR code" width={160} height={160} style={{ borderRadius: 10, background: '#fff', padding: 8 }} />
-        </div>
-      )}
 
       {link?.url ? (
         <>
@@ -82,24 +78,16 @@ export default function ReferAndEarnScreen() {
 
   return (
     <>
-      <ScreenHeader title="Share & Earn" backHref="/partner/home" />
+      <ScreenHeader title="Referral Link" backHref="/partner/home?tab=profile" />
 
       <div style={{ padding: '0 16px' }}>
         {!data?.baseUrl && data !== null && (
           <div className="hp-card" style={{ borderColor: 'var(--hp-warn, #B7791F)' }}>
             <div className="hp-card-title">Link sharing isn&rsquo;t fully set up yet</div>
-            <div style={{ fontSize: 12.5, color: 'var(--hp-text-soft)' }}>Ask Heseos to finish setting up the app&rsquo;s domain — your code has been created, but the shareable link can&rsquo;t be built yet.</div>
+            <div style={{ fontSize: 12.5, color: 'var(--hp-text-soft)' }}>Ask Heseos to finish setting up the app&rsquo;s domain — your link has been created, but the shareable URL can&rsquo;t be built yet.</div>
           </div>
         )}
 
-        <LinkCard
-          title="Your QR Code"
-          hint="Print this on your shop counter, standee or visiting card. Every scan opens WhatsApp with your code attached, so any lead from it is credited to you."
-          icon={IconQrCode}
-          link={data?.qr}
-          visitLabel="Scans"
-          onToast={flash}
-        />
         <LinkCard
           title="Your Referral Link"
           hint="Share this on WhatsApp status, stories or directly with a customer. Any lead from it shows up under your leads automatically."
