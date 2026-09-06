@@ -7,19 +7,18 @@ import { IconUser, IconBank, IconHistory, IconHelp, IconFile, IconShield, IconLo
 import InstallAppMenuItem from './InstallApp';
 
 const MENU = [
-  { icon: IconUser, label: 'My Profile' },
+  { icon: IconUser, label: 'My Profile', href: '/partner/my-profile' },
   { icon: IconQrCode, label: 'QR Code', href: '/partner/qr' },
   { icon: IconLink, label: 'Referral Link', href: '/partner/refer' },
-  { icon: IconBank, label: 'Bank Details' },
-  { icon: IconHistory, label: 'Payout History' },
-  { icon: IconShield, label: 'How It Works' },
-  { icon: IconHelp, label: 'Help & Support' },
-  { icon: IconFile, label: 'Terms & Conditions' },
+  { icon: IconBank, label: 'Bank Details', href: '/partner/bank-details' },
+  { icon: IconHistory, label: 'Payout History', href: '/partner/payouts' },
+  { icon: IconShield, label: 'How It Works', href: '/partner/how-it-works' },
+  { icon: IconHelp, label: 'Help & Support', href: '/partner/help' },
+  { icon: IconFile, label: 'Terms & Conditions', href: '/partner/terms' },
 ];
 
 export default function ProfileScreen({ partner }) {
   const router = useRouter();
-  const [toast, setToast] = useState('');
   const [loggingOut, setLoggingOut] = useState(false);
 
   async function logout() {
@@ -46,24 +45,12 @@ export default function ProfileScreen({ partner }) {
         <InstallAppMenuItem appName="Partner App" />
         {MENU.map((m) => {
           const Icon = m.icon;
-          const inner = (
-            <>
+          return (
+            <Link key={m.label} href={m.href} className="hp-menu-item">
               <span className="hp-menu-icon"><Icon size={17} /></span>
               <span className="hp-menu-label">{m.label}</span>
               <IconChevronRight size={16} style={{ color: 'var(--hp-text-faint)' }} />
-            </>
-          );
-          if (m.href) {
-            return (
-              <Link key={m.label} href={m.href} className="hp-menu-item">
-                {inner}
-              </Link>
-            );
-          }
-          return (
-            <button key={m.label} className="hp-menu-item" onClick={() => { setToast(`${m.label} coming soon`); setTimeout(() => setToast(''), 2000); }}>
-              {inner}
-            </button>
+            </Link>
           );
         })}
       </div>
@@ -75,7 +62,6 @@ export default function ProfileScreen({ partner }) {
         </button>
       </div>
 
-      {toast && <div className="hp-toast">{toast}</div>}
     </>
   );
 }

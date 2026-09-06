@@ -370,6 +370,11 @@ html:has(.hp-root), body:has(.hp-root) {
 .hp-payout-date { font-size: 13px; color: var(--hp-text-soft); }
 .hp-payout-amt { font-size: 14px; font-weight: 700; color: #fff; margin-left: auto; margin-right: 12px; }
 .hp-payout-status { font-size: 10.5px; font-weight: 700; padding: 4px 10px; border-radius: var(--hp-r-full); color: var(--hp-success); background: var(--hp-success-dim); }
+/* Real payout status (PayoutHistoryScreen) — paid keeps the original green, pending/processing
+   get their own colour so an unsettled entry never reads as if it's already been paid. */
+.hp-payout-status--paid { color: var(--hp-success); background: var(--hp-success-dim); }
+.hp-payout-status--processing { color: #4fd1ff; background: var(--hp-info-dim); }
+.hp-payout-status--pending { color: var(--hp-warn); background: var(--hp-warn-dim); }
 
 /* ── Payout tier ladder (Partner Rewards + Team Home incentive card) ───────── */
 .hp-tier-row { display: flex; align-items: center; justify-content: space-between; padding: 11px 12px; border-radius: 10px; margin-bottom: 6px; background: transparent; }
@@ -502,3 +507,11 @@ html:has(.hp-root), body:has(.hp-root) {
 .hp-cat-detail-photos { display: flex; gap: 8px; overflow-x: auto; padding: 4px 20px 16px; }
 .hp-cat-detail-photos img { width: 120px; height: 120px; object-fit: cover; border-radius: var(--hp-r); border: 1px solid var(--hp-border); flex-shrink: 0; }
 .hp-cat-detail-desc { font-size: 13.5px; color: var(--hp-text-soft); line-height: 1.6; padding: 0 20px 20px; }
+
+/* ── FAQ accordion (Help & Support) ─────────────────────────────────────── */
+.hp-faq-item { border-bottom: 1px solid var(--hp-border); }
+.hp-faq-item:last-child { border-bottom: none; }
+.hp-faq-q { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 12px; text-align: left; background: none; border: none; color: #fff; font-size: 13.5px; font-weight: 600; padding: 13px 0; cursor: pointer; }
+.hp-faq-chev { color: var(--hp-text-faint); flex-shrink: 0; transition: transform 0.15s ease; display: flex; }
+.hp-faq-chev.open { transform: rotate(180deg); }
+.hp-faq-a { font-size: 12.5px; color: var(--hp-text-soft); line-height: 1.6; padding: 0 0 14px; }
