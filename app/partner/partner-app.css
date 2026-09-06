@@ -282,13 +282,15 @@ html:has(.hp-root), body:has(.hp-root) {
    any residual safe-area gap is invisible instead of a two-tone seam — same root cause as the
    "uncovered sliver" above. The safe-area reservation itself is gone (no more
    env(safe-area-inset-bottom) here), and the whole bar is nudged past bottom:0 by its own
-   bottom-padding amount (bottom: -6px, matching the 6px padding below) so that padding sits
+   bottom-padding amount (bottom: -4px, matching the 4px padding below) so that padding sits
    below the visible edge of the screen instead of showing as a gap under the labels — the tap
-   targets themselves (icons + labels + the 6px padding above them) are unaffected, only the
-   slice of padding that was pure empty space gets tucked off-screen. */
+   targets themselves (icons + labels + the padding above them) are unaffected, only the slice
+   of padding that was pure empty space gets tucked off-screen. Padding and .hp-nav-item's own
+   vertical padding/gap below are both trimmed to their practical minimum (any tighter and the
+   labels start crowding the icons above them) for the shortest bar this layout can produce. */
 
-.hp-bottom-nav { position: fixed; left: 50%; bottom: -6px; transform: translateX(-50%); width: 100%; max-width: 480px; z-index: 40; flex-shrink: 0; display: flex; align-items: flex-end; justify-content: space-around; background: var(--hp-bg); border-top: 1px solid var(--hp-border); padding: 6px; }
-.hp-nav-item { display: flex; flex-direction: column; align-items: center; gap: 4px; background: none; border: none; color: var(--hp-text-faint); font-size: 10.5px; font-weight: 600; padding: 4px 8px; flex: 1; cursor: pointer; transition: transform 0.1s ease, opacity 0.1s ease; }
+.hp-bottom-nav { position: fixed; left: 50%; bottom: -4px; transform: translateX(-50%); width: 100%; max-width: 480px; z-index: 40; flex-shrink: 0; display: flex; align-items: flex-end; justify-content: space-around; background: var(--hp-bg); border-top: 1px solid var(--hp-border); padding: 4px; }
+.hp-nav-item { display: flex; flex-direction: column; align-items: center; gap: 3px; background: none; border: none; color: var(--hp-text-faint); font-size: 10.5px; font-weight: 600; padding: 2px 8px; flex: 1; cursor: pointer; transition: transform 0.1s ease, opacity 0.1s ease; }
 .hp-nav-item.active { color: var(--hp-orange); }
 .hp-nav-item:active { transform: scale(0.9); opacity: 0.6; }
 /* Leads/Demo and Rewards sit either side of the big center "Add Lead" circle — its 52px
