@@ -73,6 +73,7 @@ export default function GrowthPage() {
         <div><h1 className="adm-h1">QR Codes &amp; Referral Links</h1><p className="adm-page-sub">Partner QR codes, billboard/standee QR codes, and referral links — every scan and click, and every lead and conversion it drives</p></div>
         <div className="adm-page-head-actions">
           <button className="adm-btn-outline" onClick={() => setModal({ type: 'blank-qr' })}><IconDownload size={15} /> Pre-Print Partner QR Codes</button>
+          <button className="adm-btn-outline" onClick={() => setModal({ type: 'print-location-qr' })}><IconDownload size={15} /> Pre-Print Location QR Codes</button>
           <button className="adm-btn-primary" onClick={() => setModal({ type: 'create' })}><IconPlus size={15} /> Create Location QR</button>
         </div>
       </div>
@@ -144,6 +145,7 @@ export default function GrowthPage() {
       )}
       {modal?.type === 'view' && <LinkDetailModal link={modal.link} onClose={() => setModal(null)} onCopied={() => flash('Link copied')} />}
       {modal?.type === 'blank-qr' && <BlankQrModal onClose={() => setModal(null)} />}
+      {modal?.type === 'print-location-qr' && <PrintLocationQrModal links={links} onClose={() => setModal(null)} />}
     </>
   );
 }
@@ -359,6 +361,108 @@ function BlankQrModal({ onClose }) {
                   {(l.funnel?.visits || 0) > 0 && (
                     <div className="adm-qr-tile-scanned">Scanned {l.funnel.visits}× already — unclaimed</div>
                   )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </Modal>
+  );
+}
+
+// Pre-printed LOCATION QR codes — every qr_location link already created via "Create Location
+// QR" (billboards, standees, shop windows), laid out on one print sheet at a consistent
+// physical size. Unlike BlankQrModal above (which generates fresh blank/unclaimed codes),
+// nothing is created here — this only prints codes that already exist, each labelled with its
+// location name so a batch of stickers can be told apart once they're off the sheet.
+//
+// QR_SIZE_OPTIONS are physical inches (square tiles) and SHEET_SIZES are physical mm — both
+// render as real CSS `in`/`mm` units, so what you see on screen is a good approximation of what
+// prints, and the flex-wrap flow container just lets the browser's own print pagination add
+// further sheets once a page's worth of tiles is full — no manual per-page math needed.
+const QR_SIZE_OPTIONS_IN = [1, 1.5, 2, 2.5, 3, 4];
+const SHEET_SIZES_MM = {
+  a4: { label: 'A4 (210 × 297 mm)', w: 210, h: 297 },
+  a5: { label: 'A5 (148 × 210 mm)', w: 148, h: 210 },
+  letter: { label: 'Letter (8.5 × 11 in)', w: 215.9, h: 279.4 },
+  legal: { label: 'Legal (8.5 × 14 in)', w: 215.9, h: 355.6 },
+};
+const PRINT_MARGIN_MM = 10;
+const MM_PER_IN = 25.4;
+
+function PrintLocationQrModal({ links, onClose }) {
+  const [qrSizeIn, setQrSizeIn] = useState(2);
+  const [sheetKey, setSheetKey] = useState('a4');
+
+  const locations = useMemo(() => links.filter((l) => l.kind === 'qr_location'), [links]);
+  const sheet = SHEET_SIZES_MM[sheetKey];
+
+  // Rough "how many fit per sheet" hint — the browser's own print layout is the real source of
+  // truth (see the CSS comment above), this is just so the admin can sanity-check a size choice
+  // before printing 40 sheets by mistake.
+  const perSheet = useMemo(() => {
+    const printableWIn = (sheet.w - PRINT_MARGIN_MM * 2) / MM_PER_IN;
+    const printableHIn = (sheet.h - PRINT_MARGIN_MM * 2) / MM_PER_IN;
+    const cols = Math.max(1, Math.floor(printableWIn / qrSizeIn));
+    const rows = Math.max(1, Math.floor(printableHIn / qrSizeIn));
+    return cols * rows;
+  }, [sheet, qrSizeIn]);
+
+  return (
+    <Modal
+      title="Pre-Print Location QR Codes"
+      sub="Every location QR code you've created so far, printed at one consistent size with its location name underneath."
+      onClose={onClose}
+      wide
+    >
+      <div className="adm-qr-print-noprint">
+        <div className="lf-field-row">
+          <div className="lf-field">
+            <label className="lf-label">QR code size</label>
+            <select className="lf-input" value={qrSizeIn} onChange={(e) => setQrSizeIn(Number(e.target.value))}>
+              {QR_SIZE_OPTIONS_IN.map((s) => <option key={s} value={s}>{s}&quot; × {s}&quot;</option>)}
+            </select>
+          </div>
+          <div className="lf-field">
+            <label className="lf-label">Sheet size</label>
+            <select className="lf-input" value={sheetKey} onChange={(e) => setSheetKey(e.target.value)}>
+              {Object.entries(SHEET_SIZES_MM).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
+            </select>
+          </div>
+        </div>
+        <div className="lf-actions" style={{ marginBottom: 18 }}>
+          <button className="adm-btn-primary" onClick={() => window.print()} disabled={!locations.length}>Print This Sheet</button>
+        </div>
+        <div className="adm-meta-hint">
+          {locations.length === 0
+            ? 'No location QR codes yet — use "Create Location QR" first.'
+            : `${locations.length} location QR code${locations.length === 1 ? '' : 's'} · about ${perSheet} per ${sheet.label.split(' (')[0]} sheet at this size · ${Math.ceil(locations.length / perSheet)} sheet${Math.ceil(locations.length / perSheet) === 1 ? '' : 's'} total`}
+        </div>
+      </div>
+
+      {/* Sets the actual paper size/margins for the print job itself — independent of whatever
+          default the browser's print dialog would otherwise use. */}
+      <style>{`@page { size: ${sheet.w}mm ${sheet.h}mm; margin: ${PRINT_MARGIN_MM}mm; }`}</style>
+
+      <div className="adm-qr-print-sheet">
+        {locations.length === 0 ? (
+          <div className="adm-empty">No location QR codes yet.</div>
+        ) : (
+          <div className="adm-qr-print-flow">
+            {locations.map((l) => {
+              const shareUrl = l.url || `${typeof window !== 'undefined' ? window.location.origin : ''}/go/${l.id}`;
+              // Request enough source pixels for a crisp print at ~300dpi at the chosen size,
+              // capped at the QR API's max — CSS then scales the image down to the exact
+              // physical tile size, never up.
+              const px = Math.min(1000, Math.round(qrSizeIn * 300));
+              const qrImg = `https://api.qrserver.com/v1/create-qr-code/?size=${px}x${px}&data=${encodeURIComponent(shareUrl)}`;
+              const area = [l.locality, l.city].filter(Boolean).join(', ');
+              return (
+                <div className="adm-qr-print-tile" style={{ width: `${qrSizeIn}in` }} key={l.id}>
+                  <img src={qrImg} alt={l.label || l.id} />
+                  <div className="adm-qr-print-tile-name">{l.label || l.id}</div>
+                  {area && <div className="adm-qr-print-tile-area">{area}</div>}
                 </div>
               );
             })}

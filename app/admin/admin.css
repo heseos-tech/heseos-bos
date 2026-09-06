@@ -420,6 +420,25 @@ button.adm-nav-link { background: none; border: none; cursor: pointer; text-alig
 }
 
 /* ─────────────────────────────────────────
+   PRE-PRINTED LOCATION QR CODES — one sheet of every location QR code created via
+   "Create Location QR", laid out at a chosen physical size (in inches) on a chosen paper
+   size (A4/A5/Letter/Legal). Unlike .adm-qr-grid above (a screen-only auto-fill grid), each
+   tile here is sized in real inches so what prints is the size the admin actually picked —
+   the flex-wrap container just lets the browser's own print pagination add pages as needed.
+   (Growth tab -> "Pre-Print Location QR Codes")
+───────────────────────────────────────── */
+.adm-qr-print-flow { display: flex; flex-wrap: wrap; gap: 6mm; align-content: flex-start; }
+.adm-qr-print-tile { display: flex; flex-direction: column; align-items: center; text-align: center; box-sizing: border-box; padding: 3mm 2mm; }
+.adm-qr-print-tile img { display: block; width: 100%; height: auto; }
+.adm-qr-print-tile-name { margin-top: 2mm; font-size: 12px; font-weight: 700; color: var(--adm-ink); line-height: 1.25; word-break: break-word; }
+.adm-qr-print-tile-area { margin-top: 1mm; font-size: 10px; color: var(--adm-text-faint); line-height: 1.25; word-break: break-word; }
+
+@media print {
+  .adm-qr-print-flow { max-height: none; overflow: visible; }
+  .adm-qr-print-tile { break-inside: avoid; page-break-inside: avoid; }
+}
+
+/* ─────────────────────────────────────────
    LOCATION QR — MULTI-ROW CREATE FORM
    (Growth tab -> "Create Location QR")
 ───────────────────────────────────────── */
