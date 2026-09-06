@@ -1,5 +1,5 @@
 import { dbGetById, dbPatch } from '@/lib/db';
-import { getEmployee, EMPLOYEE_ROLES } from '@/lib/auth';
+import { getEmployee, EMPLOYEE_ROLES, invalidateAccountCache } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,6 +20,7 @@ export async function PATCH(request, { params }) {
   }
 
   const updated = await dbPatch('employees', id, patch);
+  invalidateAccountCache('employees', id);
   const { password, ...safe } = updated;
   return Response.json(safe);
 }

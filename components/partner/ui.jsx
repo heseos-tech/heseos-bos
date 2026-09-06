@@ -170,6 +170,59 @@ export function useDashboardTab() {
   return ctx;
 }
 
+// ── Client-side session gate (replaces the old server-side redirect-on-no-session gate) ────
+// Partner/Team used to guard every route with an `await getPartner()`/`getEmployee()` in a
+// force-dynamic layout — meaning the server could not send a single byte of HTML until a DB
+// round trip finished, on every cold app open. That's the MARG Mitra app's whole trick in
+// reverse: Mitra's layout does no server auth check at all, ships its shell instantly, and
+// checks who's signed in with a plain client-side fetch after the page has already painted.
+// This is the same idea here: AppShell/TeamAppShell mount immediately (no server gate), then
+// call this hook once to check the session and redirect if it's missing — while the branded
+// SplashScreen (already ~2s) plays over the top, so on a normal connection the check finishes
+// before the splash even fades and nothing is felt to be "waiting" at all.
+export const SessionContext = createContext(null);
+
+export function useSessionGate({ authEndpoint, userKey, loginHref, resolveRedirect }) {
+  const router = useRouter();
+  const [state, setState] = useState({ status: 'checking', user: null });
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch(authEndpoint, { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : { authenticated: false }))
+      .then((data) => {
+        if (cancelled) return;
+        if (!data || !data.authenticated) {
+          router.replace(loginHref);
+          return;
+        }
+        const user = data[userKey];
+        const redirectTo = resolveRedirect ? resolveRedirect(user) : null;
+        if (redirectTo) {
+          router.replace(redirectTo);
+          return;
+        }
+        setState({ status: 'authenticated', user });
+      })
+      .catch(() => {
+        if (!cancelled) router.replace(loginHref);
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authEndpoint, userKey, loginHref]);
+
+  return state;
+}
+
+// Partner app only ever puts a partner in SessionContext — see AppShell below.
+export function usePartnerSession() {
+  const ctx = useContext(SessionContext);
+  if (!ctx) throw new Error('usePartnerSession must be used inside AppShell');
+  return ctx.user;
+}
+
 // Shared by AppShell (Partner), TeamAppShell (components/team/ui.jsx) and AdminShell
 // (components/admin/ui.jsx) — homePath and defaultTab are the only differences between the
 // three: Partner/Team's un-tabbed URL means "home", Admin's means "dashboard".
@@ -256,13 +309,25 @@ export function BottomNav() {
 
 export function AppShell({ children }) {
   const tabState = useDashboardTabState('/partner/home');
+  const session = useSessionGate({
+    authEndpoint: '/api/auth/partner',
+    userKey: 'partner',
+    loginHref: '/partner/login',
+  });
+  const ready = session.status === 'authenticated';
   return (
     <DashboardTabContext.Provider value={tabState}>
-      <div className="hp-shell">
-        <SplashScreen />
-        <div className="hp-shell-scroll">{children}</div>
-        <BottomNav />
-      </div>
+      <SessionContext.Provider value={session}>
+        <div className="hp-shell">
+          <SplashScreen />
+          {ready ? (
+            <div className="hp-shell-scroll">{children}</div>
+          ) : (
+            <div className="hp-shell-scroll"><div className="hp-empty"><div className="hp-empty-sub">Loading…</div></div></div>
+          )}
+          <BottomNav />
+        </div>
+      </SessionContext.Provider>
     </DashboardTabContext.Provider>
   );
 }

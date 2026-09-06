@@ -1,23 +1,19 @@
 import { Suspense } from 'react';
-import { redirect } from 'next/navigation';
-import { getEmployee } from '@/lib/auth';
 import { TeamAppShell } from '@/components/team/ui';
 
-// Same auth guard shape as app/partner/(app)/layout.jsx, but for employees. Admins get sent
-// to /admin (matches "if employee login is admin then directly land admin to admin pannel");
-// anyone who isn't presales/sales_engineer/admin has no business here.
-export default async function TeamAppLayout({ children }) {
-  const employee = await getEmployee();
-  if (!employee) redirect('/team/login');
-  if (employee.role === 'admin') redirect('/admin');
-  if (employee.role !== 'presales' && employee.role !== 'sales_engineer') redirect('/team/login');
-
-  // TeamAppShell's bottom nav reads ?tab= (useSearchParams) to highlight the active tab,
-  // which Next.js requires to sit inside a Suspense boundary.
+// No server-side auth guard here any more (that used to be `await getEmployee()` + role checks
+// + redirect, which made this a force-dynamic route and blocked every navigation on a DB round
+// trip). TeamAppShell now checks the session client-side — including the admin/presales/
+// sales_engineer role routing — and redirects itself if needed. See
+// components/team/ui.jsx's TeamAppShell + components/partner/ui.jsx's useSessionGate.
+//
+// TeamAppShell's bottom nav reads ?tab= (useSearchParams) to highlight the active tab, which
+// Next.js requires to sit inside a Suspense boundary.
+export default function TeamAppLayout({ children }) {
   return (
     <div className="hp-root">
       <Suspense fallback={null}>
-        <TeamAppShell role={employee.role}>{children}</TeamAppShell>
+        <TeamAppShell>{children}</TeamAppShell>
       </Suspense>
     </div>
   );

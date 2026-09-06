@@ -11,7 +11,7 @@
 // is no payment gateway anywhere in this app, so these fields are never used to move money,
 // only so an admin has somewhere to look them up).
 import { dbPatch } from '@/lib/db';
-import { getPartner } from '@/lib/auth';
+import { getPartner, invalidateAccountCache } from '@/lib/auth';
 import { PARTNER_CATEGORY } from '@/lib/formOptions';
 
 export const dynamic = 'force-dynamic';
@@ -98,5 +98,6 @@ export async function PATCH(request) {
 
   const updated = await dbPatch('partners', partner.id, patch);
   if (!updated) return Response.json({ error: 'Not found' }, { status: 404 });
+  invalidateAccountCache('partners', partner.id);
   return Response.json(publicPartner(updated));
 }

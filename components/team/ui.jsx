@@ -2,10 +2,10 @@
 // Team-app-only chrome: bottom nav + shell. Everything else (buttons, fields, badges, avatar,
 // screen header, section head) is generic and shared straight from the Partner app's
 // components/partner/ui.jsx — no need to fork it.
-import { useRef } from 'react';
+import { useRef, useContext } from 'react';
 import Link from 'next/link';
 import { IconHome, IconLeads, IconUser, IconPlus, IconGift } from '@/components/partner/icons';
-import { useNavHeightVar, useDashboardTab, useDashboardTabState, DashboardTabContext } from '@/components/partner/ui';
+import { useNavHeightVar, useDashboardTab, useDashboardTabState, DashboardTabContext, SessionContext, useSessionGate } from '@/components/partner/ui';
 import SplashScreen from '@/components/partner/SplashScreen';
 
 // Home/Leads/Profile all point at the SAME route (/team/home) with a different ?tab= — see
@@ -14,6 +14,14 @@ import SplashScreen from '@/components/partner/SplashScreen';
 // same pattern as the Partner app's own NAV_ITEMS/BottomNav (components/partner/ui.jsx), which
 // this is intentionally kept in sync with. Sales engineers treat every lead as a demo they run,
 // so their nav says "Demo" instead of "Leads" — presales keeps "Leads" unchanged.
+// Team app puts an employee (not a partner) in the shared SessionContext — see
+// components/partner/ui.jsx's SessionContext/useSessionGate for the mechanism itself.
+export function useEmployeeSession() {
+  const ctx = useContext(SessionContext);
+  if (!ctx) throw new Error('useEmployeeSession must be used inside TeamAppShell');
+  return ctx.user;
+}
+
 function navItemsFor(role) {
   const isSE = role === 'sales_engineer';
   return [
@@ -34,7 +42,8 @@ function navItemsFor(role) {
 // (its layout reads cookies() to authenticate), so a real Next.js navigation on every tab tap
 // re-ran that auth check from scratch before the tab could even switch. Home/Leads/Rewards/
 // Profile now flip client-side with zero network calls instead.
-export function TeamBottomNav({ role }) {
+export function TeamBottomNav() {
+  const { role } = useEmployeeSession() || {};
   const { tab, setTab, isHome, homePath } = useDashboardTab();
   const activeTab = isHome ? tab : null;
   const navRef = useRef(null);
@@ -80,15 +89,32 @@ export function TeamBottomNav({ role }) {
   );
 }
 
-export function TeamAppShell({ children, role }) {
+export function TeamAppShell({ children }) {
   const tabState = useDashboardTabState('/team/home');
+  const session = useSessionGate({
+    authEndpoint: '/api/auth/employee',
+    userKey: 'employee',
+    loginHref: '/team/login',
+    resolveRedirect: (employee) => {
+      if (employee.role === 'admin') return '/admin';
+      if (employee.role !== 'presales' && employee.role !== 'sales_engineer') return '/team/login';
+      return null;
+    },
+  });
+  const ready = session.status === 'authenticated';
   return (
     <DashboardTabContext.Provider value={tabState}>
-      <div className="hp-shell">
-        <SplashScreen />
-        <div className="hp-shell-scroll">{children}</div>
-        <TeamBottomNav role={role} />
-      </div>
+      <SessionContext.Provider value={session}>
+        <div className="hp-shell">
+          <SplashScreen />
+          {ready ? (
+            <div className="hp-shell-scroll">{children}</div>
+          ) : (
+            <div className="hp-shell-scroll"><div className="hp-empty"><div className="hp-empty-sub">Loading…</div></div></div>
+          )}
+          <TeamBottomNav />
+        </div>
+      </SessionContext.Provider>
     </DashboardTabContext.Provider>
   );
 }

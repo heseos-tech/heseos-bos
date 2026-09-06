@@ -1,7 +1,15 @@
 import { NextResponse } from 'next/server';
 import { dbList } from '@/lib/db';
-import { verifyPassword, encodeEmployeeSession, EMPLOYEE_COOKIE } from '@/lib/auth';
+import { verifyPassword, encodeEmployeeSession, getEmployee, EMPLOYEE_COOKIE } from '@/lib/auth';
 import { cookies } from 'next/headers';
+
+// "Who am I" check — see app/api/auth/partner/route.js's GET for why this exists.
+export async function GET() {
+  const employee = await getEmployee();
+  if (!employee) return NextResponse.json({ authenticated: false }, { status: 401 });
+  const { password, ...safe } = employee;
+  return NextResponse.json({ authenticated: true, employee: safe });
+}
 
 export async function POST(request) {
   const { email, password } = await request.json();

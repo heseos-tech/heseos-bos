@@ -1,7 +1,17 @@
 import { NextResponse } from 'next/server';
 import { dbList } from '@/lib/db';
-import { verifyPassword, encodePartnerSession, PARTNER_COOKIE } from '@/lib/auth';
+import { verifyPassword, encodePartnerSession, getPartner, PARTNER_COOKIE } from '@/lib/auth';
 import { cookies } from 'next/headers';
+
+// "Who am I" check — the client-side session gate (see components/partner/ui.jsx's
+// useSessionGate) calls this on every cold app open/page load instead of blocking the page's
+// own server render on a DB round trip. Never hand the password hash to the client.
+export async function GET() {
+  const partner = await getPartner();
+  if (!partner) return NextResponse.json({ authenticated: false }, { status: 401 });
+  const { password, ...safe } = partner;
+  return NextResponse.json({ authenticated: true, partner: safe });
+}
 
 export async function POST(request) {
   const { phone, password } = await request.json();

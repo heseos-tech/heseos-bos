@@ -1,11 +1,44 @@
-import { redirect } from 'next/navigation';
+'use client';
+// The bare /partner hero/onboarding screen — also the exact URL Capacitor's server.url loads
+// on every cold app open (see capacitor.config.ts). It used to be a server component that did
+// `await getPartner()` before rendering ANYTHING, so a returning (already-logged-in) partner's
+// cold launch paid for: this page's DB round trip, a server redirect to /partner/home, then
+// THAT page's own DB round trip — two sequential auth checks before any HTML shipped, on top
+// of whatever Vercel cold-start cost. Ported from the MARG Mitra app's pattern instead: render
+// nothing (a lightweight check) first, THEN decide — no server-side gate blocking the shell.
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { getPartner } from '@/lib/auth';
 import { InstallAppButton } from '@/components/partner/InstallApp';
 
-export default async function PartnerOnboardingPage() {
-  const partner = await getPartner();
-  if (partner) redirect('/partner/home');
+export default function PartnerOnboardingPage() {
+  const router = useRouter();
+  const [checking, setChecking] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/auth/partner', { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : { authenticated: false }))
+      .then((data) => {
+        if (cancelled) return;
+        if (data && data.authenticated) {
+          router.replace('/partner/home');
+          return;
+        }
+        setChecking(false);
+      })
+      .catch(() => {
+        if (!cancelled) setChecking(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [router]);
+
+  // Nothing to show yet while we check — a signed-in partner never sees this hero flash by
+  // before being sent on to /partner/home; a guest sees it appear the moment the (fast, local)
+  // check comes back negative.
+  if (checking) return <div className="hp-root" />;
 
   return (
     <div className="hp-root">

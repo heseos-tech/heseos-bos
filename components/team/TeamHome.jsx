@@ -8,6 +8,7 @@
 // separate route — it isn't a dashboard tab.
 import { useEffect, useState } from "react";
 import { useDashboardTab } from "@/components/partner/ui";
+import { useEmployeeSession } from "@/components/team/ui";
 import TeamHomeScreen from "./HomeScreen";
 import TeamLeadsScreen from "./LeadsScreen";
 import TeamProfileScreen from "./ProfileScreen";
@@ -24,7 +25,8 @@ function renderTab(tab, employee) {
   }
 }
 
-export default function TeamHome({ employee }) {
+export default function TeamHome() {
+  const employee = useEmployeeSession();
   const { tab: rawTab } = useDashboardTab();
   const active = KNOWN_TABS.has(rawTab) ? rawTab : "home";
 
