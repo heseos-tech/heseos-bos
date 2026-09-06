@@ -22,6 +22,16 @@ export function useEmployeeSession() {
   return ctx.user;
 }
 
+// Small per-item visual nudge so the icons either side of the center "Add Lead" circle
+// don't read as crowded against it — mirrors the Partner app's own navItemShiftClass
+// (components/partner/ui.jsx) and the .hp-nav-item--shift-left/-right rules in
+// partner-app.css, which both apps share.
+function navItemShiftClass(item) {
+  if (item.tab === 'leads') return ' hp-nav-item--shift-left';
+  if (item.tab === 'rewards') return ' hp-nav-item--shift-right';
+  return '';
+}
+
 function navItemsFor(role) {
   const isSE = role === 'sales_engineer';
   return [
@@ -67,7 +77,7 @@ export function TeamBottomNav() {
             <button
               key={item.tab}
               type="button"
-              className={`hp-nav-item${active ? ' active' : ''}`}
+              className={`hp-nav-item${active ? ' active' : ''}${navItemShiftClass(item)}`}
               onClick={() => {
                 setTab(item.tab);
                 window.history.replaceState(null, '', item.tab === 'home' ? homePath : `${homePath}?tab=${item.tab}`);
@@ -79,7 +89,7 @@ export function TeamBottomNav() {
           );
         }
         return (
-          <Link key={item.tab} href={item.href} className={`hp-nav-item${active ? ' active' : ''}`}>
+          <Link key={item.tab} href={item.href} className={`hp-nav-item${active ? ' active' : ''}${navItemShiftClass(item)}`}>
             <Icon size={21} />
             <span>{item.label}</span>
           </Link>

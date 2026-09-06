@@ -291,6 +291,18 @@ html:has(.hp-root), body:has(.hp-root) {
 .hp-nav-item { display: flex; flex-direction: column; align-items: center; gap: 4px; background: none; border: none; color: var(--hp-text-faint); font-size: 10.5px; font-weight: 600; padding: 4px 8px; flex: 1; cursor: pointer; transition: transform 0.1s ease, opacity 0.1s ease; }
 .hp-nav-item.active { color: var(--hp-orange); }
 .hp-nav-item:active { transform: scale(0.9); opacity: 0.6; }
+/* Leads/Demo and Rewards sit either side of the big center "Add Lead" circle — its 52px
+   diameter visually crowds the item next to it more than the plain Home/Profile items at the
+   ends, so the horizontal gaps around it read as uneven even though all 5 columns are equal
+   width. A small nudge on just those two icons (toward the center column for Leads/Demo, away
+   from it for Rewards) balances the gaps by eye. Uses transform (not margin) so it's a pure
+   visual offset — it doesn't touch the flex layout or shift any neighboring item — and is
+   expressed as a CSS variable so it composes with the :active scale transform above instead of
+   overwriting it. */
+.hp-nav-item { transform: translateX(var(--hp-nav-item-shift, 0)); }
+.hp-nav-item:active { transform: translateX(var(--hp-nav-item-shift, 0)) scale(0.9); }
+.hp-nav-item--shift-left { --hp-nav-item-shift: -7px; }
+.hp-nav-item--shift-right { --hp-nav-item-shift: 7px; }
 /* The floating "Add Lead" circle used to be a plain flex item pulled up with a negative
    margin-top — negative margins inside a flex container's cross-axis sizing are a known spot
    where browsers disagree (some correctly shrink the item's contribution to the row's
@@ -515,6 +527,15 @@ html:has(.hp-root), body:has(.hp-root) {
 /* ── Catalogue (Partner Browse Catalogue / Team App) ───────────────────── */
 .hp-cat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 0 20px 20px; }
 .hp-cat-card { background: var(--hp-surface); border: 1px solid var(--hp-border); border-radius: var(--hp-r-lg); overflow: hidden; text-align: left; cursor: pointer; }
+/* Catalogue pagination — Prev/Next + "Page X of Y", same surface/border/orange language as the
+   rest of the Partner app. Server-side pagination (app/api/products) caps each page at 10
+   products so a partner's first catalogue load fetches a small slice instead of every product
+   (photos included) in one go — see CatalogueScreen.jsx. */
+.hp-cat-pagination { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 4px 20px 24px; }
+.hp-cat-page-btn { display: flex; align-items: center; justify-content: center; gap: 6px; background: var(--hp-surface); border: 1px solid var(--hp-border); color: #fff; font-size: 13px; font-weight: 700; border-radius: var(--hp-r); padding: 10px 16px; cursor: pointer; transition: opacity 0.15s, transform 0.1s ease; }
+.hp-cat-page-btn:disabled { opacity: 0.35; cursor: default; }
+.hp-cat-page-btn:active:not(:disabled) { transform: scale(0.96); }
+.hp-cat-page-info { font-size: 12.5px; font-weight: 600; color: var(--hp-text-faint); white-space: nowrap; }
 .hp-cat-photo { aspect-ratio: 1 / 1; background: var(--hp-surface-2); display: flex; align-items: center; justify-content: center; color: var(--hp-text-faint); }
 .hp-cat-photo img { width: 100%; height: 100%; object-fit: cover; }
 .hp-cat-body { padding: 10px 12px 12px; }

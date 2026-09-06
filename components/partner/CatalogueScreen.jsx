@@ -7,36 +7,62 @@
 //
 // Only ACTIVE products come back for a partner (app/api/products/route.js filters them out
 // server-side) — a product an admin has paused isn't ready to be shown to a customer yet.
-import { useMemo, useState } from 'react';
+//
+// Paginated server-side (10 products/page) instead of fetching the whole catalogue at once —
+// products carry base64 photos on the record, so the full list is a genuinely heavy payload,
+// and most of it was wasted since only ~4 cards fit on screen at a time anyway. Search and
+// category are sent to the API too (see app/api/products/route.js's `page`/`q`/`category`
+// params) so filtering narrows down what's fetched, not just what's shown.
+import { useEffect, useMemo, useState } from 'react';
 import { ScreenHeader } from './ui';
 import { IconSearch, IconProducts, IconWhatsApp, IconX } from '@/components/admin/icons';
 import { PRODUCT_CATEGORY, PRODUCT_CATEGORY_LABEL } from '@/lib/formOptions';
 import { useApiResource } from '@/lib/useApiResource';
 import Portal from '@/components/shared/Portal';
 
+const PAGE_SIZE = 10;
+const SEARCH_DEBOUNCE_MS = 350;
+
 function currency(n) {
   return `₹${Number(n || 0).toLocaleString('en-IN')}`;
 }
 
 export default function CatalogueScreen({ backHref = '/partner/home' }) {
-  const { data: products, loading } = useApiResource('/api/products');
   const [q, setQ] = useState('');
+  const [dq, setDq] = useState('');
   const [category, setCategory] = useState('all');
+  const [page, setPage] = useState(1);
   const [viewing, setViewing] = useState(null);
 
-  const categoriesUsed = useMemo(() => {
-    const used = new Set(products.map((p) => p.category).filter(Boolean));
-    return PRODUCT_CATEGORY.filter((c) => used.has(c.v));
-  }, [products]);
+  // Debounce typed search so every keystroke doesn't fire its own request — only settles into
+  // a fetch once typing pauses.
+  useEffect(() => {
+    const t = setTimeout(() => setDq(q), SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(t);
+  }, [q]);
 
-  const filtered = useMemo(() => products.filter((p) => {
-    if (category !== 'all' && p.category !== category) return false;
-    if (q.trim()) {
-      const s = q.trim().toLowerCase();
-      if (!(`${p.name} ${p.sku}`.toLowerCase().includes(s))) return false;
-    }
-    return true;
-  }), [products, category, q]);
+  // Any change to what's being asked for (not just which page) needs to restart at page 1 —
+  // otherwise a narrower search/category could leave `page` pointing past the new last page.
+  useEffect(() => { setPage(1); }, [dq, category]);
+
+  const url = useMemo(() => {
+    const params = new URLSearchParams({ page: String(page), pageSize: String(PAGE_SIZE) });
+    if (category !== 'all') params.set('category', category);
+    if (dq.trim()) params.set('q', dq.trim());
+    return `/api/products?${params.toString()}`;
+  }, [page, category, dq]);
+
+  const { data, loading } = useApiResource(url);
+  // useApiResource defaults `data` to `[]` while loading (or on a fetch error) — the paginated
+  // shape below only exists once a real response has arrived, so guard for the array case.
+  const result = Array.isArray(data) ? null : data;
+  const products = result?.products || [];
+  const total = result?.total || 0;
+  const totalPages = result?.totalPages || 1;
+  const categoriesUsed = useMemo(
+    () => PRODUCT_CATEGORY.filter((c) => (result?.categories || []).includes(c.v)),
+    [result],
+  );
 
   return (
     <>
@@ -58,30 +84,40 @@ export default function CatalogueScreen({ backHref = '/partner/home' }) {
         </div>
       )}
 
-      {loading ? (
+      {loading && !result ? (
         <div className="hp-empty"><div className="hp-empty-sub">Loading…</div></div>
-      ) : filtered.length === 0 ? (
+      ) : products.length === 0 ? (
         <div className="hp-empty">
           <div className="hp-empty-icon"><IconProducts size={24} /></div>
-          <div className="hp-empty-title">{products.length === 0 ? 'No products yet' : 'No products match'}</div>
-          <div className="hp-empty-sub">{products.length === 0 ? 'Check back once the Heseos team adds products to the catalogue.' : 'Try a different search or category.'}</div>
+          <div className="hp-empty-title">{total === 0 ? 'No products yet' : 'No products match'}</div>
+          <div className="hp-empty-sub">{total === 0 ? 'Check back once the Heseos team adds products to the catalogue.' : 'Try a different search or category.'}</div>
         </div>
       ) : (
-        <div className="hp-cat-grid">
-          {filtered.map((p) => {
-            const cover = p.photos?.[0]?.dataUrl;
-            return (
-              <button type="button" key={p.id} className="hp-cat-card" onClick={() => setViewing(p)}>
-                <div className="hp-cat-photo">{cover ? <img src={cover} alt={p.name} /> : <IconProducts size={26} />}</div>
-                <div className="hp-cat-body">
-                  <div className="hp-cat-name">{p.name}</div>
-                  <div className="hp-cat-meta">{p.category ? PRODUCT_CATEGORY_LABEL[p.category] || p.category : p.sku}</div>
-                  <div className="hp-cat-price">{p.price != null ? currency(p.price) : 'Price on request'}</div>
-                </div>
-              </button>
-            );
-          })}
-        </div>
+        <>
+          <div className="hp-cat-grid">
+            {products.map((p) => {
+              const cover = p.photos?.[0]?.dataUrl;
+              return (
+                <button type="button" key={p.id} className="hp-cat-card" onClick={() => setViewing(p)}>
+                  <div className="hp-cat-photo">{cover ? <img src={cover} alt={p.name} /> : <IconProducts size={26} />}</div>
+                  <div className="hp-cat-body">
+                    <div className="hp-cat-name">{p.name}</div>
+                    <div className="hp-cat-meta">{p.category ? PRODUCT_CATEGORY_LABEL[p.category] || p.category : p.sku}</div>
+                    <div className="hp-cat-price">{p.price != null ? currency(p.price) : 'Price on request'}</div>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+
+          {totalPages > 1 && (
+            <div className="hp-cat-pagination">
+              <button type="button" className="hp-cat-page-btn" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>Prev</button>
+              <span className="hp-cat-page-info">Page {page} of {totalPages}</span>
+              <button type="button" className="hp-cat-page-btn" disabled={page >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>Next</button>
+            </div>
+          )}
+        </>
       )}
 
       {viewing && <ProductDetailSheet product={viewing} onClose={() => setViewing(null)} />}

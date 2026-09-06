@@ -616,6 +616,14 @@ footer { background: #011F2E; padding: 64px 0 28px; color: rgba(255, 255, 255, 0
 .qb-product-name { font-size: 13px; font-weight: 700; color: #0b1b2e; }
 .qb-product-meta { font-size: 11px; color: #8a97a6; }
 .qb-add-btn { flex-shrink: 0; background: #ff7a00; color: #fff; border: none; border-radius: 999px; width: 28px; height: 28px; font-size: 16px; font-weight: 700; cursor: pointer; line-height: 1; }
+/* Product picker pagination (QuotationBuilder) — 6 products per page instead of one long
+   scrolling list, with the existing search box still narrowing things down first. Sits below
+   .qb-product-list (not inside it), so it never scrolls away with the list itself. */
+.qb-product-pagination { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 10px; }
+.qb-page-btn { background: #fff; color: #0b1b2e; border: 1px solid #e8eaee; border-radius: 8px; padding: 6px 12px; font-size: 12px; font-weight: 700; cursor: pointer; }
+.qb-page-btn:hover:not(:disabled) { border-color: #cfd5dc; }
+.qb-page-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.qb-page-info { font-size: 11.5px; color: #8a97a6; font-weight: 600; }
 .qb-add-btn:hover { opacity: 0.88; }
 
 .qb-line { display: grid; grid-template-columns: 1fr 50px 82px 70px 22px; gap: 8px; align-items: center; padding: 9px 0; border-bottom: 1px solid #e8eaee; }

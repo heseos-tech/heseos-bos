@@ -17,10 +17,12 @@
 // 'quotation' PATCH type in app/api/leads/[id]/route.js) computes the authoritative
 // subtotal/discount/total, never trusting a client-sent number. What's shown here while
 // building is a live preview of that same math, so the number never surprises anyone at submit.
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Portal from './Portal';
 import { useApiResource } from '@/lib/useApiResource';
 import { IconSearch, IconX, IconProducts, IconDownload, IconWhatsApp } from '@/components/admin/icons';
+
+const PRODUCTS_PAGE_SIZE = 6;
 
 export function currency(n) {
   return `₹${Number(n || 0).toLocaleString('en-IN')}`;
@@ -64,6 +66,18 @@ export default function QuotationBuilderModal({ lead, onClose, onDone }) {
     const s = pq.trim().toLowerCase();
     return activeProducts.filter((p) => `${p.name} ${p.sku}`.toLowerCase().includes(s));
   }, [activeProducts, pq]);
+
+  // Search keeps working exactly as before; this just paginates whatever it narrows down to —
+  // 6 products a page instead of one long scroll — so a search that changes the result set
+  // always lands back on page 1 rather than leaving `productsPage` pointing past the new end.
+  const [productsPage, setProductsPage] = useState(1);
+  const productsTotalPages = Math.max(1, Math.ceil(filteredProducts.length / PRODUCTS_PAGE_SIZE));
+  const clampedProductsPage = Math.min(productsPage, productsTotalPages);
+  const pagedProducts = useMemo(
+    () => filteredProducts.slice((clampedProductsPage - 1) * PRODUCTS_PAGE_SIZE, clampedProductsPage * PRODUCTS_PAGE_SIZE),
+    [filteredProducts, clampedProductsPage],
+  );
+  useEffect(() => { setProductsPage(1); }, [pq]);
 
   const totals = useMemo(() => computeQuoteTotals(lines, extraDiscount), [lines, extraDiscount]);
 
@@ -150,7 +164,7 @@ export default function QuotationBuilderModal({ lead, onClose, onDone }) {
                   <div className="qb-empty">Loading catalogue…</div>
                 ) : filteredProducts.length === 0 ? (
                   <div className="qb-empty">{activeProducts.length === 0 ? 'No products in the catalogue yet — add some in Admin → Products.' : 'No products match.'}</div>
-                ) : filteredProducts.map((p) => (
+                ) : pagedProducts.map((p) => (
                   <div className="qb-product-row" key={p.id}>
                     {p.photos?.[0]?.dataUrl
                       ? <img className="qb-product-thumb" src={p.photos[0].dataUrl} alt={p.name} />
@@ -163,6 +177,13 @@ export default function QuotationBuilderModal({ lead, onClose, onDone }) {
                   </div>
                 ))}
               </div>
+              {productsTotalPages > 1 && (
+                <div className="qb-product-pagination">
+                  <button type="button" className="qb-page-btn" disabled={clampedProductsPage <= 1} onClick={() => setProductsPage((p) => Math.max(1, p - 1))}>Prev</button>
+                  <span className="qb-page-info">Page {clampedProductsPage} of {productsTotalPages}</span>
+                  <button type="button" className="qb-page-btn" disabled={clampedProductsPage >= productsTotalPages} onClick={() => setProductsPage((p) => Math.min(productsTotalPages, p + 1))}>Next</button>
+                </div>
+              )}
             </div>
 
             <div>

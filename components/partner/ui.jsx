@@ -251,6 +251,16 @@ export function useDashboardTabState(homePath, defaultTab = 'home') {
 // Fixed-positioned (not a flex sibling of the scroll area) so it's pinned to the literal
 // bottom of the viewport like a native tab bar, regardless of any flex/height-rounding quirk
 // in .hp-shell — see partner-app.css for the .hp-bottom-nav position:fixed rule.
+// Small per-item visual nudge so the icons either side of the center "Add Lead" circle
+// don't read as crowded against it — see the .hp-nav-item--shift-left/-right rules in
+// partner-app.css for why (shared with Team's TeamBottomNav, which has its own copy of
+// this same helper since its item list is built separately by navItemsFor).
+function navItemShiftClass(item) {
+  if (item.tab === 'leads') return ' hp-nav-item--shift-left';
+  if (item.tab === 'rewards') return ' hp-nav-item--shift-right';
+  return '';
+}
+
 const NAV_ITEMS = [
   { tab: 'home', href: '/partner/home', label: 'Home', icon: IconHome },
   { tab: 'leads', href: '/partner/home?tab=leads', label: 'Leads', icon: IconLeads },
@@ -285,7 +295,7 @@ export function BottomNav() {
             <button
               key={item.tab}
               type="button"
-              className={`hp-nav-item${active ? ' active' : ''}`}
+              className={`hp-nav-item${active ? ' active' : ''}${navItemShiftClass(item)}`}
               onClick={() => {
                 setTab(item.tab);
                 window.history.replaceState(null, '', item.tab === 'home' ? homePath : `${homePath}?tab=${item.tab}`);
@@ -297,7 +307,7 @@ export function BottomNav() {
           );
         }
         return (
-          <Link key={item.tab} href={item.href} className={`hp-nav-item${active ? ' active' : ''}`}>
+          <Link key={item.tab} href={item.href} className={`hp-nav-item${active ? ' active' : ''}${navItemShiftClass(item)}`}>
             <Icon size={21} />
             <span>{item.label}</span>
           </Link>
