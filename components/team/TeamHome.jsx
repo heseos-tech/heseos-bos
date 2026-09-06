@@ -7,7 +7,7 @@
 // with no refetch. Lead Detail (/team/leads/[id]) is a genuine per-item page and stays a
 // separate route — it isn't a dashboard tab.
 import { useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useDashboardTab } from "@/components/partner/ui";
 import TeamHomeScreen from "./HomeScreen";
 import TeamLeadsScreen from "./LeadsScreen";
 import TeamProfileScreen from "./ProfileScreen";
@@ -25,8 +25,7 @@ function renderTab(tab, employee) {
 }
 
 export default function TeamHome({ employee }) {
-  const searchParams = useSearchParams();
-  const rawTab = searchParams.get("tab") || "home";
+  const { tab: rawTab } = useDashboardTab();
   const active = KNOWN_TABS.has(rawTab) ? rawTab : "home";
 
   const [visited, setVisited] = useState(() => new Set([active]));

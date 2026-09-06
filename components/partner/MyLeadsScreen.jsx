@@ -20,7 +20,7 @@ const TABS = [
 // /api/leads on its own first visit.
 export default function MyLeadsScreen() {
   const searchParams = useSearchParams();
-  const { data: leads, loading } = useApiResource('/api/leads');
+  const { data: leads, loading } = useApiResource('/api/leads', { pollMs: 20000 });
   const [tab, setTab] = useState(searchParams.get('status') || 'all');
 
   // MyLeadsScreen stays mounted after the first visit (see PartnerHome), so a fresh navigation

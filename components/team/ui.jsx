@@ -4,9 +4,8 @@
 // components/partner/ui.jsx — no need to fork it.
 import { useRef } from 'react';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
 import { IconHome, IconLeads, IconUser, IconPlus, IconGift } from '@/components/partner/icons';
-import { useNavHeightVar } from '@/components/partner/ui';
+import { useNavHeightVar, useDashboardTab, useDashboardTabState, DashboardTabContext } from '@/components/partner/ui';
 import SplashScreen from '@/components/partner/SplashScreen';
 
 // Home/Leads/Profile all point at the SAME route (/team/home) with a different ?tab= — see
@@ -30,9 +29,14 @@ function navItemsFor(role) {
 // bottom of the viewport like a native tab bar — see .hp-bottom-nav in partner-app.css.
 // useNavHeightVar publishes its real rendered height as --hp-nav-h so .hp-shell-scroll can
 // reserve exactly enough space for it (shared with the Partner app's BottomNav).
+// See components/partner/ui.jsx's DashboardTabContext/useDashboardTabState comment for why
+// this doesn't just use <Link> for every item — the short version: /team/home is force-dynamic
+// (its layout reads cookies() to authenticate), so a real Next.js navigation on every tab tap
+// re-ran that auth check from scratch before the tab could even switch. Home/Leads/Rewards/
+// Profile now flip client-side with zero network calls instead.
 export function TeamBottomNav({ role }) {
-  const searchParams = useSearchParams();
-  const activeTab = searchParams.get('tab') || 'home';
+  const { tab, setTab, isHome, homePath } = useDashboardTab();
+  const activeTab = isHome ? tab : null;
   const navRef = useRef(null);
   useNavHeightVar(navRef);
   const items = navItemsFor(role);
@@ -49,6 +53,22 @@ export function TeamBottomNav({ role }) {
           );
         }
         const active = item.tab === activeTab;
+        if (isHome) {
+          return (
+            <button
+              key={item.tab}
+              type="button"
+              className={`hp-nav-item${active ? ' active' : ''}`}
+              onClick={() => {
+                setTab(item.tab);
+                window.history.replaceState(null, '', item.tab === 'home' ? homePath : `${homePath}?tab=${item.tab}`);
+              }}
+            >
+              <Icon size={21} />
+              <span>{item.label}</span>
+            </button>
+          );
+        }
         return (
           <Link key={item.tab} href={item.href} className={`hp-nav-item${active ? ' active' : ''}`}>
             <Icon size={21} />
@@ -61,11 +81,14 @@ export function TeamBottomNav({ role }) {
 }
 
 export function TeamAppShell({ children, role }) {
+  const tabState = useDashboardTabState('/team/home');
   return (
-    <div className="hp-shell">
-      <SplashScreen />
-      <div className="hp-shell-scroll">{children}</div>
-      <TeamBottomNav role={role} />
-    </div>
+    <DashboardTabContext.Provider value={tabState}>
+      <div className="hp-shell">
+        <SplashScreen />
+        <div className="hp-shell-scroll">{children}</div>
+        <TeamBottomNav role={role} />
+      </div>
+    </DashboardTabContext.Provider>
   );
 }

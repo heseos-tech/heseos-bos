@@ -12,7 +12,7 @@ import { useApiResource } from '@/lib/useApiResource';
 import { payoutFor, normalizeConfig } from '@/lib/payout';
 
 export default function TeamRewardsScreen({ employee }) {
-  const { data: leads } = useApiResource('/api/leads');
+  const { data: leads } = useApiResource('/api/leads', { pollMs: 20000 });
   const { data: rawConfig } = useApiResource('/api/payout-settings');
 
   const config = normalizeConfig(rawConfig);

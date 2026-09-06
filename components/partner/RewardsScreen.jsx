@@ -14,7 +14,7 @@ import { payoutFor, normalizeConfig } from '@/lib/payout';
 // useApiResource (lib/useApiResource.js), instead of each independently fetching the same
 // /api/leads (and now /api/payout-settings) on its own first visit.
 export default function RewardsScreen() {
-  const { data: leads } = useApiResource('/api/leads');
+  const { data: leads } = useApiResource('/api/leads', { pollMs: 20000 });
   const { data: rawConfig } = useApiResource('/api/payout-settings');
 
   const config = normalizeConfig(rawConfig);

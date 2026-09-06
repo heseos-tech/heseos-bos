@@ -8,7 +8,7 @@
 // Detail (/partner/leads/[id]) are genuine wizard/per-item pages and stay separate routes — they
 // aren't dashboard tabs.
 import { useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useDashboardTab } from "./ui";
 import DashboardScreen from "./DashboardScreen";
 import MyLeadsScreen from "./MyLeadsScreen";
 import RewardsScreen from "./RewardsScreen";
@@ -26,8 +26,7 @@ function renderTab(tab, partner) {
 }
 
 export default function PartnerHome({ partner }) {
-  const searchParams = useSearchParams();
-  const rawTab = searchParams.get("tab") || "home";
+  const { tab: rawTab } = useDashboardTab();
   const active = KNOWN_TABS.has(rawTab) ? rawTab : "home";
 
   const [visited, setVisited] = useState(() => new Set([active]));

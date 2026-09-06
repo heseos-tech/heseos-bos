@@ -12,7 +12,7 @@ import { payoutFor } from '@/lib/payout';
 // useApiResource (lib/useApiResource.js), instead of each independently fetching the same
 // /api/leads on its own first visit.
 export default function DashboardScreen({ partner }) {
-  const { data: leads, loading } = useApiResource('/api/leads');
+  const { data: leads, loading } = useApiResource('/api/leads', { pollMs: 20000 });
   const { data: payoutConfig } = useApiResource('/api/payout-settings');
 
   // Real tiered payout (Settings → Lead Conversion Payout), same figure Rewards shows — this

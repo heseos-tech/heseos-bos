@@ -1,7 +1,7 @@
 'use client';
-import { useState, useEffect, useRef } from 'react';
+import { createContext, useContext, useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import {
   IconEye, IconEyeOff, IconChevronDown, IconArrowLeft, IconHome, IconLeads, IconPlus, IconGift, IconUser, IconCheck,
 } from './icons';
@@ -150,6 +150,45 @@ export function useNavHeightVar(ref) {
   }, [ref]);
 }
 
+// ── Instant dashboard-tab switching ────────────────────────────────────────
+// Home/Leads/Rewards/Profile used to be plain <Link>s to /partner/home?tab=X — a REAL Next.js
+// navigation on every tap. Because the (app) layout's auth check (getPartner()) reads cookies(),
+// the whole route is force-dynamic, so Next can never cache or skip that round trip: every single
+// tap re-ran the auth check + re-rendered the page on the server before the client could even
+// flip tabs, which is what made the nav bar itself feel slow (independent of how fast any tab's
+// own data loads). BottomNav and PartnerHome/TeamHome are siblings under AppShell/TeamAppShell
+// (not parent-child), so this Context is how a nav tap can flip the active tab with zero network
+// requests: no Link, no router.push, just React state + a cosmetic history.replaceState so the
+// URL bar still reflects the tab (deep links and page refreshes keep working). A tap that leaves
+// the dashboard entirely (Add Lead) still needs a real navigation, and a tap that lands back on
+// it from a different route (a shared link, browser back/forward) still resolves the tab from
+// the URL — see AppShell/TeamAppShell below.
+export const DashboardTabContext = createContext(null);
+export function useDashboardTab() {
+  const ctx = useContext(DashboardTabContext);
+  if (!ctx) throw new Error('useDashboardTab must be used inside AppShell or TeamAppShell');
+  return ctx;
+}
+
+// Shared by AppShell (Partner) and TeamAppShell (components/team/ui.jsx) — homePath is the one
+// difference between the two apps' dashboards.
+export function useDashboardTabState(homePath) {
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const isHome = pathname === homePath;
+  const [tab, setTab] = useState(() => searchParams.get('tab') || 'home');
+
+  // Only sync FROM the URL — never the other way — and only while genuinely on the dashboard
+  // route, so a real navigation that lands here (a deep link, a stat-card link with its own
+  // ?tab=, browser back/forward) still opens on the right tab.
+  useEffect(() => {
+    if (isHome) setTab(searchParams.get('tab') || 'home');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isHome, searchParams]);
+
+  return { tab, setTab, isHome, homePath };
+}
+
 // ── Bottom navigation — consistent across all authenticated tab screens ───
 // Home/Leads/Rewards/Profile all point at the SAME route (/partner/home) with a different
 // ?tab= — see components/partner/PartnerHome.jsx. `tab` here must match PartnerHome's switch
@@ -166,8 +205,8 @@ const NAV_ITEMS = [
   { tab: 'profile', href: '/partner/home?tab=profile', label: 'Profile', icon: IconUser },
 ];
 export function BottomNav() {
-  const searchParams = useSearchParams();
-  const activeTab = searchParams.get('tab') || 'home';
+  const { tab, setTab, isHome, homePath } = useDashboardTab();
+  const activeTab = isHome ? tab : null;
   const navRef = useRef(null);
   useNavHeightVar(navRef);
   return (
@@ -183,6 +222,26 @@ export function BottomNav() {
           );
         }
         const active = item.tab === activeTab;
+        // Already on the dashboard shell — flip tabs purely client-side (see
+        // useDashboardTabState above for why). Only fall back to a real <Link> when tapping a
+        // dashboard tab from some other route (Add Lead, Lead Detail, Bank Details, ...), where
+        // we genuinely do need to navigate back to /partner/home first.
+        if (isHome) {
+          return (
+            <button
+              key={item.tab}
+              type="button"
+              className={`hp-nav-item${active ? ' active' : ''}`}
+              onClick={() => {
+                setTab(item.tab);
+                window.history.replaceState(null, '', item.tab === 'home' ? homePath : `${homePath}?tab=${item.tab}`);
+              }}
+            >
+              <Icon size={21} />
+              <span>{item.label}</span>
+            </button>
+          );
+        }
         return (
           <Link key={item.tab} href={item.href} className={`hp-nav-item${active ? ' active' : ''}`}>
             <Icon size={21} />
@@ -195,11 +254,14 @@ export function BottomNav() {
 }
 
 export function AppShell({ children }) {
+  const tabState = useDashboardTabState('/partner/home');
   return (
-    <div className="hp-shell">
-      <SplashScreen />
-      <div className="hp-shell-scroll">{children}</div>
-      <BottomNav />
-    </div>
+    <DashboardTabContext.Provider value={tabState}>
+      <div className="hp-shell">
+        <SplashScreen />
+        <div className="hp-shell-scroll">{children}</div>
+        <BottomNav />
+      </div>
+    </DashboardTabContext.Provider>
   );
 }

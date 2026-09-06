@@ -25,8 +25,8 @@ function isOverdue(t) {
 }
 
 export default function TasksScreen({ employee, backHref = '/team/home' }) {
-  const { data: tasks, loading, refresh } = useApiResource('/api/tasks');
-  const { data: leads } = useApiResource('/api/leads');
+  const { data: tasks, loading, refresh } = useApiResource('/api/tasks', { pollMs: 20000 });
+  const { data: leads } = useApiResource('/api/leads', { pollMs: 20000 });
   const [status, setStatus] = useState('open');
   const [modal, setModal] = useState(null); // { type: 'add'|'edit', task }
 
