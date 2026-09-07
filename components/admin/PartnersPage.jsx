@@ -17,11 +17,17 @@ export default function PartnersPage() {
   // ladder Partner Rewards and the Team App compute their own numbers from. normalizeConfig
   // (called inside partnerStats via payoutFor) handles the pre-load `[]` default safely.
   const { data: payoutConfig } = useApiResource('/api/payout-settings', { pollMs: 20000 });
+  // So each partner's row can show which employee onboarded them (set automatically when they
+  // claim a QR code tagged with an employee, or by hand from "Add Partner" below) — see
+  // lib/attribution.js's claimPartnerQrCode.
+  const { data: allEmployees } = useApiResource('/api/admin/employees', { pollMs: 20000 });
+  const employeeName = (id) => (id ? (allEmployees.find((e) => e.id === id)?.name || 'Unassigned') : '—');
   const loading = partnersLoading || leadsLoading;
   const load = () => { refreshPartners(); refreshLeads(); };
   const [q, setQ] = useState('');
   const [status, setStatus] = useState('all');
   const [category, setCategory] = useState('all');
+  const [onboardedBy, setOnboardedBy] = useState('all');
   const [page, setPage] = useState(1);
   const [modal, setModal] = useState(null);
   const [notice, setNotice] = useState('');
@@ -43,19 +49,21 @@ export default function PartnersPage() {
     if (status === 'active' && p.active === false) return false;
     if (status === 'inactive' && p.active !== false) return false;
     if (category !== 'all' && p.type !== category) return false;
+    if (onboardedBy === '__none__' && p.onboardedByEmployeeId) return false;
+    else if (onboardedBy !== 'all' && onboardedBy !== '__none__' && p.onboardedByEmployeeId !== onboardedBy) return false;
     if (q.trim()) {
       const s = q.trim().toLowerCase();
       if (!(`${p.businessName} ${p.name} ${p.phone} ${p.city || ''}`.toLowerCase().includes(s))) return false;
     }
     return true;
-  }), [rows, status, category, q]);
+  }), [rows, status, category, onboardedBy, q]);
 
   const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const pageRows = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   function exportCsv() {
-    const cols = ['id', 'businessName', 'name', 'phone', 'category', 'city', 'leads', 'converted', 'conversionRate', 'active'];
-    const csv = [cols.join(','), ...filtered.map((p) => [p.id, p.businessName, p.name, p.phone, partnerCategoryLabel(p.type), p.city || '', p.stats.leadsCount, p.stats.converted, p.stats.conversionRate, p.active !== false].map((v) => `"${String(v ?? '')}"`).join(','))].join('\n');
+    const cols = ['id', 'businessName', 'name', 'phone', 'category', 'city', 'onboardedBy', 'leads', 'converted', 'conversionRate', 'active'];
+    const csv = [cols.join(','), ...filtered.map((p) => [p.id, p.businessName, p.name, p.phone, partnerCategoryLabel(p.type), p.city || '', employeeName(p.onboardedByEmployeeId), p.stats.leadsCount, p.stats.converted, p.stats.conversionRate, p.active !== false].map((v) => `"${String(v ?? '')}"`).join(','))].join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a'); a.href = url; a.download = 'heseos-partners.csv'; a.click();
@@ -91,13 +99,18 @@ export default function PartnersPage() {
             <option value="all">All Categories</option>
             {PARTNER_CATEGORY.map((c) => <option key={c.v} value={c.v}>{c.l}</option>)}
           </select>
+          <select value={onboardedBy} onChange={(e) => { setOnboardedBy(e.target.value); setPage(1); }}>
+            <option value="all">Onboarded By: All</option>
+            {allEmployees.filter((e) => e.active !== false).map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
+            <option value="__none__">Not recorded</option>
+          </select>
         </div>
 
         <div className="adm-table-scroll">
           <table className="adm-table">
-            <thead><tr><th>Partner Details</th><th>Category</th><th>City</th><th>Leads</th><th>Converted</th><th>Conv. Rate</th><th>Earnings</th><th>Status</th><th></th></tr></thead>
+            <thead><tr><th>Partner Details</th><th>Category</th><th>City</th><th>Onboarded By</th><th>Leads</th><th>Converted</th><th>Conv. Rate</th><th>Earnings</th><th>Status</th><th></th></tr></thead>
             <tbody>
-              {loading ? <tr><td colSpan={9} className="adm-empty">Loading…</td></tr> : pageRows.length === 0 ? <tr><td colSpan={9} className="adm-empty">No partners match these filters.</td></tr> : pageRows.map((p) => (
+              {loading ? <tr><td colSpan={10} className="adm-empty">Loading…</td></tr> : pageRows.length === 0 ? <tr><td colSpan={10} className="adm-empty">No partners match these filters.</td></tr> : pageRows.map((p) => (
                 <tr key={p.id}>
                   <td>
                     <div className="adm-lead-name">{p.businessName || p.name}</div>
@@ -105,6 +118,7 @@ export default function PartnersPage() {
                   </td>
                   <td>{partnerCategoryLabel(p.type)}</td>
                   <td>{p.city || '—'}</td>
+                  <td>{employeeName(p.onboardedByEmployeeId)}</td>
                   <td>{p.stats.leadsCount}</td>
                   <td>{p.stats.converted}</td>
                   <td>{p.stats.conversionRate}%</td>
@@ -135,9 +149,46 @@ export default function PartnersPage() {
             <div><span className="adm-detail-label">Conversion Rate</span>{modal.partner.stats.conversionRate}%</div>
             <div><span className="adm-detail-label">Earnings</span>₹{modal.partner.stats.earnings.toLocaleString('en-IN')}</div>
           </div>
+          <OnboardedByField partner={modal.partner} employees={allEmployees} onSaved={load} />
         </Modal>
       )}
     </>
+  );
+}
+
+// Editable "who onboarded this partner" control shown in the partner detail modal — lets Admin
+// fix or fill in the mapping a QR claim would otherwise set automatically (lib/attribution.js's
+// claimPartnerQrCode), e.g. for a partner that predates this field or was onboarded some other
+// way (direct signup, referral link). Self-contained: saves straight to
+// app/api/admin/partners/[id]/route.js's PATCH and refreshes the shared partner list via
+// `onSaved` rather than lifting this into the parent's own state.
+function OnboardedByField({ partner, employees, onSaved }) {
+  const [value, setValue] = useState(partner.onboardedByEmployeeId || '');
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => { setValue(partner.onboardedByEmployeeId || ''); }, [partner.id, partner.onboardedByEmployeeId]);
+
+  const dirty = value !== (partner.onboardedByEmployeeId || '');
+
+  async function save() {
+    setSaving(true);
+    try {
+      await fetch(`/api/admin/partners/${partner.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ onboardedByEmployeeId: value }) });
+      onSaved();
+    } finally { setSaving(false); }
+  }
+
+  return (
+    <div className="lf-field" style={{ marginTop: 4 }}>
+      <label className="lf-label">Onboarded By</label>
+      <div style={{ display: 'flex', gap: 8 }}>
+        <select className="lf-input" value={value} onChange={(e) => setValue(e.target.value)}>
+          <option value="">Not recorded</option>
+          {employees.filter((e) => e.active !== false).map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
+        </select>
+        {dirty && <button className="adm-btn-outline" onClick={save} disabled={saving}>{saving ? 'Saving…' : 'Save'}</button>}
+      </div>
+    </div>
   );
 }
 
@@ -148,10 +199,15 @@ function AddPartnerModal({ onClose, onDone }) {
   const [city, setCity] = useState('');
   const [password, setPassword] = useState('');
   const [type, setType] = useState('electrical_shop');
+  const [onboardedByEmployeeId, setOnboardedByEmployeeId] = useState('');
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
   const [cities, setCities] = useState([]);
   const [citiesLoading, setCitiesLoading] = useState(true);
+  // Same "who onboarded this partner" mapping a claimed QR code sets automatically (see
+  // lib/attribution.js's claimPartnerQrCode) — offered here too since a partner Admin adds by
+  // hand never goes through that claim step.
+  const { data: allEmployees } = useApiResource('/api/admin/employees', { pollMs: 20000 });
 
   useEffect(() => {
     fetch('/api/admin/cities').then((r) => (r.ok ? r.json() : { cities: [] })).then((d) => setCities(d.cities || [])).finally(() => setCitiesLoading(false));
@@ -160,7 +216,7 @@ function AddPartnerModal({ onClose, onDone }) {
   async function submit() {
     setError(''); setSaving(true);
     try {
-      const res = await fetch('/api/admin/partners', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, businessName, phone, password, type, city }) });
+      const res = await fetch('/api/admin/partners', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, businessName, phone, password, type, city, onboardedByEmployeeId: onboardedByEmployeeId || undefined }) });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed');
       onDone();
@@ -191,6 +247,13 @@ function AddPartnerModal({ onClose, onDone }) {
         <div className="lf-pills cols-3">
           {PARTNER_CATEGORY.map((c) => <button key={c.v} type="button" className={`lf-pill${type === c.v ? ' active' : ''}`} onClick={() => setType(c.v)}>{c.l}</button>)}
         </div>
+      </div>
+      <div className="lf-field">
+        <label className="lf-label">Onboarded by (optional)</label>
+        <select className="lf-input" value={onboardedByEmployeeId} onChange={(e) => setOnboardedByEmployeeId(e.target.value)}>
+          <option value="">Not recorded</option>
+          {allEmployees.filter((e) => e.active !== false).map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
+        </select>
       </div>
       {error && <div className="lf-error">{error}</div>}
       <div className="lf-actions">

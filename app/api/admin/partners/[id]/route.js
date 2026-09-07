@@ -14,6 +14,16 @@ export async function PATCH(request, { params }) {
   const body = await request.json();
   const patch = {};
   if (typeof body.active === 'boolean') patch.active = body.active;
+  // Admin correcting/filling in "who onboarded this partner" after the fact — e.g. a partner
+  // that predates this field, or a QR claim that recorded the wrong employee. An empty string
+  // clears it back to "not recorded" rather than being ignored, since that's a meaningful edit
+  // too (same convention as `active` above: explicit values only, never guessed).
+  if ('onboardedByEmployeeId' in body) {
+    const val = String(body.onboardedByEmployeeId || '').trim();
+    patch.onboardedByEmployeeId = val || null;
+    patch.onboardedByEmployeeAt = val ? new Date().toISOString() : null;
+    patch.onboardedVia = val ? 'admin_manual' : null;
+  }
 
   const updated = await dbPatch('partners', id, patch);
   invalidateAccountCache('partners', id);

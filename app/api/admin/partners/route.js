@@ -20,7 +20,7 @@ export async function POST(request) {
   const admin = await requireAdmin();
   if (!admin) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const { name, businessName, phone, password, type, city } = await request.json();
+  const { name, businessName, phone, password, type, city, onboardedByEmployeeId } = await request.json();
   if (!name || !phone || !password) {
     return Response.json({ error: 'name, phone and password are required' }, { status: 400 });
   }
@@ -34,12 +34,21 @@ export async function POST(request) {
   }
 
   const id = `PTR${Date.now().toString().slice(-8)}`;
+  // Who onboarded this partner — same field a QR-code claim sets automatically (see
+  // lib/attribution.js's claimPartnerQrCode), just filled in by hand here for a partner Admin
+  // adds directly instead of via a claimed sticker. Optional: leave unset if you don't know or
+  // it doesn't apply, same as any other "not recorded" partner.
   const record = {
     id, name, businessName: businessName || name, phone: digits, type: type || 'electrical_shop', active: true,
     city: city || '',
     password: await hashPassword(password),
     createdAt: new Date().toISOString(),
     createdBy: admin.id,
+    ...(onboardedByEmployeeId ? {
+      onboardedByEmployeeId,
+      onboardedByEmployeeAt: new Date().toISOString(),
+      onboardedVia: 'admin_manual',
+    } : {}),
   };
   await dbInsert('partners', id, record);
   const { password: _omit, ...safe } = record;
