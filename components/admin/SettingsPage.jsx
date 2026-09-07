@@ -19,6 +19,10 @@ export default function SettingsPage() {
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [registeringWebhook, setRegisteringWebhook] = useState(false);
+  const [appId, setAppId] = useState('');
+  const [appSecret, setAppSecret] = useState('');
+  const [savingApp, setSavingApp] = useState(false);
+  const [editingApp, setEditingApp] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [syncResult, setSyncResult] = useState(null);
   const [formsPage, setFormsPage] = useState(1);
@@ -54,6 +58,17 @@ export default function SettingsPage() {
       if (!res.ok) { setError(data.error || 'Could not refresh forms.'); return; }
       setSettings(data); flash('Lead forms refreshed');
     } finally { setRefreshing(false); }
+  }
+
+  async function saveAppCredentials() {
+    setError(''); setSavingApp(true);
+    try {
+      const res = await fetch('/api/admin/meta', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'save_app_credentials', appId, appSecret }) });
+      const data = await res.json();
+      if (!res.ok) { setError(data.error || 'Could not save App credentials.'); return; }
+      setSettings(data); setAppId(''); setAppSecret(''); setEditingApp(false);
+      flash('Meta App credentials saved');
+    } finally { setSavingApp(false); }
   }
 
   async function registerWebhook() {
@@ -130,16 +145,63 @@ export default function SettingsPage() {
         </p>
 
         {!loading && (
+          settings?.appConfigured && !editingApp ? (
+            <div className="adm-meta-webhook-row">
+              <div>
+                <div className="adm-lead-name">Meta App connected</div>
+                <div className="adm-lead-sub">App ID {settings.appId || '(set on the server)'}</div>
+              </div>
+              <button className="adm-btn-outline" onClick={() => setEditingApp(true)}>Change</button>
+            </div>
+          ) : (
+            <div className="adm-meta-connect" style={{ marginBottom: 20 }}>
+              <div className="lf-field">
+                <label className="lf-label" htmlFor="meta-app-id">Meta App ID</label>
+                <input
+                  id="meta-app-id"
+                  className="lf-input"
+                  type="text"
+                  autoComplete="off"
+                  placeholder="e.g. 1234567890123456"
+                  value={appId}
+                  onChange={(e) => setAppId(e.target.value)}
+                />
+              </div>
+              <div className="lf-field">
+                <label className="lf-label" htmlFor="meta-app-secret">Meta App Secret</label>
+                <input
+                  id="meta-app-secret"
+                  className="lf-input"
+                  type="password"
+                  autoComplete="off"
+                  placeholder="Paste your App Secret…"
+                  value={appSecret}
+                  onChange={(e) => setAppSecret(e.target.value)}
+                />
+              </div>
+              <p className="adm-meta-hint">
+                From your Meta App Dashboard → Settings → Basic. One-time, app-wide — this is what lets Heseos BOS register itself as Meta's webhook destination below, no server configuration needed.
+              </p>
+              <button className="adm-btn-primary" disabled={savingApp || !appId.trim() || !appSecret.trim()} onClick={saveAppCredentials}>
+                {savingApp ? 'Saving…' : 'Save App Credentials'}
+              </button>
+            </div>
+          )
+        )}
+
+        {!loading && (
           <div className="adm-meta-webhook-row">
             <div>
               <div className="adm-lead-name">Webhook {settings?.webhookRegistered ? '— registered with Meta' : '— not registered yet'}</div>
               <div className="adm-lead-sub">
                 {settings?.webhookRegistered
                   ? `Meta will call ${settings.webhookCallbackUrl || 'this app'} for new leads${settings.webhookRegisteredAt ? ` · set up ${new Date(settings.webhookRegisteredAt).toLocaleDateString()}` : ''}.`
-                  : 'One-time, app-wide setup — tells Meta where to send lead events. Needs META_APP_ID, META_APP_SECRET, META_LEAD_VERIFY_TOKEN and PUBLIC_BASE_URL set on the server.'}
+                  : settings?.appConfigured
+                    ? 'One-time, app-wide setup — tells Meta where to send lead events. Click Register Webhook to finish.'
+                    : 'One-time, app-wide setup — save your Meta App ID and Secret above first, then Register Webhook.'}
               </div>
             </div>
-            <button className="adm-btn-outline" onClick={registerWebhook} disabled={registeringWebhook}>
+            <button className="adm-btn-outline" onClick={registerWebhook} disabled={registeringWebhook || !settings?.appConfigured}>
               {registeringWebhook ? 'Registering…' : settings?.webhookRegistered ? 'Re-register' : 'Register Webhook'}
             </button>
           </div>

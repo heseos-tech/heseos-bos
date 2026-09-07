@@ -11,10 +11,22 @@ async function requireAdmin() {
   return employee;
 }
 
-// Never ship the raw access token back to the browser — only whether one is stored.
+// Never ship the raw access token/app secret back to the browser — only whether they're stored.
+// appConfigured/appId are app-level (not page-level) state, so — unlike pageAccessToken/forms —
+// they're included the same way whether or not a Page is currently connected; same for the
+// webhook fields, since app-wide webhook registration also doesn't depend on a Page being
+// connected right now (see registerAppWebhook's own header comment).
 function publicSettings(settings) {
+  const appLevel = {
+    appId: settings?.appId || null,
+    appConfigured: !!((settings?.appId && settings?.appSecret) || (process.env.META_APP_ID && process.env.META_APP_SECRET)),
+    webhookRegistered: settings?.webhookRegistered || false,
+    webhookRegisteredAt: settings?.webhookRegisteredAt || null,
+    webhookCallbackUrl: settings?.webhookCallbackUrl || null,
+  };
   if (!settings || !settings.pageAccessToken) {
     return {
+      ...appLevel,
       connected: false,
       pageId: settings?.pageId || null,
       pageName: settings?.pageName || null,
@@ -22,8 +34,8 @@ function publicSettings(settings) {
       usingEnvToken: !!process.env.META_LEAD_ACCESS_TOKEN,
     };
   }
-  const { pageAccessToken, ...rest } = settings;
-  return { ...rest, connected: true, usingEnvToken: false };
+  const { pageAccessToken, appSecret, ...rest } = settings;
+  return { ...appLevel, ...rest, connected: true, usingEnvToken: false };
 }
 
 export async function GET() {
@@ -88,9 +100,20 @@ export async function PATCH(request) {
   // App-level, one-time setup — doesn't need a Page connected yet, so this runs before the
   // "connect a Page first" guard below.
   if (body.action === 'register_webhook') {
-    const { data, error } = await registerAppWebhook();
+    const { data, error } = await registerAppWebhook(request.headers.get('host'));
     if (error) return Response.json({ error }, { status: 400 });
     const settings = await saveMetaSettings({ webhookRegistered: true, webhookRegisteredAt: new Date().toISOString(), webhookCallbackUrl: data.callbackUrl });
+    return Response.json(publicSettings(settings));
+  }
+
+  // App ID + App Secret, saved once from Admin -> Settings instead of server env vars — see
+  // lib/metaAds.js's header comment. App-level, same as register_webhook above: doesn't need a
+  // Page connected yet, so this also runs before the "connect a Page first" guard below.
+  if (body.action === 'save_app_credentials') {
+    const appId = String(body.appId || '').trim();
+    const appSecret = String(body.appSecret || '').trim();
+    if (!appId || !appSecret) return Response.json({ error: 'Enter both the Meta App ID and App Secret.' }, { status: 400 });
+    const settings = await saveMetaSettings({ appId, appSecret });
     return Response.json(publicSettings(settings));
   }
 

@@ -20,11 +20,11 @@ export const dynamic = 'force-dynamic';
 const API_VERSION = process.env.WHATSAPP_API_VERSION || 'v20.0';
 
 // Verifies Meta's X-Hub-Signature-256 header against the raw request body, so a forged POST
-// can't inject fake leads into the pipeline. Skipped (returns true) when META_APP_SECRET
-// isn't set yet, so local/dev setups aren't blocked before it's configured — set it in
-// production once you have your Meta App's secret.
-function verifyMetaSignature(rawBody, signatureHeader) {
-  const secret = process.env.META_APP_SECRET;
+// can't inject fake leads into the pipeline. `secret` is the App Secret saved in Admin ->
+// Settings (falling back to the META_APP_SECRET env var for a deployment that set that before
+// self-service existed) — skipped (returns true) when neither is configured yet, so local/dev
+// setups aren't blocked before a Meta App is connected.
+function verifyMetaSignature(rawBody, signatureHeader, secret) {
   if (!secret) return true;
   if (!signatureHeader || !signatureHeader.startsWith('sha256=')) return false;
   const expected = crypto.createHmac('sha256', secret).update(rawBody).digest('hex');
@@ -41,7 +41,9 @@ export async function GET(req) {
   const mode = searchParams.get('hub.mode');
   const token = searchParams.get('hub.verify_token');
   const challenge = searchParams.get('hub.challenge');
-  if (mode === 'subscribe' && token && token === process.env.META_LEAD_VERIFY_TOKEN) {
+  const settings = await getMetaSettings();
+  const expectedToken = settings?.verifyToken || process.env.META_LEAD_VERIFY_TOKEN;
+  if (mode === 'subscribe' && token && expectedToken && token === expectedToken) {
     return new Response(challenge || '', { status: 200, headers: { 'Content-Type': 'text/plain' } });
   }
   return new Response('Forbidden', { status: 403 });
@@ -56,20 +58,22 @@ async function fetchLeadFields(leadgenId, accessToken) {
 }
 
 export async function POST(req) {
+  // Self-service form selection: once the admin has connected a Page in Settings, only forms
+  // toggled on there are captured. Until then (no settings row / no forms saved yet), every
+  // form on the subscribed Page is captured — the original behaviour. Read once, up front, so
+  // the same row also supplies the App Secret for signature verification just below.
+  const settings = await getMetaSettings();
+  const accessToken = activeAccessToken(settings);
+  const allowedFormIds = enabledFormIds(settings);
+
   const rawBody = await req.text();
-  if (!verifyMetaSignature(rawBody, req.headers.get('x-hub-signature-256'))) {
+  const appSecret = settings?.appSecret || process.env.META_APP_SECRET;
+  if (!verifyMetaSignature(rawBody, req.headers.get('x-hub-signature-256'), appSecret)) {
     console.error('Meta lead webhook: invalid signature — rejected');
     return new Response('Invalid signature', { status: 401 });
   }
   let payload = {};
   try { payload = JSON.parse(rawBody || '{}'); } catch { /* empty/invalid body */ }
-
-  // Self-service form selection: once the admin has connected a Page in Settings, only forms
-  // toggled on there are captured. Until then (no settings row / no forms saved yet), every
-  // form on the subscribed Page is captured — the original behaviour.
-  const settings = await getMetaSettings();
-  const accessToken = activeAccessToken(settings);
-  const allowedFormIds = enabledFormIds(settings);
 
   for (const entry of payload.entry || []) {
     for (const change of entry.changes || []) {
