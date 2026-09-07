@@ -315,9 +315,12 @@ function BlankQrModal({ onClose }) {
   const { data: unclaimed, loading, refresh } = useApiResource('/api/admin/attribution/blank-qr', { pollMs: 20000 });
   // Every batch can be tagged with the employee who's actually handing the stickers out, same
   // idea as batchLabel — so a batch's downstream leads/conversions can later be attributed back
-  // to the employee that distributed it, not just to which print run it came from.
+  // to the employee that distributed it, not just to which print run it came from. Any employee
+  // of any role can be that account manager (not just presales/sales_engineer — a QR sticker
+  // might just as easily get handed out by someone in Operations or Marketing at an event), so
+  // this only filters out deactivated employees.
   const { data: allEmployees } = useApiResource('/api/admin/employees', { pollMs: 20000 });
-  const employees = useMemo(() => allEmployees.filter((e) => e.active !== false && (e.role === 'presales' || e.role === 'sales_engineer')), [allEmployees]);
+  const employees = useMemo(() => allEmployees.filter((e) => e.active !== false), [allEmployees]);
   const [count, setCount] = useState(10);
   const [batchLabel, setBatchLabel] = useState('');
   const [employeeId, setEmployeeId] = useState('');
