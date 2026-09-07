@@ -104,7 +104,7 @@ export default function SettingsPage() {
   }
 
   async function disconnect() {
-    if (!confirm('Disconnect this Meta Page? New leads will stop flowing in until you reconnect (or fall back to the server\'s META_LEAD_ACCESS_TOKEN, if one is set, capturing every form again).')) return;
+    if (!confirm('Disconnect this Meta Page? New leads will stop flowing in until you reconnect.')) return;
     const res = await fetch('/api/admin/meta', { method: 'DELETE' });
     if (res.ok) { setSettings(await res.json()); flash('Disconnected from Meta'); }
   }
@@ -229,7 +229,6 @@ export default function SettingsPage() {
             </div>
             <p className="adm-meta-hint">
               Generate this for the Page running your lead ads (Meta Business Suite → System Users, or the Graph API Explorer) with the <code>leads_retrieval</code> and <code>pages_manage_ads</code> permissions.
-              {settings?.usingEnvToken && ' Until you connect here, capture uses the META_LEAD_ACCESS_TOKEN set on the server — every form on the Page, no selection.'}
             </p>
             <button className="adm-btn-primary" disabled={connecting || !token.trim()} onClick={connect}>
               {connecting ? 'Connecting…' : 'Connect Page'}

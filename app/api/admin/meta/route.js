@@ -12,14 +12,15 @@ async function requireAdmin() {
 }
 
 // Never ship the raw access token/app secret back to the browser — only whether they're stored.
-// appConfigured/appId are app-level (not page-level) state, so — unlike pageAccessToken/forms —
-// they're included the same way whether or not a Page is currently connected; same for the
-// webhook fields, since app-wide webhook registration also doesn't depend on a Page being
-// connected right now (see registerAppWebhook's own header comment).
+// Everything here comes from the settings row alone now — no server env var ever changes what
+// this reports. appConfigured/appId are app-level (not page-level) state, so — unlike
+// pageAccessToken/forms — they're included the same way whether or not a Page is currently
+// connected; same for the webhook fields, since app-wide webhook registration also doesn't
+// depend on a Page being connected right now (see registerAppWebhook's own header comment).
 function publicSettings(settings) {
   const appLevel = {
     appId: settings?.appId || null,
-    appConfigured: !!((settings?.appId && settings?.appSecret) || (process.env.META_APP_ID && process.env.META_APP_SECRET)),
+    appConfigured: !!(settings?.appId && settings?.appSecret),
     webhookRegistered: settings?.webhookRegistered || false,
     webhookRegisteredAt: settings?.webhookRegisteredAt || null,
     webhookCallbackUrl: settings?.webhookCallbackUrl || null,
@@ -31,11 +32,10 @@ function publicSettings(settings) {
       pageId: settings?.pageId || null,
       pageName: settings?.pageName || null,
       forms: settings?.forms || [],
-      usingEnvToken: !!process.env.META_LEAD_ACCESS_TOKEN,
     };
   }
   const { pageAccessToken, appSecret, ...rest } = settings;
-  return { ...appLevel, ...rest, connected: true, usingEnvToken: false };
+  return { ...appLevel, ...rest, connected: true };
 }
 
 export async function GET() {
@@ -153,8 +153,8 @@ export async function PATCH(request) {
   return Response.json({ error: 'Nothing to update.' }, { status: 400 });
 }
 
-// Disconnect the Page — clears the stored token so capture falls back to META_LEAD_ACCESS_TOKEN
-// (all forms) if that env var is still set, or stops until reconnected.
+// Disconnect the Page — clears the stored token; lead capture stops until a Page is
+// reconnected (see activeAccessToken in lib/metaAds.js — there's no env var fallback).
 export async function DELETE() {
   const admin = await requireAdmin();
   if (!admin) return Response.json({ error: 'Unauthorized' }, { status: 401 });

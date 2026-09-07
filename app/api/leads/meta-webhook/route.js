@@ -1,11 +1,10 @@
 // Meta Lead Ads webhook — auto-pulls Instant Form submissions (the same forms as the PDF you
 // shared) straight into the `leads` table instead of downloading the CSV by hand.
 //
-// Setup: in your Meta App dashboard, add a webhook subscribed to the Page's `leadgen` field,
-// pointing at this URL, with META_LEAD_VERIFY_TOKEN as the verify token. You also need a Page
-// access token with the `leads_retrieval` permission, set as META_LEAD_ACCESS_TOKEN — Meta's
-// webhook only tells you a leadgen_id was created; the actual answers are fetched separately
-// via the Graph API (see fetchLeadFields below).
+// Setup: entirely from Admin -> Settings (see lib/metaAds.js) — no server env vars. Connecting
+// a Page there provides the access token used below to fetch each lead's actual answers (Meta's
+// webhook only tells you a leadgen_id was created); saving the Meta App ID/Secret and clicking
+// Register Webhook there is what points Meta at this URL with the auto-generated verify token.
 
 import crypto from 'crypto';
 import { dbInsert, dbGetById } from '@/lib/db';
@@ -21,9 +20,8 @@ const API_VERSION = process.env.WHATSAPP_API_VERSION || 'v20.0';
 
 // Verifies Meta's X-Hub-Signature-256 header against the raw request body, so a forged POST
 // can't inject fake leads into the pipeline. `secret` is the App Secret saved in Admin ->
-// Settings (falling back to the META_APP_SECRET env var for a deployment that set that before
-// self-service existed) — skipped (returns true) when neither is configured yet, so local/dev
-// setups aren't blocked before a Meta App is connected.
+// Settings — skipped (returns true) when it isn't set yet, so local/dev setups aren't blocked
+// before a Meta App is connected.
 function verifyMetaSignature(rawBody, signatureHeader, secret) {
   if (!secret) return true;
   if (!signatureHeader || !signatureHeader.startsWith('sha256=')) return false;
@@ -42,7 +40,7 @@ export async function GET(req) {
   const token = searchParams.get('hub.verify_token');
   const challenge = searchParams.get('hub.challenge');
   const settings = await getMetaSettings();
-  const expectedToken = settings?.verifyToken || process.env.META_LEAD_VERIFY_TOKEN;
+  const expectedToken = settings?.verifyToken;
   if (mode === 'subscribe' && token && expectedToken && token === expectedToken) {
     return new Response(challenge || '', { status: 200, headers: { 'Content-Type': 'text/plain' } });
   }
@@ -50,7 +48,7 @@ export async function GET(req) {
 }
 
 async function fetchLeadFields(leadgenId, accessToken) {
-  if (!accessToken) return { error: 'No Meta access token configured — connect a Page in Admin → Settings, or set META_LEAD_ACCESS_TOKEN.' };
+  if (!accessToken) return { error: 'No Meta access token configured — connect a Page in Admin → Settings.' };
   const res = await fetch(`https://graph.facebook.com/${API_VERSION}/${leadgenId}?access_token=${encodeURIComponent(accessToken)}`);
   const data = await res.json().catch(() => ({}));
   if (!res.ok) return { error: data?.error?.message || 'Graph API request failed' };
@@ -67,7 +65,7 @@ export async function POST(req) {
   const allowedFormIds = enabledFormIds(settings);
 
   const rawBody = await req.text();
-  const appSecret = settings?.appSecret || process.env.META_APP_SECRET;
+  const appSecret = settings?.appSecret;
   if (!verifyMetaSignature(rawBody, req.headers.get('x-hub-signature-256'), appSecret)) {
     console.error('Meta lead webhook: invalid signature — rejected');
     return new Response('Invalid signature', { status: 401 });
