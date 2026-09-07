@@ -15,6 +15,7 @@ import { findFirstLeadByPhone } from '@/lib/leadOrigin';
 import { stageOf } from '@/lib/leadStage';
 import { HESEOS_DEFAULT_FLOW_ID, ensureHeseosDefaultFlow } from '@/lib/heseosDefaultFlow';
 import { HESEOS_RETURNING_FLOW_ID, ensureHeseosReturningFlow } from '@/lib/heseosReturningFlow';
+import { ensureHeseosOrganicFlow } from '@/lib/heseosOrganicFlow';
 
 export const dynamic = 'force-dynamic';
 
@@ -97,6 +98,7 @@ export async function POST(req) {
       if (tenant.botKind === 'heseos') {
         tenantFlows = await ensureHeseosDefaultFlow(tenant, tenantFlows);
         tenantFlows = await ensureHeseosReturningFlow(tenant, tenantFlows);
+        tenantFlows = await ensureHeseosOrganicFlow(tenant, tenantFlows);
       }
 
       for (const m of g.messages) {
