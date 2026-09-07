@@ -240,12 +240,44 @@ export async function POST(req) {
             }
           }
 
+          // Any inbound message from a phone number that already has an active lead gets routed
+          // to the "welcome back" flow (lib/heseosReturningFlow.js) — no "hi"/greeting keyword
+          // required, and regardless of whatever flow (or no flow) this chat was previously on.
+          // This is what actually catches the common case the narrower autoHandoff branch above
+          // misses: a chat that already existed for this phone number (an earlier organic
+          // message, an unfinished/legacy conversation with no completed flow) BEFORE a
+          // partner/employee ever added them as a lead — that chat's activeFlowId is whatever it
+          // already was (often null, falling through to lib/botEngine.js's generic reply below)
+          // and its botOn/autoHandoff never went through the "flow finished naturally" path the
+          // branch above requires, so it was never re-routed at all. Skipped once activeFlowId is
+          // already the returning flow itself (so ITS OWN in-progress question/menu answers keep
+          // working normally — this must not re-fire on every reply once the customer is already
+          // in that flow), and skipped for a lead that's already closed out (Converted/Rejected),
+          // same "still active?" rule as the brand-new-chat branch above. Deliberately does NOT
+          // touch chat.botOn — a human who explicitly silenced this chat via the Inbox toggle is
+          // still respected; the `if (chat.botOn !== false)` check further below simply won't
+          // send a reply at all until they turn it back on, this only decides which flow the
+          // NEXT reply (once the bot is on) uses.
+          if (tenant.botKind === 'heseos' && patch.activeFlowId !== HESEOS_RETURNING_FLOW_ID && chat.activeFlowId !== HESEOS_RETURNING_FLOW_ID) {
+            const existingLeads = await dbList('leads');
+            const firstLead = findFirstLeadByPhone(m.from, existingLeads);
+            if (firstLead && stageOf(firstLead) !== 'Converted' && stageOf(firstLead) !== 'Rejected') {
+              const returningFlow = tenantFlows.find((f) => f.id === HESEOS_RETURNING_FLOW_ID);
+              if (returningFlow) {
+                patch.activeFlowId = returningFlow.id;
+                patch.flowNodeId = null;
+                patch.leadId = firstLead.id;
+                patch.leadSummary = heseosLeadSummary(firstLead);
+              }
+            }
+          }
+
           await dbPatch('bot_chats', m.from, patch);
           chat = { ...chat, ...patch };
           // Once a chat has entered a flow it stays on that same one for its whole
           // conversation — re-matching triggers on every reply would let an unrelated later
           // message ("hi" mid-conversation, say) hijack the chat into a different flow. (The
-          // re-engagement branch above is the one deliberate exception, and it already updated
+          // re-engagement branches above are the deliberate exceptions, and they already updated
           // chat.activeFlowId before this check runs.)
           if (chat.activeFlowId) {
             const f = tenantFlows.find((tf) => tf.id === chat.activeFlowId) || null;
