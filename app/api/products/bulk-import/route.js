@@ -7,12 +7,11 @@
 
 import { dbInsert, dbList, dbPatch } from '@/lib/db';
 import { getEmployee } from '@/lib/auth';
-import { PRODUCT_CATEGORY } from '@/lib/formOptions';
+import { getProductCategories } from '@/lib/productCategories';
 
 export const dynamic = 'force-dynamic';
 
 const MAX_ROWS = 500;
-const VALID_CATEGORIES = new Set(PRODUCT_CATEGORY.map((c) => c.v));
 const INACTIVE_WORDS = new Set(['false', '0', 'no', 'inactive', 'n']);
 
 function parseActive(v) {
@@ -21,13 +20,13 @@ function parseActive(v) {
   return !INACTIVE_WORDS.has(s);
 }
 
-function validateRow(row) {
+function validateRow(row, validCategories) {
   const name = String(row.name || '').trim();
   const sku = String(row.sku || '').trim();
   if (!name || !sku) return { error: 'Name and SKU are required' };
 
   const category = String(row.category || '').trim();
-  if (category && !VALID_CATEGORIES.has(category)) {
+  if (category && !validCategories.has(category)) {
     return { error: `Unknown category "${category}"` };
   }
 
@@ -72,6 +71,7 @@ export async function POST(request) {
   // Keyed by lowercased SKU so a duplicate SKU within the same file updates the same in-memory
   // record instead of both racing to insert — the last row for a given SKU in the file wins.
   const bySku = new Map(existing.map((p) => [String(p.sku || '').trim().toLowerCase(), p]));
+  const validCategories = new Set((await getProductCategories()).map((c) => c.v));
 
   let created = 0;
   let updated = 0;
@@ -80,7 +80,7 @@ export async function POST(request) {
 
   for (let i = 0; i < rows.length; i++) {
     const rowNum = i + 2; // +2: header row is row 1, data starts at row 2 in a spreadsheet
-    const { value, error } = validateRow(rows[i]);
+    const { value, error } = validateRow(rows[i], validCategories);
     if (error) { errors.push({ row: rowNum, error }); continue; }
 
     const key = value.sku.toLowerCase();

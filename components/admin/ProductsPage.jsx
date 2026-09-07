@@ -3,8 +3,7 @@
 // Feeds the quotation builder's product picker (components/admin/QuotationsPage.jsx and
 // components/employee/SalesEngineerPanel.jsx) and, down the line, a customer/partner/employee-
 // facing catalogue view — see app/api/products/route.js's header for the access rules.
-import { useMemo, useState } from 'react';
-import { PRODUCT_CATEGORY, PRODUCT_CATEGORY_LABEL } from '@/lib/formOptions';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { StatCard, Modal, Pagination } from './ui';
 import { IconSearch, IconPlus, IconProducts, IconTrash, IconUpload, IconDownload, IconX } from './icons';
 import { useApiResource, invalidate } from '@/lib/useApiResource';
@@ -40,12 +39,12 @@ function downloadTemplate() {
 // Mirrors app/api/products/bulk-import/route.js's server-side validateRow exactly, so the preview
 // table's error column matches what the server will actually accept — the server re-validates
 // regardless, this is purely for fast feedback before the user submits.
-function validateImportRow(r) {
+function validateImportRow(r, categories) {
   const name = String(r.name || '').trim();
   const sku = String(r.sku || '').trim();
   if (!name || !sku) return 'Name and SKU are required';
   const category = String(r.category || '').trim();
-  if (category && !PRODUCT_CATEGORY.some((c) => c.v === category)) return `Unknown category "${category}"`;
+  if (category && !categories.some((c) => c.v === category)) return `Unknown category "${category}"`;
   const rawPrice = String(r.price ?? '').trim();
   if (rawPrice) {
     const price = Number(rawPrice);
@@ -87,8 +86,21 @@ export default function ProductsPage() {
   const [category, setCategory] = useState('all');
   const [status, setStatus] = useState('all');
   const [page, setPage] = useState(1);
-  const [modal, setModal] = useState(null); // { type: 'add' } | { type: 'edit', product } | { type: 'view', product }
+  const [modal, setModal] = useState(null); // { type: 'add' } | { type: 'edit', product } | { type: 'view', product } | { type: 'categories' }
   const [notice, setNotice] = useState('');
+
+  // Admin-managed catalogue categories (lib/productCategories.js) — not shared through
+  // useApiResource like `products` above because that hook assumes its URL returns a bare
+  // array (see lib/useApiResource.js), while this endpoint returns { categories } the same
+  // way /api/admin/cities does, so it gets its own small fetch-on-mount, same as Settings'
+  // CitiesCard.
+  const [categories, setCategories] = useState([]);
+  const [categoriesLoading, setCategoriesLoading] = useState(true);
+  const loadCategories = useCallback(() => {
+    fetch('/api/admin/product-categories').then((r) => (r.ok ? r.json() : { categories: [] })).then((d) => setCategories(d.categories || [])).finally(() => setCategoriesLoading(false));
+  }, []);
+  useEffect(() => { loadCategories(); }, [loadCategories]);
+  const categoryLabel = useMemo(() => Object.fromEntries(categories.map((c) => [c.v, c.l])), [categories]);
 
   function flash(msg) { setNotice(msg); setTimeout(() => setNotice(''), 3000); }
   function load() { invalidate(PRODUCTS_URL); refresh(); }
@@ -130,6 +142,7 @@ export default function ProductsPage() {
         <div className="adm-page-head-actions">
           <button className="adm-chip-btn" onClick={downloadTemplate}><IconDownload size={15} /> Download Template</button>
           <button className="adm-chip-btn" onClick={() => setModal({ type: 'import' })}><IconUpload size={15} /> Bulk Import</button>
+          <button className="adm-chip-btn" onClick={() => setModal({ type: 'categories' })}>Manage Categories</button>
           <button className="adm-btn-primary" onClick={() => setModal({ type: 'add' })}><IconPlus size={15} /> Add Product</button>
         </div>
       </div>
@@ -147,7 +160,7 @@ export default function ProductsPage() {
           <div className="adm-search adm-search--inline"><IconSearch size={16} /><input placeholder="Search by product name or SKU…" value={q} onChange={(e) => { setQ(e.target.value); setPage(1); }} /></div>
           <select value={category} onChange={(e) => { setCategory(e.target.value); setPage(1); }}>
             <option value="all">All Categories</option>
-            {PRODUCT_CATEGORY.map((c) => <option key={c.v} value={c.v}>{c.l}</option>)}
+            {categories.map((c) => <option key={c.v} value={c.v}>{c.l}</option>)}
           </select>
           <select value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }}>
             <option value="all">All Status</option><option value="active">Active</option><option value="inactive">Inactive</option>
@@ -169,7 +182,7 @@ export default function ProductsPage() {
                 </div>
                 <div className="prod-card-body">
                   <div className="prod-card-name">{p.name}</div>
-                  <div className="prod-card-sub">{p.sku} {p.category ? `· ${PRODUCT_CATEGORY_LABEL[p.category] || p.category}` : ''}</div>
+                  <div className="prod-card-sub">{p.sku} {p.category ? `· ${categoryLabel[p.category] || p.category}` : ''}</div>
                   <div className="prod-card-price">{p.price != null ? `₹${Number(p.price).toLocaleString('en-IN')}` : 'Price on request'}</div>
                 </div>
               </div>
@@ -179,11 +192,12 @@ export default function ProductsPage() {
         <Pagination page={page} pageCount={pageCount} total={filtered.length} pageSize={PAGE_SIZE} onPage={setPage} />
       </div>
 
-      {modal?.type === 'add' && <ProductModal onClose={() => setModal(null)} onDone={() => { setModal(null); load(); flash('Product added'); }} />}
-      {modal?.type === 'edit' && <ProductModal product={modal.product} onClose={() => setModal(null)} onDone={() => { setModal(null); load(); flash('Product updated'); }} />}
+      {modal?.type === 'add' && <ProductModal categories={categories} categoriesLoading={categoriesLoading} onClose={() => setModal(null)} onDone={() => { setModal(null); load(); flash('Product added'); }} />}
+      {modal?.type === 'edit' && <ProductModal product={modal.product} categories={categories} categoriesLoading={categoriesLoading} onClose={() => setModal(null)} onDone={() => { setModal(null); load(); flash('Product updated'); }} />}
       {modal?.type === 'view' && (
         <ViewProductModal
           product={modal.product}
+          categoryLabel={categoryLabel}
           onClose={() => setModal(null)}
           onEdit={() => setModal({ type: 'edit', product: modal.product })}
           onDelete={() => remove(modal.product)}
@@ -191,16 +205,19 @@ export default function ProductsPage() {
         />
       )}
       {modal?.type === 'import' && (
-        <ImportModal onClose={() => setModal(null)} onDone={() => { setModal(null); load(); }} />
+        <ImportModal categories={categories} onClose={() => setModal(null)} onDone={() => { setModal(null); load(); }} />
+      )}
+      {modal?.type === 'categories' && (
+        <CategoriesModal categories={categories} onClose={() => setModal(null)} onChanged={setCategories} />
       )}
     </>
   );
 }
 
-function ViewProductModal({ product, onClose, onEdit, onDelete, onToggleActive }) {
+function ViewProductModal({ product, categoryLabel, onClose, onEdit, onDelete, onToggleActive }) {
   const photos = product.photos || [];
   return (
-    <Modal title={product.name} sub={`${product.sku}${product.category ? ' · ' + (PRODUCT_CATEGORY_LABEL[product.category] || product.category) : ''}`} onClose={onClose}>
+    <Modal title={product.name} sub={`${product.sku}${product.category ? ' · ' + (categoryLabel[product.category] || product.category) : ''}`} onClose={onClose}>
       {photos.length > 0 && (
         <div className="prod-view-photos">
           {photos.map((ph) => <img key={ph.id} src={ph.dataUrl} alt={ph.name || product.name} />)}
@@ -221,11 +238,18 @@ function ViewProductModal({ product, onClose, onEdit, onDelete, onToggleActive }
   );
 }
 
-function ProductModal({ product = null, onClose, onDone }) {
+function ProductModal({ product = null, categories, categoriesLoading, onClose, onDone }) {
   const editing = !!product;
   const [sku, setSku] = useState(product?.sku || '');
   const [name, setName] = useState(product?.name || '');
-  const [category, setCategory] = useState(product?.category || PRODUCT_CATEGORY[0].v);
+  const [category, setCategory] = useState(product?.category || '');
+
+  // Categories load asynchronously (see ProductsPage's loadCategories) — if this modal mounted
+  // before that first fetch resolved, or a fresh Add Product opened with none picked yet,
+  // default to the first available category as soon as the list shows up.
+  useEffect(() => {
+    if (!category && categories.length > 0) setCategory(categories[0].v);
+  }, [categories, category]);
   const [price, setPrice] = useState(product?.price ?? '');
   const [unit, setUnit] = useState(product?.unit || 'piece');
   const [description, setDescription] = useState(product?.description || '');
@@ -275,9 +299,15 @@ function ProductModal({ product = null, onClose, onDone }) {
       <div className="lf-field"><label className="lf-label">SKU</label><input className="lf-input" value={sku} onChange={(e) => setSku(e.target.value)} placeholder="e.g. HES-TP-4G" /></div>
       <div className="lf-field">
         <label className="lf-label">Category</label>
-        <select className="lf-input" value={category} onChange={(e) => setCategory(e.target.value)}>
-          {PRODUCT_CATEGORY.map((c) => <option key={c.v} value={c.v}>{c.l}</option>)}
-        </select>
+        {categoriesLoading ? (
+          <div className="adm-meta-hint">Loading categories…</div>
+        ) : categories.length === 0 ? (
+          <div className="adm-meta-hint">No categories yet — add one from Manage Categories first.</div>
+        ) : (
+          <select className="lf-input" value={category} onChange={(e) => setCategory(e.target.value)}>
+            {categories.map((c) => <option key={c.v} value={c.v}>{c.l}</option>)}
+          </select>
+        )}
       </div>
       <div className="lf-field-row">
         <div className="lf-field"><label className="lf-label">Price (₹)</label><input className="lf-input" type="number" min="0" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="Leave blank for 'on request'" /></div>
@@ -314,7 +344,7 @@ function ProductModal({ product = null, onClose, onDone }) {
   );
 }
 
-function ImportModal({ onClose, onDone }) {
+function ImportModal({ categories, onClose, onDone }) {
   const [rows, setRows] = useState([]); // parsed rows, each tagged with _error
   const [fileName, setFileName] = useState('');
   const [parsing, setParsing] = useState(false);
@@ -338,7 +368,7 @@ function ImportModal({ onClose, onDone }) {
       try {
         const parsed = parseCsv(String(reader.result));
         if (parsed.length === 0) setError('No data rows found in that file');
-        else setRows(parsed.map((r) => ({ ...r, _error: validateImportRow(r) })));
+        else setRows(parsed.map((r) => ({ ...r, _error: validateImportRow(r, categories) })));
       } catch (e) {
         setError('Could not parse that file as CSV');
       } finally {
@@ -425,6 +455,70 @@ function ImportModal({ onClose, onDone }) {
           {submitting ? 'Importing…' : `Import ${validCount || ''} product${validCount === 1 ? '' : 's'}`}
         </button>
       </div>
+    </Modal>
+  );
+}
+
+// Admin-editable catalogue categories (lib/productCategories.js) — same add/remove-chip
+// pattern as Admin -> Settings' CitiesCard, just presented as a Modal since it's specific to
+// the Products tab rather than an org-wide setting. Removing a category here doesn't touch any
+// product already saved against it — see removeProductCategory's comment.
+function CategoriesModal({ categories, onClose, onChanged }) {
+  const [input, setInput] = useState('');
+  const [adding, setAdding] = useState(false);
+  const [removing, setRemoving] = useState(null);
+  const [error, setError] = useState('');
+
+  async function addCategory() {
+    const label = input.trim();
+    if (!label) return;
+    setError(''); setAdding(true);
+    try {
+      const res = await fetch('/api/admin/product-categories', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ label }) });
+      const data = await res.json();
+      if (!res.ok) { setError(data.error || 'Could not add category.'); return; }
+      setInput('');
+      onChanged(data.categories);
+    } finally { setAdding(false); }
+  }
+
+  async function removeCategoryChip(v) {
+    setRemoving(v); setError('');
+    try {
+      const res = await fetch('/api/admin/product-categories', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ v }) });
+      const data = await res.json();
+      if (!res.ok) { setError(data.error || 'Could not remove category.'); return; }
+      onChanged(data.categories);
+    } finally { setRemoving(null); }
+  }
+
+  return (
+    <Modal title="Manage Categories" sub="Powers the Category filter here and the picker on Add/Edit Product — removing one doesn't touch products already using it" onClose={onClose}>
+      {error && <div className="lf-error">{error}</div>}
+
+      <div className="adm-city-add">
+        <input
+          className="lf-input"
+          placeholder="Add a category, e.g. Fans"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && addCategory()}
+        />
+        <button className="adm-btn-primary" onClick={addCategory} disabled={adding || !input.trim()}>{adding ? 'Adding…' : 'Add'}</button>
+      </div>
+
+      {categories.length === 0 ? (
+        <div className="adm-empty">No categories yet.</div>
+      ) : (
+        <div className="adm-city-chips">
+          {categories.map((c) => (
+            <span className="adm-city-chip" key={c.v}>
+              {c.l}
+              <button aria-label={`Remove ${c.l}`} onClick={() => removeCategoryChip(c.v)} disabled={removing === c.v}>×</button>
+            </span>
+          ))}
+        </div>
+      )}
     </Modal>
   );
 }

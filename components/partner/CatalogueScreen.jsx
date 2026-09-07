@@ -16,7 +16,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ScreenHeader } from './ui';
 import { IconSearch, IconProducts, IconWhatsApp, IconX } from '@/components/admin/icons';
-import { PRODUCT_CATEGORY, PRODUCT_CATEGORY_LABEL } from '@/lib/formOptions';
 import { useApiResource } from '@/lib/useApiResource';
 import Portal from '@/components/shared/Portal';
 
@@ -33,6 +32,15 @@ export default function CatalogueScreen({ backHref = '/partner/home' }) {
   const [category, setCategory] = useState('all');
   const [page, setPage] = useState(1);
   const [viewing, setViewing] = useState(null);
+  // Admin-managed catalogue categories (lib/productCategories.js, Admin -> Products -> Manage
+  // Categories) — read-only here via the public /api/product-categories route (no PII, same
+  // shape as /api/cities), not useApiResource since that hook assumes its URL returns a bare
+  // array while this one returns { categories }.
+  const [categories, setCategories] = useState([]);
+  useEffect(() => {
+    fetch('/api/product-categories').then((r) => (r.ok ? r.json() : { categories: [] })).then((d) => setCategories(d.categories || [])).catch(() => {});
+  }, []);
+  const categoryLabel = useMemo(() => Object.fromEntries(categories.map((c) => [c.v, c.l])), [categories]);
 
   // Debounce typed search so every keystroke doesn't fire its own request — only settles into
   // a fetch once typing pauses.
@@ -60,8 +68,8 @@ export default function CatalogueScreen({ backHref = '/partner/home' }) {
   const total = result?.total || 0;
   const totalPages = result?.totalPages || 1;
   const categoriesUsed = useMemo(
-    () => PRODUCT_CATEGORY.filter((c) => (result?.categories || []).includes(c.v)),
-    [result],
+    () => categories.filter((c) => (result?.categories || []).includes(c.v)),
+    [categories, result],
   );
 
   return (
@@ -102,7 +110,7 @@ export default function CatalogueScreen({ backHref = '/partner/home' }) {
                   <div className="hp-cat-photo">{cover ? <img src={cover} alt={p.name} /> : <IconProducts size={26} />}</div>
                   <div className="hp-cat-body">
                     <div className="hp-cat-name">{p.name}</div>
-                    <div className="hp-cat-meta">{p.category ? PRODUCT_CATEGORY_LABEL[p.category] || p.category : p.sku}</div>
+                    <div className="hp-cat-meta">{p.category ? categoryLabel[p.category] || p.category : p.sku}</div>
                     <div className="hp-cat-price">{p.price != null ? currency(p.price) : 'Price on request'}</div>
                   </div>
                 </button>
@@ -120,12 +128,12 @@ export default function CatalogueScreen({ backHref = '/partner/home' }) {
         </>
       )}
 
-      {viewing && <ProductDetailSheet product={viewing} onClose={() => setViewing(null)} />}
+      {viewing && <ProductDetailSheet product={viewing} categoryLabel={categoryLabel} onClose={() => setViewing(null)} />}
     </>
   );
 }
 
-function ProductDetailSheet({ product, onClose }) {
+function ProductDetailSheet({ product, categoryLabel, onClose }) {
   const photos = product.photos || [];
   const shareText = [
     `*${product.name}*`,
@@ -142,7 +150,7 @@ function ProductDetailSheet({ product, onClose }) {
         <div className="hp-sheet">
           <div className="hp-sheet-handle" />
           <div className="hp-sheet-title">{product.name}</div>
-          <div className="hp-sheet-sub">{product.sku}{product.category ? ` · ${PRODUCT_CATEGORY_LABEL[product.category] || product.category}` : ''}</div>
+          <div className="hp-sheet-sub">{product.sku}{product.category ? ` · ${categoryLabel[product.category] || product.category}` : ''}</div>
 
           {photos.length > 0 && (
             <div className="hp-cat-detail-photos" style={{ padding: '4px 0 16px' }}>
