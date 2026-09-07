@@ -4,7 +4,7 @@
 // referral_customer), all sharing one entry point (app/go/[code]) and one funnel
 // (scans/clicks → leads → converted, computed from the same canonical lead stage everywhere
 // else in the app — lib/leadStage.js's stageOf).
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useApiResource } from '@/lib/useApiResource';
 import { ATTR_KIND_LABEL } from '@/lib/attributionConstants';
 import { StatCard, Modal } from './ui';
@@ -225,6 +225,15 @@ function CreateLinkModal({ onClose, onDone }) {
   const [rows, setRows] = useState([emptyLocationRow()]);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
+  // Same admin-controlled City list the Partner App itself is built on (Admin -> Settings ->
+  // Cities, see lib/cities.js — it's what a partner's own City field picks from at signup/Add
+  // Partner) — so a location QR's City can be picked from real, consistent options instead of
+  // free-typed and prone to "Bengaluru" vs "Bangalore"-style drift from the partner data.
+  const [cities, setCities] = useState([]);
+  const [citiesLoading, setCitiesLoading] = useState(true);
+  useEffect(() => {
+    fetch('/api/admin/cities').then((r) => (r.ok ? r.json() : { cities: [] })).then((d) => setCities(d.cities || [])).finally(() => setCitiesLoading(false));
+  }, []);
 
   function updateRow(i, field, value) {
     setRows((rs) => rs.map((r, idx) => (idx === i ? { ...r, [field]: value } : r)));
@@ -259,12 +268,15 @@ function CreateLinkModal({ onClose, onDone }) {
               onChange={(e) => updateRow(i, 'label', e.target.value)}
               placeholder='e.g. "Koramangala Billboard"'
             />
-            <input
+            <select
               className="lf-input adm-qrloc-city-input"
               value={r.city}
               onChange={(e) => updateRow(i, 'city', e.target.value)}
-              placeholder="Bengaluru"
-            />
+              disabled={citiesLoading || cities.length === 0}
+            >
+              <option value="">{citiesLoading ? 'Loading…' : cities.length === 0 ? 'No cities set up' : 'Select city…'}</option>
+              {cities.map((c) => <option key={c} value={c}>{c}</option>)}
+            </select>
             <input
               className="lf-input adm-qrloc-locality-input"
               value={r.locality}
