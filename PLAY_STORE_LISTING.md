@@ -55,13 +55,26 @@ at this deployment instead.
 
 **App access**: The app requires login, and a brand-new partner account starts
 empty (no leads/history for a reviewer to see), so give the review team a working
-demo account rather than relying on self-signup:
-- Create one dedicated test partner account (or reuse an existing internal one) with
-  a few sample leads/conversions already in it so Rewards & Leads aren't empty.
-- In Play Console → App content → App access, choose "All functionality is
-  available without special access" → No, then provide that username/password and
-  a one-line note: "Log in with these credentials on the Home tab to see leads,
-  demo scheduling, rewards and profile."
+demo account rather than relying on self-signup. Run this once from your own
+Terminal (same pattern as the other `scripts/*.mjs` seed scripts — needs your real
+`DATABASE_URL`, never runs through Claude):
+
+```bash
+DATABASE_URL="postgresql://...neon.tech/neondb?sslmode=require" node scripts/seed-play-review-demo.mjs
+```
+
+It creates (or reuses) the demo partner login and gives it three sample leads — one
+at each stage (New Lead, Demo Scheduled, Converted with a sale value) — so Home,
+Leads and Rewards & Earnings all have real content to review. It prints the
+credentials when it finishes; as of now that's phone `9876543210` / password
+`partner123` (also in the README's Local Development table). Safe to re-run any
+time before submitting, so the Converted lead's date stays inside the current
+month.
+
+In Play Console → App content → App access, choose "All functionality is
+available without special access" → No, then paste in that phone/password and a
+one-line note: "Log in with these credentials on the Home tab to see leads, demo
+scheduling, rewards and profile."
 
 **Ads**: No ads in this app → declare "No, my app does not contain ads."
 
