@@ -45,7 +45,14 @@ export async function POST(request) {
   const { data: page, error: pageErr } = await fetchPageInfo(token);
   if (pageErr) return Response.json({ error: pageErr }, { status: 400 });
 
-  const { data: forms, error: formsErr } = await fetchLeadForms(page.id, token);
+  // fetchPageInfo resolves a User/System-User token to a genuine Page-scoped one via
+  // /me/accounts when it can (see its own comment) — that derived token is what actually has
+  // leadgen_forms/subscribed_apps access, so it's what gets used and stored from here on,
+  // falling back to the originally pasted token when the admin already pasted a Page token
+  // directly (the common case, unchanged).
+  const effectiveToken = page.pageAccessToken || token;
+
+  const { data: forms, error: formsErr } = await fetchLeadForms(page.id, effectiveToken);
   if (formsErr) return Response.json({ error: formsErr }, { status: 400 });
 
   // Keep whatever enabled/disabled choices the admin already made for forms that still exist.
@@ -54,7 +61,7 @@ export async function POST(request) {
   const mergedForms = forms.map((f) => ({ id: f.id, name: f.name, status: f.status, enabled: prevById.get(f.id)?.enabled ?? false }));
 
   let settings = await saveMetaSettings({
-    pageAccessToken: token,
+    pageAccessToken: effectiveToken,
     pageId: page.id,
     pageName: page.name,
     forms: mergedForms,
@@ -64,7 +71,7 @@ export async function POST(request) {
 
   // Auto-subscribe the Page to this app's webhook — the step that otherwise has to be done
   // by hand in Meta's dashboard every time a Page is (re)connected.
-  const { error: subError } = await subscribePageToApp(page.id, token);
+  const { error: subError } = await subscribePageToApp(page.id, effectiveToken);
   settings = await saveMetaSettings({ subscribed: !subError, subscribeError: subError || null, subscribedAt: new Date().toISOString() });
 
   return Response.json(publicSettings(settings));
