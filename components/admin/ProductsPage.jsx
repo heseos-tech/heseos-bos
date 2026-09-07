@@ -5,12 +5,13 @@
 // facing catalogue view — see app/api/products/route.js's header for the access rules.
 import { useMemo, useState } from 'react';
 import { PRODUCT_CATEGORY, PRODUCT_CATEGORY_LABEL } from '@/lib/formOptions';
-import { StatCard, Modal } from './ui';
+import { StatCard, Modal, Pagination } from './ui';
 import { IconSearch, IconPlus, IconProducts, IconTrash, IconUpload, IconDownload, IconX } from './icons';
 import { useApiResource, invalidate } from '@/lib/useApiResource';
 import { parseCsv, toCsv, downloadCsv } from '@/lib/csv';
 
 const PRODUCTS_URL = '/api/products';
+const PAGE_SIZE = 20;
 const MAX_PHOTOS = 8;
 const MAX_DIM = 1100; // px, longest side after client-side downscale
 const JPEG_QUALITY = 0.82;
@@ -85,6 +86,7 @@ export default function ProductsPage() {
   const [q, setQ] = useState('');
   const [category, setCategory] = useState('all');
   const [status, setStatus] = useState('all');
+  const [page, setPage] = useState(1);
   const [modal, setModal] = useState(null); // { type: 'add' } | { type: 'edit', product } | { type: 'view', product }
   const [notice, setNotice] = useState('');
 
@@ -104,6 +106,9 @@ export default function ProductsPage() {
     }
     return true;
   }), [products, status, category, q]);
+
+  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const pageRows = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   async function toggleActive(p) {
     await fetch(`${PRODUCTS_URL}/${p.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ active: !(p.active !== false) }) });
@@ -139,12 +144,12 @@ export default function ProductsPage() {
 
       <div className="adm-card">
         <div className="adm-toolbar">
-          <div className="adm-search adm-search--inline"><IconSearch size={16} /><input placeholder="Search by product name or SKU…" value={q} onChange={(e) => setQ(e.target.value)} /></div>
-          <select value={category} onChange={(e) => setCategory(e.target.value)}>
+          <div className="adm-search adm-search--inline"><IconSearch size={16} /><input placeholder="Search by product name or SKU…" value={q} onChange={(e) => { setQ(e.target.value); setPage(1); }} /></div>
+          <select value={category} onChange={(e) => { setCategory(e.target.value); setPage(1); }}>
             <option value="all">All Categories</option>
             {PRODUCT_CATEGORY.map((c) => <option key={c.v} value={c.v}>{c.l}</option>)}
           </select>
-          <select value={status} onChange={(e) => setStatus(e.target.value)}>
+          <select value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }}>
             <option value="all">All Status</option><option value="active">Active</option><option value="inactive">Inactive</option>
           </select>
         </div>
@@ -154,7 +159,7 @@ export default function ProductsPage() {
             <div className="adm-empty">Loading…</div>
           ) : filtered.length === 0 ? (
             <div className="adm-empty">{products.length === 0 ? 'No products yet — add your first one to start building the catalogue.' : 'No products match these filters.'}</div>
-          ) : filtered.map((p) => {
+          ) : pageRows.map((p) => {
             const cover = p.photos?.[0]?.dataUrl;
             return (
               <div key={p.id} className={`prod-card${p.active === false ? ' prod-card--inactive' : ''}`} onClick={() => setModal({ type: 'view', product: p })}>
@@ -171,6 +176,7 @@ export default function ProductsPage() {
             );
           })}
         </div>
+        <Pagination page={page} pageCount={pageCount} total={filtered.length} pageSize={PAGE_SIZE} onPage={setPage} />
       </div>
 
       {modal?.type === 'add' && <ProductModal onClose={() => setModal(null)} onDone={() => { setModal(null); load(); flash('Product added'); }} />}
