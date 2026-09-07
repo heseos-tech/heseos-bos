@@ -6,6 +6,7 @@
 import { useMemo } from "react";
 import Link from "next/link";
 import { Avatar } from "@/components/partner/ui";
+import { GENERIC_ROLES } from "@/components/team/ui";
 import { IconBell, IconLeads, IconGift, IconCheck, IconMapPin, IconWallet } from "@/components/partner/icons";
 import { IconProducts, IconTasks, IconChevronRight } from "@/components/admin/icons";
 import { fmtDateTime } from "@/lib/date";
@@ -19,6 +20,11 @@ function norm(s) { return String(s || "").trim().toLowerCase(); }
 
 export default function TeamHomeScreen({ employee }) {
   const isPresales = employee.role === "presales";
+  // Operations/Marketing/Management aren't part of the lead pipeline at all (no assigned leads,
+  // no demos to claim) — they get a trimmed-down Home built around the same referral-payout
+  // machinery every role already shares (see the Referral Payout hero below), not the
+  // presales/sales_engineer stat grid or lead list.
+  const isGeneric = GENERIC_ROLES.includes(employee.role);
   // Shared with LeadsScreen (and, once visited, the desktop panels) via useApiResource
   // (lib/useApiResource.js) — Home and Leads both stay mounted together in TeamHome, so this
   // avoids two independent fetch-then-poll loops hitting /api/leads for the same data.
@@ -31,11 +37,12 @@ export default function TeamHomeScreen({ employee }) {
     [leads, myCity]
   );
   const mine = useMemo(
-    () => leads.filter((l) => (isPresales ? l.assignedTo === employee.id : l.salesEngineerId === employee.id)),
-    [leads, employee.id, isPresales]
+    () => (isGeneric ? [] : leads.filter((l) => (isPresales ? l.assignedTo === employee.id : l.salesEngineerId === employee.id))),
+    [leads, employee.id, isPresales, isGeneric]
   );
 
   const stats = useMemo(() => {
+    if (isGeneric) return [];
     if (isPresales) {
       let newC = 0, followupC = 0, demoC = 0, convC = 0;
       for (const l of mine) {
@@ -67,12 +74,16 @@ export default function TeamHomeScreen({ employee }) {
     ];
   }, [isPresales, mine, available, employee.location]);
 
-  const recent = useMemo(() => mine.slice().sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0)).slice(0, 4), [mine]);
   // Leads THIS employee personally added via the Team App's Add Lead wizard (addedByEmployeeId
   // — see app/api/leads/route.js), not leads merely assigned/claimed for them to work
   // (assignedTo/salesEngineerId, used above for `mine`). Same shared tiered ladder as Partner
-  // Rewards and Settings → Lead Conversion Payout — lib/payout.js.
+  // Rewards and Settings → Lead Conversion Payout — lib/payout.js. This is the ONLY lead list
+  // Operations/Marketing/Management ever see, since they have no assigned pipeline.
   const myReferrals = useMemo(() => leads.filter((l) => l.addedByEmployeeId === employee.id), [leads, employee.id]);
+  const recent = useMemo(
+    () => (isGeneric ? myReferrals : mine).slice().sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0)).slice(0, 4),
+    [mine, myReferrals, isGeneric]
+  );
   const payout = useMemo(() => payoutFor(myReferrals, payoutConfig, 'employee'), [myReferrals, payoutConfig]);
   const firstName = (employee.name || "there").split(" ")[0];
   const coverage = isPresales
@@ -92,7 +103,7 @@ export default function TeamHomeScreen({ employee }) {
       <div className="hp-greet-row">
         <div>
           <div className="hp-greet-title">Hi, {firstName}! 👋</div>
-          <div className="hp-greet-sub">{isPresales ? "Here's your lead overview" : "Here's what needs you today"}</div>
+          <div className="hp-greet-sub">{isGeneric ? "Here's your referral overview" : isPresales ? "Here's your lead overview" : "Here's what needs you today"}</div>
         </div>
         <div className="hp-wallet-chip">
           <div>
@@ -127,18 +138,20 @@ export default function TeamHomeScreen({ employee }) {
         </Link>
       )}
 
-      <div className="hp-stat-grid">
-        {stats.map((s) => {
-          const Icon = s.icon;
-          return (
-            <Link href={`/team/home?tab=leads&status=${s.key}`} className="hp-stat-card" key={s.label}>
-              <div className="hp-stat-icon"><Icon size={16} /></div>
-              <div className="hp-stat-val">{s.val}</div>
-              <div className="hp-stat-label">{s.label}</div>
-            </Link>
-          );
-        })}
-      </div>
+      {stats.length > 0 && (
+        <div className="hp-stat-grid">
+          {stats.map((s) => {
+            const Icon = s.icon;
+            return (
+              <Link href={`/team/home?tab=leads&status=${s.key}`} className="hp-stat-card" key={s.label}>
+                <div className="hp-stat-icon"><Icon size={16} /></div>
+                <div className="hp-stat-val">{s.val}</div>
+                <div className="hp-stat-label">{s.label}</div>
+              </Link>
+            );
+          })}
+        </div>
+      )}
 
       <Link href="/team/catalogue" className="hp-card" style={{ display: "flex", alignItems: "center", gap: 12, textDecoration: "none" }}>
         <div className="hp-stat-icon" style={{ width: 38, height: 38, flexShrink: 0, margin: 0 }}><IconProducts size={19} /></div>
@@ -158,15 +171,19 @@ export default function TeamHomeScreen({ employee }) {
         <IconChevronRight size={18} style={{ color: "var(--hp-text-faint)", flexShrink: 0 }} />
       </Link>
 
-      {!isPresales && !myCity && (
+      {!isPresales && !isGeneric && !myCity && (
         <div className="hp-card" style={{ background: "var(--hp-warn-dim)", border: "1px solid var(--hp-warn)" }}>
           <div className="hp-summary-label" style={{ color: "var(--hp-warn)" }}>Your profile has no city set — ask an admin to set it so open demos in your city show up here.</div>
         </div>
       )}
 
       <div className="hp-section-head" style={{ marginTop: 0 }}>
-        <div className="hp-section-title">{isPresales ? "Recent Leads" : "Recent Demos"}</div>
-        <Link className="hp-view-all" href="/team/home?tab=leads">View All</Link>
+        <div className="hp-section-title">{isGeneric ? "Recent Referrals" : isPresales ? "Recent Leads" : "Recent Demos"}</div>
+        {isGeneric ? (
+          <Link className="hp-view-all" href="/team/home?tab=rewards">View All</Link>
+        ) : (
+          <Link className="hp-view-all" href="/team/home?tab=leads">View All</Link>
+        )}
       </div>
 
       {loading ? (
@@ -174,8 +191,8 @@ export default function TeamHomeScreen({ employee }) {
       ) : recent.length === 0 ? (
         <div className="hp-empty">
           <div className="hp-empty-icon"><IconLeads size={24} /></div>
-          <div className="hp-empty-title">{isPresales ? "No leads yet" : "No demos yet"}</div>
-          <div className="hp-empty-sub">{isPresales ? "New leads assigned to you will show up here." : "Claim an available demo to get started."}</div>
+          <div className="hp-empty-title">{isGeneric ? "No referrals yet" : isPresales ? "No leads yet" : "No demos yet"}</div>
+          <div className="hp-empty-sub">{isGeneric ? "Leads you add will show up here." : isPresales ? "New leads assigned to you will show up here." : "Claim an available demo to get started."}</div>
         </div>
       ) : (
         <div className="hp-lead-list">
@@ -199,9 +216,13 @@ export default function TeamHomeScreen({ employee }) {
       )}
 
       <div className="hp-cta-block" style={{ paddingBottom: 24 }}>
-        <Link href="/team/home?tab=leads" className="hp-btn hp-btn-primary hp-btn-block">
-          {isPresales ? "View My Leads" : available.length > 0 ? `View ${available.length} Available Demo${available.length === 1 ? "" : "s"}` : "View My Demos"}
-        </Link>
+        {isGeneric ? (
+          <Link href="/team/leads/new" className="hp-btn hp-btn-primary hp-btn-block">Add a Lead</Link>
+        ) : (
+          <Link href="/team/home?tab=leads" className="hp-btn hp-btn-primary hp-btn-block">
+            {isPresales ? "View My Leads" : available.length > 0 ? `View ${available.length} Available Demo${available.length === 1 ? "" : "s"}` : "View My Demos"}
+          </Link>
+        )}
       </div>
     </>
   );

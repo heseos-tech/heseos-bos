@@ -5,8 +5,10 @@
 // /api/leads/[id] GET route the same way components/team/LeadDetailScreen.jsx already refetches
 // after every action — then re-applies the exact same visibility rule the old server page used
 // (pre-sales only ever sees leads assigned to them; a sales engineer sees leads already claimed
-// by them, plus any open demo in their own city) so a shared link or a guessed URL still can't
-// surface a lead outside an employee's own scope, matching the old page's behaviour exactly.
+// by them, plus any open demo in their own city), PLUS any employee of any role viewing a lead
+// they personally referred (addedByEmployeeId — Operations/Marketing/Management have no
+// pipeline of their own, but still need to see the status of leads they added), so a shared
+// link or a guessed URL still can't surface a lead outside an employee's own scope.
 import { useEffect, useState } from 'react';
 import { useEmployeeSession } from './ui';
 import TeamLeadDetailScreen from './LeadDetailScreen';
@@ -22,7 +24,8 @@ function isVisible(employee, lead) {
   return (
     (isPresales && lead.assignedTo === employee.id) ||
     (isSE && (lead.salesEngineerId === employee.id ||
-      (lead.demoScheduledAt && !lead.salesEngineerId && norm(lead.city) === norm(employee.location))))
+      (lead.demoScheduledAt && !lead.salesEngineerId && norm(lead.city) === norm(employee.location)))) ||
+    lead.addedByEmployeeId === employee.id
   );
 }
 

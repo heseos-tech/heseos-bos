@@ -6,6 +6,7 @@
 // demoOutcome | claim) — this screen is a new face on the same business logic, not a fork of it.
 import { useEffect, useState, useCallback } from "react";
 import { Avatar, ScreenHeader, Button } from "@/components/partner/ui";
+import { GENERIC_ROLES } from "@/components/team/ui";
 import { IconPhone, IconMapPin, IconBuilding, IconWallet, IconCalendar, IconSource, IconNote } from "@/components/partner/icons";
 import { fmtDate, fmtDateTime } from "@/lib/date";
 import { stageOf, displayStatus, subUpdateOf, needsReschedule, CONTACT_STAGES, DEMO_OUTCOMES } from "@/lib/leadStage";
@@ -29,6 +30,9 @@ export default function TeamLeadDetailScreen({ employee, lead: initialLead }) {
 
   const isPresales = employee.role === "presales";
   const isSE = employee.role === "sales_engineer";
+  // Operations/Marketing/Management have no Leads/Demo tab (see navItemsFor in
+  // components/team/ui.jsx) — send them back to Home, not a tab they can't reach.
+  const backHref = GENERIC_ROLES.includes(employee.role) ? "/team/home" : "/team/home?tab=leads";
 
   const refresh = useCallback(async () => {
     try {
@@ -80,7 +84,7 @@ export default function TeamLeadDetailScreen({ employee, lead: initialLead }) {
 
   return (
     <>
-      <ScreenHeader title={isSE ? "Demo Details" : "Lead Details"} backHref="/team/home?tab=leads" />
+      <ScreenHeader title={isSE ? "Demo Details" : "Lead Details"} backHref={backHref} />
 
       <div className="hp-detail-hero">
         <Avatar name={lead.name} size="lg" />

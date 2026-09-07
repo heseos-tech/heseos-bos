@@ -32,15 +32,22 @@ function navItemShiftClass(item) {
   return '';
 }
 
+// Operations/Marketing/Management have no assigned-lead pipeline to work (LeadsScreen.jsx is
+// built entirely around demos assigned to a presales/sales_engineer employee), so they get a
+// basic Team app view: Home, Add Lead and Rewards/Profile, but no Leads/Demo tab.
+export const GENERIC_ROLES = ['operations', 'marketing', 'management'];
+
 function navItemsFor(role) {
   const isSE = role === 'sales_engineer';
-  return [
+  const isGeneric = GENERIC_ROLES.includes(role);
+  const items = [
     { tab: 'home', href: '/team/home', label: 'Home', icon: IconHome },
     { tab: 'leads', href: '/team/home?tab=leads', label: isSE ? 'Demo' : 'Leads', icon: IconLeads },
     { href: '/team/leads/new', label: 'Add Lead', icon: IconPlus, center: true },
     { tab: 'rewards', href: '/team/home?tab=rewards', label: 'Rewards', icon: IconGift },
     { tab: 'profile', href: '/team/home?tab=profile', label: 'Profile', icon: IconUser },
   ];
+  return isGeneric ? items.filter((item) => item.tab !== 'leads') : items;
 }
 
 // Fixed-positioned (not a flex sibling of the scroll area) so it's pinned to the literal
@@ -107,7 +114,7 @@ export function TeamAppShell({ children }) {
     loginHref: '/team/login',
     resolveRedirect: (employee) => {
       if (employee.role === 'admin') return '/admin';
-      if (employee.role !== 'presales' && employee.role !== 'sales_engineer') return '/team/login';
+      if (employee.role !== 'presales' && employee.role !== 'sales_engineer' && !GENERIC_ROLES.includes(employee.role)) return '/team/login';
       return null;
     },
   });

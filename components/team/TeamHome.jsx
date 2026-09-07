@@ -8,7 +8,7 @@
 // separate route — it isn't a dashboard tab.
 import { useEffect, useState } from "react";
 import { useDashboardTab } from "@/components/partner/ui";
-import { useEmployeeSession } from "@/components/team/ui";
+import { useEmployeeSession, GENERIC_ROLES } from "@/components/team/ui";
 import TeamHomeScreen from "./HomeScreen";
 import TeamLeadsScreen from "./LeadsScreen";
 import TeamProfileScreen from "./ProfileScreen";
@@ -28,7 +28,11 @@ function renderTab(tab, employee) {
 export default function TeamHome() {
   const employee = useEmployeeSession();
   const { tab: rawTab } = useDashboardTab();
-  const active = KNOWN_TABS.has(rawTab) ? rawTab : "home";
+  // Operations/Marketing/Management have no Leads/Demo tab in the bottom nav (see
+  // navItemsFor in components/team/ui.jsx) — guard against reaching it via a stale/typed
+  // ?tab=leads URL too, since LeadsScreen assumes an assigned presales/sales_engineer pipeline.
+  const isGenericRole = GENERIC_ROLES.includes(employee?.role);
+  const active = KNOWN_TABS.has(rawTab) && !(rawTab === "leads" && isGenericRole) ? rawTab : "home";
 
   const [visited, setVisited] = useState(() => new Set([active]));
   useEffect(() => {

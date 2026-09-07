@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { fmtDateTime } from '@/lib/date';
 import { EMPLOYEE_ROLES } from '@/lib/formOptions';
 
-const ROLE_LABEL = { presales: 'Pre-Sales', sales_engineer: 'Sales Engineer', admin: 'Admin' };
+const ROLE_LABEL = { presales: 'Pre-Sales', sales_engineer: 'Sales Engineer', operations: 'Operations', marketing: 'Marketing', management: 'Management', admin: 'Admin' };
 const PARTNER_TYPES = ['shop', 'electrician', 'interior_designer', 'builder'];
 
 export default function AdminPanel({ employee }) {

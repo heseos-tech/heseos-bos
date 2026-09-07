@@ -5,7 +5,7 @@ import { Avatar } from "@/components/partner/ui";
 import { IconUser, IconHistory, IconHelp, IconFile, IconShield, IconLogout, IconChevronRight } from "@/components/partner/icons";
 import InstallAppMenuItem from "@/components/partner/InstallApp";
 
-const ROLE_LABEL = { presales: "Pre-Sales Executive", sales_engineer: "Sales Engineer" };
+const ROLE_LABEL = { presales: "Pre-Sales Executive", sales_engineer: "Sales Engineer", operations: "Operations", marketing: "Marketing", management: "Management" };
 
 const MENU = [
   { icon: IconUser, label: "My Profile" },

@@ -10,10 +10,10 @@ const PAGE_SIZE = 8;
 
 // Labels for every role an employee can hold. 'admin' employees exist in the data model
 // (lib/formOptions.js EMPLOYEE_ROLES) but are created directly in the database, not through
-// this form — this tab only offers Pre-Sales / Sales Engineer in its Role picker (see
-// AddEmployeeModal in SalesEngineersPage.jsx), since those are the two roles that get
-// auto-filtered into their own tabs below.
-const ROLE_LABEL = { presales: 'Pre-Sales', sales_engineer: 'Sales Engineer', admin: 'Super Admin' };
+// this form — this tab's Role picker (see AddEmployeeModal in SalesEngineersPage.jsx) offers
+// Pre-Sales, Sales Engineer, Operations, Marketing and Management; Pre-Sales/Sales Engineer
+// also get auto-filtered into their own tabs below.
+const ROLE_LABEL = { presales: 'Pre-Sales', sales_engineer: 'Sales Engineer', operations: 'Operations', marketing: 'Marketing', management: 'Management', admin: 'Super Admin' };
 
 // The single place every employee gets created, whatever their role. Saving here writes one
 // record (app/api/admin/employees/route.js) with an auto-generated employee ID; the Sales
@@ -89,6 +89,9 @@ export default function EmployeesPage() {
             <option value="all">All Roles</option>
             <option value="presales">Pre-Sales</option>
             <option value="sales_engineer">Sales Engineer</option>
+            <option value="operations">Operations</option>
+            <option value="marketing">Marketing</option>
+            <option value="management">Management</option>
             <option value="admin">Super Admin</option>
           </select>
           <select value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }}>

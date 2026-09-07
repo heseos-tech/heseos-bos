@@ -34,7 +34,7 @@ export const NAV_ITEMS = [
   { tab: 'settings', href: '/admin?tab=settings', label: 'Settings', Icon: IconSettings },
 ];
 
-const ROLE_LABEL = { admin: 'Super Admin', presales: 'Pre-Sales', sales_engineer: 'Sales Engineer' };
+const ROLE_LABEL = { admin: 'Super Admin', presales: 'Pre-Sales', sales_engineer: 'Sales Engineer', operations: 'Operations', marketing: 'Marketing', management: 'Management' };
 
 // AdminShell owns the Context (see components/partner/ui.jsx's DashboardTabContext /
 // useDashboardTabState comment) — the (app)-style layout at app/admin/layout.jsx is

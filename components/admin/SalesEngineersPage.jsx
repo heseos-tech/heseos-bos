@@ -112,7 +112,9 @@ export default function SalesEngineersPage() {
 // since they're working the phones, not driving out. Both pull their options from the
 // admin-controlled list at Admin -> Settings -> Cities (see lib/cities.js) — so only cities the
 // business actually operates in are selectable, which is also what makes city-based
-// auto-assignment (lib/leadAssign.js) reliable.
+// auto-assignment (lib/leadAssign.js) reliable. Operations/Marketing/Management aren't part of
+// that field pipeline at all — a city is a nice-to-have for them (shows on their profile), never
+// required.
 //
 // `role` is optional: pass it (as SalesEngineersPage/PresalesPage historically did) to lock the
 // form to that one role, or omit it to show a Role picker instead — that's what the unified
@@ -143,7 +145,8 @@ export function AddEmployeeModal({ role: fixedRole, title, onClose, onDone }) {
     setCitySelections((prev) => (prev.includes(c) ? prev.filter((x) => x !== c) : [...prev, c]));
   }
 
-  const cityValid = role === 'presales' ? (allCities || citySelections.length > 0) : !!location;
+  const isFieldRole = role === 'sales_engineer';
+  const cityValid = role === 'presales' ? (allCities || citySelections.length > 0) : isFieldRole ? !!location : true;
 
   async function submit() {
     setError(''); setSaving(true);
@@ -166,6 +169,9 @@ export function AddEmployeeModal({ role: fixedRole, title, onClose, onDone }) {
           <select className="lf-input" value={role} onChange={(e) => { setRole(e.target.value); setLocation(''); setCitySelections([]); setAllCities(false); }}>
             <option value="presales">Pre-Sales</option>
             <option value="sales_engineer">Sales Engineer</option>
+            <option value="operations">Operations</option>
+            <option value="marketing">Marketing</option>
+            <option value="management">Management</option>
           </select>
         </div>
       )}
@@ -195,7 +201,7 @@ export function AddEmployeeModal({ role: fixedRole, title, onClose, onDone }) {
             </>
           )}
         </div>
-      ) : (
+      ) : isFieldRole ? (
         <div className="lf-field">
           <label className="lf-label">City</label>
           {citiesLoading ? (
@@ -205,6 +211,20 @@ export function AddEmployeeModal({ role: fixedRole, title, onClose, onDone }) {
           ) : (
             <select className="lf-input" value={location} onChange={(e) => setLocation(e.target.value)}>
               <option value="">Select city…</option>
+              {cities.map((c) => <option key={c} value={c}>{c}</option>)}
+            </select>
+          )}
+        </div>
+      ) : (
+        <div className="lf-field">
+          <label className="lf-label">City (optional)</label>
+          {citiesLoading ? (
+            <div className="adm-meta-hint">Loading cities…</div>
+          ) : cities.length === 0 ? (
+            <div className="adm-meta-hint">No cities set up yet — add some from Admin → Settings → Cities first.</div>
+          ) : (
+            <select className="lf-input" value={location} onChange={(e) => setLocation(e.target.value)}>
+              <option value="">No specific city</option>
               {cities.map((c) => <option key={c} value={c}>{c}</option>)}
             </select>
           )}
