@@ -10,6 +10,7 @@
 import { getPartner } from '@/lib/auth';
 import { claimPartnerQrCode, funnelForAll, getHeseosBotTenant, buildWaLink } from '@/lib/attribution';
 import { dbWhere } from '@/lib/db';
+import { notifyHeseosPartnerQrClaimed } from '@/lib/heseosNotify';
 
 export const dynamic = 'force-dynamic';
 
@@ -55,6 +56,18 @@ export async function POST(request) {
     const link = await claimPartnerQrCode(body.code, partner);
     const tenant = await getHeseosBotTenant();
     const [withData] = await withUrlsAndFunnels([link], tenant);
+
+    // Same first-touch condition claimPartnerQrCode itself uses to decide whether to record
+    // partner.onboardedByEmployeeId — `partner` here is still the PRE-claim record (fetched at
+    // the top of this request), so `!partner.onboardedByEmployeeId` correctly reflects whether
+    // this claim is the one that just set it. Fire-and-forget: never let a WhatsApp hiccup fail
+    // a claim that already succeeded (see notifyHeseosPartnerQrClaimed's own header comment).
+    if (link.employeeId && !partner.onboardedByEmployeeId) {
+      notifyHeseosPartnerQrClaimed(partner, link.employeeId).catch((err) => {
+        console.error('notifyHeseosPartnerQrClaimed error:', err);
+      });
+    }
+
     return Response.json(withData);
   } catch (e) {
     const status = { NOT_FOUND: 404, ALREADY_CLAIMED: 409, INACTIVE: 410, INVALID: 400 }[e.code] || 400;
