@@ -47,7 +47,8 @@ export async function POST(request) {
   if (count > 200) return Response.json({ error: 'Generate at most 200 at a time — run it again for a bigger batch' }, { status: 400 });
 
   const batchLabel = String(body.batchLabel || '').trim();
-  const created = await createBlankPartnerQrCodes(count, { createdBy: `employee:${employee.id}`, batchLabel });
+  const employeeId = String(body.employeeId || '').trim() || null;
+  const created = await createBlankPartnerQrCodes(count, { createdBy: `employee:${employee.id}`, batchLabel, employeeId });
   const tenant = await getHeseosBotTenant();
   return Response.json(await withUrlsAndFunnels(created, tenant), { status: 201 });
 }

@@ -46,6 +46,11 @@ function ownerLabel(l) {
 
 export default function GrowthPage() {
   const { data: links, loading, refresh } = useApiResource('/api/admin/attribution', { pollMs: 20000 });
+  // So a claimed qr_partner code's row can show which employee originally handed that sticker
+  // out (set at batch-generation time — see "Create Partner QR Codes") — that's what lets admin
+  // analyse later which employee's QR codes are driving which partners/leads/conversions.
+  const { data: allEmployees } = useApiResource('/api/admin/employees', { pollMs: 20000 });
+  const employeeName = (id) => (id ? (allEmployees.find((e) => e.id === id)?.name || 'Unassigned') : '—');
   const [kind, setKind] = useState('all');
   const [q, setQ] = useState('');
   const [modal, setModal] = useState(null);
@@ -104,9 +109,9 @@ export default function GrowthPage() {
 
         <div className="adm-table-scroll">
           <table className="adm-table">
-            <thead><tr><th>Code</th><th>Kind</th><th>Partner / Location</th><th>Scans / Clicks</th><th>Leads</th><th>Converted</th><th>Conv. Rate</th><th>Status</th><th></th></tr></thead>
+            <thead><tr><th>Code</th><th>Kind</th><th>Partner / Location</th><th>Employee</th><th>Scans / Clicks</th><th>Leads</th><th>Converted</th><th>Conv. Rate</th><th>Status</th><th></th></tr></thead>
             <tbody>
-              {loading ? <tr><td colSpan={9} className="adm-empty">Loading…</td></tr> : filtered.length === 0 ? <tr><td colSpan={9} className="adm-empty">No links match these filters.</td></tr> : filtered.map((l) => {
+              {loading ? <tr><td colSpan={10} className="adm-empty">Loading…</td></tr> : filtered.length === 0 ? <tr><td colSpan={10} className="adm-empty">No links match these filters.</td></tr> : filtered.map((l) => {
                 const f = l.funnel || { visits: 0, leads: 0, converted: 0 };
                 const rate = f.visits ? Math.round((f.converted / f.visits) * 1000) / 10 : 0;
                 return (
@@ -117,6 +122,7 @@ export default function GrowthPage() {
                       <div className="adm-lead-name">{ownerLabel(l)}</div>
                       <div className="adm-lead-sub">{ownerTypeLabel(l)}</div>
                     </td>
+                    <td>{l.kind === 'qr_partner' ? employeeName(l.employeeId) : '—'}</td>
                     <td>{f.visits}</td>
                     <td>{f.leads}</td>
                     <td>{f.converted}</td>
@@ -307,8 +313,14 @@ function CreateLinkModal({ onClose, onDone }) {
 // createBlankPartnerQrCodes/claimPartnerQrCode.
 function BlankQrModal({ onClose }) {
   const { data: unclaimed, loading, refresh } = useApiResource('/api/admin/attribution/blank-qr', { pollMs: 20000 });
+  // Every batch can be tagged with the employee who's actually handing the stickers out, same
+  // idea as batchLabel — so a batch's downstream leads/conversions can later be attributed back
+  // to the employee that distributed it, not just to which print run it came from.
+  const { data: allEmployees } = useApiResource('/api/admin/employees', { pollMs: 20000 });
+  const employees = useMemo(() => allEmployees.filter((e) => e.active !== false && (e.role === 'presales' || e.role === 'sales_engineer')), [allEmployees]);
   const [count, setCount] = useState(10);
   const [batchLabel, setBatchLabel] = useState('');
+  const [employeeId, setEmployeeId] = useState('');
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState('');
 
@@ -317,7 +329,7 @@ function BlankQrModal({ onClose }) {
     try {
       const res = await fetch('/api/admin/attribution/blank-qr', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ count, batchLabel }),
+        body: JSON.stringify({ count, batchLabel, employeeId }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed');
@@ -343,6 +355,13 @@ function BlankQrModal({ onClose }) {
             <label className="lf-label">Batch label (optional)</label>
             <input className="lf-input" value={batchLabel} onChange={(e) => setBatchLabel(e.target.value)} placeholder='e.g. "Sep 2026 onboarding run"' />
           </div>
+          <div className="lf-field">
+            <label className="lf-label">Employee (optional)</label>
+            <select className="lf-input" value={employeeId} onChange={(e) => setEmployeeId(e.target.value)}>
+              <option value="">No employee</option>
+              {employees.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
+            </select>
+          </div>
         </div>
         {error && <div className="lf-error">{error}</div>}
         <div className="lf-actions" style={{ marginBottom: 18 }}>
@@ -365,7 +384,11 @@ function BlankQrModal({ onClose }) {
                 <div className="adm-qr-tile" key={l.id}>
                   <img src={qrImg} alt={l.id} width={140} height={140} />
                   <div className="adm-qr-tile-code">{l.id}</div>
-                  {l.batchLabel && <div className="adm-qr-tile-batch">{l.batchLabel}</div>}
+                  {(l.batchLabel || l.employeeId) && (
+                    <div className="adm-qr-tile-batch">
+                      {[l.batchLabel, allEmployees.find((e) => e.id === l.employeeId)?.name].filter(Boolean).join(' · ')}
+                    </div>
+                  )}
                   {(l.funnel?.visits || 0) > 0 && (
                     <div className="adm-qr-tile-scanned">Scanned {l.funnel.visits}× already — unclaimed</div>
                   )}
@@ -406,11 +429,14 @@ function PrintQrModal({ links, onClose }) {
   const [qrSizeIn, setQrSizeIn] = useState(2);
   const [sheetKey, setSheetKey] = useState('a4');
   const [batch, setBatch] = useState('all');
+  const [employeeFilter, setEmployeeFilter] = useState('all');
 
   const locations = useMemo(() => links.filter((l) => l.kind === 'qr_location'), [links]);
   // Same unclaimed-codes endpoint "Create Partner QR Codes" uses — useApiResource shares one
   // cache per URL, so this doesn't duplicate that fetch if both modals have been opened.
   const { data: unclaimed, loading: partnerLoading } = useApiResource('/api/admin/attribution/blank-qr', { pollMs: 20000 });
+  const { data: allEmployees } = useApiResource('/api/admin/employees', { pollMs: 20000 });
+  const employeeName = (id) => allEmployees.find((e) => e.id === id)?.name || 'Unassigned';
 
   // Partner codes are generated in batches (see "Create Partner QR Codes"), so printing needs a
   // batch picker rather than always printing every unclaimed code at once.
@@ -424,11 +450,27 @@ function PrintQrModal({ links, onClose }) {
     return { labels, hasUnlabeled };
   }, [unclaimed]);
 
+  // Same idea, but by the employee a batch was tagged with at generation time (see
+  // "Create Partner QR Codes") — lets admin print (and later analyse) just one employee's
+  // stickers, independently of which batch/print run they came from.
+  const employeeOptions = useMemo(() => {
+    const ids = [];
+    let hasUnassigned = false;
+    unclaimed.forEach((u) => {
+      if (u.employeeId) { if (!ids.includes(u.employeeId)) ids.push(u.employeeId); }
+      else hasUnassigned = true;
+    });
+    return { ids, hasUnassigned };
+  }, [unclaimed]);
+
   const partnerCodes = useMemo(() => {
-    if (batch === 'all') return unclaimed;
-    if (batch === '__unlabeled__') return unclaimed.filter((u) => !u.batchLabel);
-    return unclaimed.filter((u) => u.batchLabel === batch);
-  }, [unclaimed, batch]);
+    let out = unclaimed;
+    if (batch === '__unlabeled__') out = out.filter((u) => !u.batchLabel);
+    else if (batch !== 'all') out = out.filter((u) => u.batchLabel === batch);
+    if (employeeFilter === '__unassigned__') out = out.filter((u) => !u.employeeId);
+    else if (employeeFilter !== 'all') out = out.filter((u) => u.employeeId === employeeFilter);
+    return out;
+  }, [unclaimed, batch, employeeFilter]);
 
   const items = printKind === 'location' ? locations : partnerCodes;
   const sheet = SHEET_SIZES_MM[sheetKey];
@@ -465,6 +507,16 @@ function PrintQrModal({ links, onClose }) {
                 <option value="all">All unclaimed codes</option>
                 {batches.labels.map((b) => <option key={b} value={b}>{b}</option>)}
                 {batches.hasUnlabeled && <option value="__unlabeled__">No batch label</option>}
+              </select>
+            </div>
+          )}
+          {printKind === 'partner' && (
+            <div className="lf-field">
+              <label className="lf-label">Employee</label>
+              <select className="lf-input" value={employeeFilter} onChange={(e) => setEmployeeFilter(e.target.value)}>
+                <option value="all">All employees</option>
+                {employeeOptions.ids.map((id) => <option key={id} value={id}>{employeeName(id)}</option>)}
+                {employeeOptions.hasUnassigned && <option value="__unassigned__">No employee</option>}
               </select>
             </div>
           )}
@@ -511,7 +563,9 @@ function PrintQrModal({ links, onClose }) {
               // itself (what's printed is a blank sticker, not tied to a partner yet) + its
               // batch label, if it has one — same two label slots, different content.
               const primaryLabel = printKind === 'location' ? (l.label || l.id) : l.id;
-              const secondaryLabel = printKind === 'location' ? [l.locality, l.city].filter(Boolean).join(', ') : (l.batchLabel || '');
+              const secondaryLabel = printKind === 'location'
+                ? [l.locality, l.city].filter(Boolean).join(', ')
+                : [l.batchLabel, l.employeeId ? employeeName(l.employeeId) : ''].filter(Boolean).join(' · ');
               return (
                 <div className="adm-qr-print-tile" style={{ width: `${qrSizeIn}in` }} key={l.id}>
                   <img src={qrImg} alt={primaryLabel} />
