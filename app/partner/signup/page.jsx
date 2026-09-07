@@ -41,8 +41,16 @@ export default function PartnerSignupPage() {
       <div className="hp-hero">
         <div className="hp-hero-bg" style={{ backgroundImage: "url('/Signup-Screen.webp')" }} />
         <div className="hp-hero-scrim-full" />
-        <div className="hp-hero-content" style={{ justifyContent: 'flex-end' }}>
-          <div style={{ position: 'absolute', top: 26, left: 22, fontSize: 22, fontWeight: 800, color: '#fff' }}>Sign Up</div>
+        {/* space-between (not flex-end) so "Sign Up" is a normal, non-absolutely-positioned flex
+            child again — same fix as app/partner/login/page.jsx's logo — it used to be pinned
+            with a hardcoded `top: 26`, which ignored env(safe-area-inset-top) entirely and got
+            clipped under the status bar on notch/Dynamic-Island iPhones. As a normal child it
+            inherits .hp-hero-content's own safe-area-aware padding-top (see partner-app.css)
+            instead of a fixed pixel value, and the smaller paddingBottom (down from the default
+            34px) keeps the form from sitting so far from the bottom edge, matching the login
+            page's spacing. */}
+        <div className="hp-hero-content" style={{ justifyContent: 'space-between', paddingBottom: 18 }}>
+          <div style={{ fontSize: 22, fontWeight: 800, color: '#fff' }}>Sign Up</div>
 
           <div>
             <h1 className="hp-h2">Join the Heseos Partner <span className="hp-accent-text">Network</span></h1>
