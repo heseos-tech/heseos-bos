@@ -2,8 +2,7 @@
 import { useState, useMemo } from 'react';
 import { presalesStats, performanceTag, windowDelta } from '@/lib/adminMetrics';
 import { StatCard, Pagination, PerformanceTag } from './ui';
-import { IconSearch, IconPlus, IconDownload, IconPresales, IconLeads, IconDemo, IconConversions } from './icons';
-import { AddEmployeeModal } from './SalesEngineersPage';
+import { IconSearch, IconDownload, IconPresales, IconLeads, IconDemo, IconConversions } from './icons';
 import { useApiResource } from '@/lib/useApiResource';
 
 const PAGE_SIZE = 8;
@@ -19,7 +18,6 @@ export default function PresalesPage() {
   const [q, setQ] = useState('');
   const [status, setStatus] = useState('all');
   const [page, setPage] = useState(1);
-  const [modal, setModal] = useState(null);
   const [notice, setNotice] = useState('');
 
   function flash(msg) { setNotice(msg); setTimeout(() => setNotice(''), 3000); }
@@ -57,10 +55,9 @@ export default function PresalesPage() {
   return (
     <>
       <div className="adm-page-head">
-        <div><h1 className="adm-h1">Pre-sales</h1><p className="adm-page-sub">Manage your pre-sales team and track their performance</p></div>
+        <div><h1 className="adm-h1">Pre-sales</h1><p className="adm-page-sub">Manage your pre-sales team and track their performance — add new pre-sales executives from the Employees tab</p></div>
         <div className="adm-page-head-actions">
           <button className="adm-btn-outline" onClick={exportCsv}><IconDownload size={15} /> Export</button>
-          <button className="adm-btn-primary" onClick={() => setModal({ type: 'add' })}><IconPlus size={15} /> Add Pre-sales</button>
         </div>
       </div>
 
@@ -105,8 +102,6 @@ export default function PresalesPage() {
         </div>
         <Pagination page={page} pageCount={pageCount} total={filtered.length} pageSize={PAGE_SIZE} onPage={setPage} />
       </div>
-
-      {modal?.type === 'add' && <AddEmployeeModal role="presales" title="Add pre-sales executive" onClose={() => setModal(null)} onDone={() => { setModal(null); flash('Pre-sales executive added'); load(); }} />}
     </>
   );
 }

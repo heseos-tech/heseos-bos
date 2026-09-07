@@ -13,6 +13,7 @@ import { useDashboardTab } from "@/components/partner/ui";
 import DashboardPage from "./DashboardPage";
 import LeadsPage from "./LeadsPage";
 import PartnersPage from "./PartnersPage";
+import EmployeesPage from "./EmployeesPage";
 import SalesEngineersPage from "./SalesEngineersPage";
 import PresalesPage from "./PresalesPage";
 import ReportsPage from "./ReportsPage";
@@ -30,6 +31,7 @@ function renderTab(tab, employee) {
     case "dashboard": return <DashboardPage employee={employee} />;
     case "leads": return <Suspense fallback={<div className="adm-empty">Loading…</div>}><LeadsPage /></Suspense>;
     case "partners": return <PartnersPage />;
+    case "employees": return <EmployeesPage />;
     case "sales-engineers": return <SalesEngineersPage />;
     case "presales": return <PresalesPage />;
     case "reports": return <ReportsPage />;
@@ -45,7 +47,7 @@ function renderTab(tab, employee) {
   }
 }
 
-const KNOWN_TABS = new Set(["dashboard", "leads", "partners", "sales-engineers", "presales", "reports", "settings", "growth", "products", "quotations", "tasks", "demo-schedule", "conversions", "payouts"]);
+const KNOWN_TABS = new Set(["dashboard", "leads", "partners", "employees", "sales-engineers", "presales", "reports", "settings", "growth", "products", "quotations", "tasks", "demo-schedule", "conversions", "payouts"]);
 
 export default function AdminHome({ employee }) {
   const { tab: rawTab } = useDashboardTab();

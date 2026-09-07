@@ -3,7 +3,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { EMPLOYEE_ROLES } from '@/lib/formOptions';
 import { engineerStats, performanceTag, windowDelta } from '@/lib/adminMetrics';
 import { StatCard, Pagination, PerformanceTag, Modal } from './ui';
-import { IconSearch, IconPlus, IconDownload, IconSalesEngineer, IconDemo, IconQuotation, IconConversions } from './icons';
+import { IconSearch, IconDownload, IconSalesEngineer, IconDemo, IconQuotation, IconConversions } from './icons';
 import { useApiResource } from '@/lib/useApiResource';
 
 const PAGE_SIZE = 8;
@@ -19,7 +19,6 @@ export default function SalesEngineersPage() {
   const [q, setQ] = useState('');
   const [status, setStatus] = useState('all');
   const [page, setPage] = useState(1);
-  const [modal, setModal] = useState(null);
   const [notice, setNotice] = useState('');
 
   function flash(msg) { setNotice(msg); setTimeout(() => setNotice(''), 3000); }
@@ -57,10 +56,9 @@ export default function SalesEngineersPage() {
   return (
     <>
       <div className="adm-page-head">
-        <div><h1 className="adm-h1">Sales Engineers</h1><p className="adm-page-sub">Manage your sales team and track their performance</p></div>
+        <div><h1 className="adm-h1">Sales Engineers</h1><p className="adm-page-sub">Manage your sales team and track their performance — add new sales engineers from the Employees tab</p></div>
         <div className="adm-page-head-actions">
           <button className="adm-btn-outline" onClick={exportCsv}><IconDownload size={15} /> Export</button>
-          <button className="adm-btn-primary" onClick={() => setModal({ type: 'add' })}><IconPlus size={15} /> Add Sales Engineer</button>
         </div>
       </div>
 
@@ -105,8 +103,6 @@ export default function SalesEngineersPage() {
         </div>
         <Pagination page={page} pageCount={pageCount} total={filtered.length} pageSize={PAGE_SIZE} onPage={setPage} />
       </div>
-
-      {modal?.type === 'add' && <AddEmployeeModal role="sales_engineer" title="Add sales engineer" onClose={() => setModal(null)} onDone={() => { setModal(null); flash('Sales engineer added'); load(); }} />}
     </>
   );
 }
@@ -117,7 +113,16 @@ export default function SalesEngineersPage() {
 // admin-controlled list at Admin -> Settings -> Cities (see lib/cities.js) — so only cities the
 // business actually operates in are selectable, which is also what makes city-based
 // auto-assignment (lib/leadAssign.js) reliable.
-export function AddEmployeeModal({ role, title, onClose, onDone }) {
+//
+// `role` is optional: pass it (as SalesEngineersPage/PresalesPage historically did) to lock the
+// form to that one role, or omit it to show a Role picker instead — that's what the unified
+// Employees tab (EmployeesPage.jsx) does, since it's the one place any employee gets created
+// now, of whichever role, instead of each role tab having its own separate "Add" button. The
+// employee ID itself is generated server-side (app/api/admin/employees/route.js) — there's
+// nothing to fill in for it here.
+export function AddEmployeeModal({ role: fixedRole, title, onClose, onDone }) {
+  const roleLocked = !!fixedRole;
+  const [role, setRole] = useState(fixedRole || 'presales');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
@@ -154,7 +159,16 @@ export function AddEmployeeModal({ role, title, onClose, onDone }) {
   }
 
   return (
-    <Modal title={title} sub="Creates a login for the employee portal" onClose={onClose}>
+    <Modal title={title || 'Add Employee'} sub="Creates a login for the employee portal — their employee ID is generated automatically." onClose={onClose}>
+      {!roleLocked && (
+        <div className="lf-field">
+          <label className="lf-label">Role</label>
+          <select className="lf-input" value={role} onChange={(e) => { setRole(e.target.value); setLocation(''); setCitySelections([]); setAllCities(false); }}>
+            <option value="presales">Pre-Sales</option>
+            <option value="sales_engineer">Sales Engineer</option>
+          </select>
+        </div>
+      )}
       <div className="lf-field"><label className="lf-label">Full name</label><input className="lf-input" value={name} onChange={(e) => setName(e.target.value)} /></div>
       <div className="lf-field"><label className="lf-label">Email</label><input className="lf-input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} /></div>
       <div className="lf-field"><label className="lf-label">Phone</label><input className="lf-input" value={phone} onChange={(e) => setPhone(e.target.value)} /></div>

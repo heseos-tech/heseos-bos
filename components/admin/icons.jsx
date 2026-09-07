@@ -40,3 +40,4 @@ export const IconRefresh = (p) => S(<><path d="M4 12a8 8 0 0114.5-4.5M20 12a8 8 
 export const IconTrash = (p) => S(<><path d="M4 7h16" /><path d="M9 7V4.5a1 1 0 011-1h4a1 1 0 011 1V7" /><path d="M6 7l1 13a1.5 1.5 0 001.5 1.5h7A1.5 1.5 0 0017 20l1-13" /><path d="M10 11v6M14 11v6" /></>, p?.size);
 export const IconInfo = (p) => S(<><circle cx="12" cy="12" r="9" /><path d="M12 11v5.5" /><circle cx="12" cy="8" r="0.1" fill="currentColor" stroke="currentColor" strokeWidth="2.4" /></>, p?.size);
 export const IconProducts = (p) => S(<><path d="M3.5 7.5l8.5-4 8.5 4-8.5 4-8.5-4z" /><path d="M3.5 7.5v9l8.5 4 8.5-4v-9" /><path d="M12 11.5v9" /></>, p?.size);
+export const IconEmployees = (p) => S(<><rect x="4" y="3.5" width="16" height="17" rx="2.5" /><circle cx="12" cy="10" r="2.6" /><path d="M8 17c.6-2.3 2.2-3.5 4-3.5s3.4 1.2 4 3.5" /></>, p?.size);

@@ -8,7 +8,7 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useDashboardTab, useDashboardTabState, DashboardTabContext } from '@/components/partner/ui';
 import {
-  IconDashboard, IconLeads, IconPartners, IconSalesEngineer, IconPresales, IconDemo,
+  IconDashboard, IconLeads, IconPartners, IconEmployees, IconSalesEngineer, IconPresales, IconDemo,
   IconProducts, IconQuotation, IconConversions, IconReports, IconPayouts, IconTasks, IconSettings,
   IconSearch, IconBell, IconChevronDown, IconChevronLeft, IconChevronRight, IconArrowUp,
   IconArrowDown, IconX, IconLogout, IconQrCode,
@@ -20,6 +20,7 @@ export const NAV_ITEMS = [
   { tab: 'dashboard', href: '/admin', label: 'Dashboard', Icon: IconDashboard },
   { tab: 'leads', href: '/admin?tab=leads', label: 'Leads', Icon: IconLeads },
   { tab: 'partners', href: '/admin?tab=partners', label: 'Partners', Icon: IconPartners },
+  { tab: 'employees', href: '/admin?tab=employees', label: 'Employees', Icon: IconEmployees },
   { tab: 'sales-engineers', href: '/admin?tab=sales-engineers', label: 'Sales Engineers', Icon: IconSalesEngineer },
   { tab: 'presales', href: '/admin?tab=presales', label: 'Pre-sales', Icon: IconPresales },
   { tab: 'demo-schedule', href: '/admin?tab=demo-schedule', label: 'Demo Schedule', Icon: IconDemo },
