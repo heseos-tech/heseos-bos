@@ -62,7 +62,7 @@ export default function PartnersPage() {
   const pageRows = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   function exportCsv() {
-    const cols = ['id', 'businessName', 'name', 'phone', 'category', 'city', 'onboardedBy', 'leads', 'converted', 'conversionRate', 'active'];
+    const cols = ['id', 'businessName', 'name', 'phone', 'category', 'city', 'accountManager', 'leads', 'converted', 'conversionRate', 'active'];
     const csv = [cols.join(','), ...filtered.map((p) => [p.id, p.businessName, p.name, p.phone, partnerCategoryLabel(p.type), p.city || '', employeeName(p.onboardedByEmployeeId), p.stats.leadsCount, p.stats.converted, p.stats.conversionRate, p.active !== false].map((v) => `"${String(v ?? '')}"`).join(','))].join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
@@ -100,7 +100,7 @@ export default function PartnersPage() {
             {PARTNER_CATEGORY.map((c) => <option key={c.v} value={c.v}>{c.l}</option>)}
           </select>
           <select value={onboardedBy} onChange={(e) => { setOnboardedBy(e.target.value); setPage(1); }}>
-            <option value="all">Onboarded By: All</option>
+            <option value="all">Account Manager: All</option>
             {allEmployees.filter((e) => e.active !== false).map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
             <option value="__none__">Not recorded</option>
           </select>
@@ -108,7 +108,7 @@ export default function PartnersPage() {
 
         <div className="adm-table-scroll">
           <table className="adm-table">
-            <thead><tr><th>Partner Details</th><th>Category</th><th>City</th><th>Onboarded By</th><th>Leads</th><th>Converted</th><th>Conv. Rate</th><th>Earnings</th><th>Status</th><th></th></tr></thead>
+            <thead><tr><th>Partner Details</th><th>Category</th><th>City</th><th>Account Manager</th><th>Leads</th><th>Converted</th><th>Conv. Rate</th><th>Earnings</th><th>Status</th><th></th></tr></thead>
             <tbody>
               {loading ? <tr><td colSpan={10} className="adm-empty">Loading…</td></tr> : pageRows.length === 0 ? <tr><td colSpan={10} className="adm-empty">No partners match these filters.</td></tr> : pageRows.map((p) => (
                 <tr key={p.id}>
@@ -180,7 +180,7 @@ function OnboardedByField({ partner, employees, onSaved }) {
 
   return (
     <div className="lf-field" style={{ marginTop: 4 }}>
-      <label className="lf-label">Onboarded By</label>
+      <label className="lf-label">Account Manager</label>
       <div style={{ display: 'flex', gap: 8 }}>
         <select className="lf-input" value={value} onChange={(e) => setValue(e.target.value)}>
           <option value="">Not recorded</option>
@@ -249,7 +249,7 @@ function AddPartnerModal({ onClose, onDone }) {
         </div>
       </div>
       <div className="lf-field">
-        <label className="lf-label">Onboarded by (optional)</label>
+        <label className="lf-label">Account Manager (optional)</label>
         <select className="lf-input" value={onboardedByEmployeeId} onChange={(e) => setOnboardedByEmployeeId(e.target.value)}>
           <option value="">Not recorded</option>
           {allEmployees.filter((e) => e.active !== false).map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
