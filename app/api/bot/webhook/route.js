@@ -108,7 +108,15 @@ export async function POST(req) {
 
         let chat = await dbGetById('bot_chats', m.from);
         let flow = null;
-        if (!chat) {
+        // A proactive notification (see lib/heseosNotify.js's ensureBotChatForOutbound) can
+        // create this row before the person has ever actually messaged in — it exists only so
+        // the conversation is visible in the Bot Console Inbox right away, and deliberately
+        // leaves firstMessageAt unset. Treat that the same as no row at all here, so this
+        // person's real first reply still gets the full new-chat welcome/flow-picking logic
+        // below (and the dbInsert() a few lines down safely overwrites the placeholder — it's
+        // an upsert) instead of being routed through the "existing chat, no flow assigned"
+        // branch further down, which would leave them with no reply at all.
+        if (!chat || !chat.firstMessageAt) {
           // Resolved once here (not just for Heseos) so any tenant's first-ever message on a
           // chat can carry a QR-vs-organic signal — used both for pickFlow's attribution match
           // below and lib/botEngine.js's welcomeText(). Today only Heseos's own QR/referral
