@@ -9,7 +9,6 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { InstallAppButton } from '@/components/partner/InstallApp';
 
 export default function PartnerOnboardingPage() {
   const router = useRouter();
@@ -57,8 +56,6 @@ export default function PartnerOnboardingPage() {
             <Link href="/partner/login" className="hp-btn hp-btn-primary hp-btn-block">Login</Link>
             <div style={{ height: 12 }} />
             <Link href="/partner/signup" className="hp-btn hp-btn-outline hp-btn-block">Sign Up</Link>
-            <div style={{ height: 12 }} />
-            <InstallAppButton appName="Partner App" />
           </div>
         </div>
       </div>
