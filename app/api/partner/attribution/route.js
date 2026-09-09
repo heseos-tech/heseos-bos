@@ -28,7 +28,7 @@ export async function GET() {
   const partner = await getPartner();
   if (!partner) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const label = partner.businessName || partner.name || partner.id;
+  const label = partner.shopName || partner.businessName || partner.name || partner.id;
   const [referral, tenant] = await Promise.all([
     getOrCreatePartnerLink(partner.id, 'referral_partner', label),
     getHeseosBotTenant(),
