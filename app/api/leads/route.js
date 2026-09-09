@@ -61,7 +61,10 @@ export async function POST(request) {
       const partner = await getPartner();
       if (!partner) return Response.json({ error: 'Partner login required' }, { status: 401 });
       partnerId = partner.id;
-      addedByLabel = `${partner.name || partner.businessName || 'Our partner'}, Heseos Partner`;
+      // Business name first — a customer being told who punched them in should see the
+      // partner's storefront/business name, not a stranger's personal name (see also
+      // lib/attribution.js's referrerNoteFor, which follows the same priority).
+      addedByLabel = `${partner.businessName || partner.name || 'Our partner'}, Heseos Partner`;
     } else if (source === 'employee_app') {
       const employee = await getEmployee();
       if (!employee) return Response.json({ error: 'Employee login required' }, { status: 401 });
