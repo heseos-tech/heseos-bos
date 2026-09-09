@@ -279,17 +279,19 @@ html:has(.hp-root), body:has(.hp-root) {
    screens the same way .hp-root centers itself. Padding trimmed slightly for a more
    compact, native tab-bar height. */
 /* Background matches .hp-shell's own (var(--hp-bg), not the slightly lighter var(--hp-bg2)) so
-   any residual safe-area gap is invisible instead of a two-tone seam — same root cause as the
-   "uncovered sliver" above. The safe-area reservation itself is gone (no more
-   env(safe-area-inset-bottom) here), and the whole bar is nudged past bottom:0 by its own
-   bottom-padding amount (bottom: -4px, matching the 4px padding below) so that padding sits
-   below the visible edge of the screen instead of showing as a gap under the labels — the tap
-   targets themselves (icons + labels + the padding above them) are unaffected, only the slice
-   of padding that was pure empty space gets tucked off-screen. Padding and .hp-nav-item's own
-   vertical padding/gap below are both trimmed to their practical minimum (any tighter and the
-   labels start crowding the icons above them) for the shortest bar this layout can produce. */
+   any safe-area padding below reads as more of the same bar, not a two-tone seam — same root
+   cause as the "uncovered sliver" above.
+   bottom:0 + a real env(safe-area-inset-bottom) reservation in the padding (not a negative
+   `bottom` pushing the bar off-screen — that was tucking the ONLY clearance this bar had below
+   the visible viewport edge, which is exactly why the icons/labels sat flush against — and on
+   some Android phones, partly behind — the system's own gesture/button nav bar with zero
+   breathing room). 0px on a normal browser tab or a device with no gesture bar, same pattern as
+   .hp-hero-content's env(safe-area-inset-top) and .hp-sheet's own
+   env(safe-area-inset-bottom) above. useNavHeightVar (see ui.jsx) measures this bar's real
+   rendered height — safe-area padding included — so .hp-shell-scroll's own reserved space
+   (--hp-nav-h below) grows to match automatically, nothing to keep in sync by hand. */
 
-.hp-bottom-nav { position: fixed; left: 50%; bottom: -4px; transform: translateX(-50%); width: 100%; max-width: 480px; z-index: 40; flex-shrink: 0; display: flex; align-items: flex-end; justify-content: space-around; background: var(--hp-bg); border-top: 1px solid var(--hp-border); padding: 4px; }
+.hp-bottom-nav { position: fixed; left: 50%; bottom: 0; transform: translateX(-50%); width: 100%; max-width: 480px; z-index: 40; flex-shrink: 0; display: flex; align-items: flex-end; justify-content: space-around; background: var(--hp-bg); border-top: 1px solid var(--hp-border); padding: 4px 4px calc(4px + env(safe-area-inset-bottom, 0px)); }
 .hp-nav-item { display: flex; flex-direction: column; align-items: center; gap: 3px; background: none; border: none; color: var(--hp-text-faint); font-size: 10.5px; font-weight: 600; padding: 2px 8px; flex: 1; cursor: pointer; transition: transform 0.1s ease, opacity 0.1s ease; }
 .hp-nav-item.active { color: var(--hp-orange); }
 .hp-nav-item:active { transform: scale(0.9); opacity: 0.6; }
