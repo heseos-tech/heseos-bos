@@ -6,7 +6,6 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { InstallAppButton } from '@/components/partner/InstallApp';
 
 export default function TeamRootPage() {
   const router = useRouter();
@@ -50,8 +49,6 @@ export default function TeamRootPage() {
 
           <div>
             <Link href="/team/login" className="hp-btn hp-btn-primary hp-btn-block">Login</Link>
-            <div style={{ height: 12 }} />
-            <InstallAppButton appName="Team App" />
           </div>
         </div>
       </div>

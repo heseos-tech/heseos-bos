@@ -4,7 +4,6 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Avatar } from './ui';
 import { IconUser, IconBank, IconHistory, IconHelp, IconFile, IconShield, IconLogout, IconChevronRight, IconLink, IconQrCode } from './icons';
-import InstallAppMenuItem from './InstallApp';
 
 const MENU = [
   { icon: IconUser, label: 'My Profile', href: '/partner/my-profile' },
@@ -42,7 +41,6 @@ export default function ProfileScreen({ partner }) {
       </div>
 
       <div className="hp-menu-list">
-        <InstallAppMenuItem appName="Partner App" />
         {MENU.map((m) => {
           const Icon = m.icon;
           return (
