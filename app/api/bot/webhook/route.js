@@ -6,7 +6,7 @@
 // lib/botEngine.js.
 
 import { dbGetById, dbInsert, dbList, dbPatch, dbWhere } from '@/lib/db';
-import { parseWebhookByPhone } from '@/lib/botWhatsapp';
+import { parseWebhookByPhone, describeMetaError } from '@/lib/botWhatsapp';
 import { runBotTurn } from '@/lib/botEngine';
 import { runFlowTurn, pickFlow } from '@/lib/botFlowEngine';
 import { parseRefFromText, referrerNoteFor } from '@/lib/attribution';
@@ -306,7 +306,14 @@ export async function POST(req) {
       }
 
       for (const s of g.statuses) {
-        try { await dbPatch('bot_messages', s.id, { status: s.status }); } catch { /* not our outbound id — ignore */ }
+        // A 'failed' status carries Meta's real rejection reason in s.errors — the same shape
+        // botSendTemplate/botSendText already format via describeMetaError, reused here so a
+        // template that's accepted at send time but rejected during actual delivery (throttling,
+        // quality-based restriction, an unreachable/opted-out recipient, etc.) shows a real reason
+        // in the Inbox's "Not delivered" line instead of a bare, unexplained badge.
+        const patch = { status: s.status };
+        if (s.status === 'failed' && s.errors?.length) patch.error = describeMetaError(s.errors[0]);
+        try { await dbPatch('bot_messages', s.id, patch); } catch { /* not our outbound id — ignore */ }
       }
     } catch (err) {
       console.error('Bot webhook error:', err);
