@@ -9,7 +9,7 @@ import { dbGetById, dbInsert, dbList, dbPatch, dbWhere } from '@/lib/db';
 import { parseWebhookByPhone, describeMetaError } from '@/lib/botWhatsapp';
 import { runBotTurn } from '@/lib/botEngine';
 import { runFlowTurn, pickFlow } from '@/lib/botFlowEngine';
-import { parseRefFromText, referrerNoteFor, partnerCityFor } from '@/lib/attribution';
+import { parseRefFromText, referrerNoteFor, attributionCityFor } from '@/lib/attribution';
 import { createHeseosLead, heseosLeadSummary } from '@/lib/heseosLeadSync';
 import { findFirstLeadByPhone } from '@/lib/leadOrigin';
 import { stageOf } from '@/lib/leadStage';
@@ -172,13 +172,14 @@ export async function POST(req) {
             // branch, so their chats simply have no referrerNote and {{referrerNote}} (if a
             // tenant's own flow happens to use it) just renders blank. See lib/attribution.js.
             const referrerNote = await referrerNoteFor(link);
-            // Pre-fills {{partnerCity}} for lib/heseosDefaultFlow.js's city-confirmation step —
-            // '' for every chat that isn't a qr_partner scan (see partnerCityFor), so that
-            // step's altIf/hasPartnerCity check simply never fires and the flow falls straight
-            // through to its original plain city question, unchanged, for everyone else.
-            const partnerCity = await partnerCityFor(link);
-            const patch = { referrerNote, partnerCity };
-            chat = { ...chat, referrerNote, partnerCity };
+            // Pre-fills {{attributionCity}} for lib/heseosDefaultFlow.js's city-confirmation
+            // step — '' for a plain/organic chat or a referral_customer link (see
+            // attributionCityFor), so that step's altIf/hasAttributionCity check simply never
+            // fires and the flow falls straight through to its original plain city question,
+            // unchanged, for everyone else.
+            const attributionCity = await attributionCityFor(link);
+            const patch = { referrerNote, attributionCity };
+            chat = { ...chat, referrerNote, attributionCity };
             if (existingLeadId) {
               // Already have a lead for this phone number — link this chat to it directly rather
               // than waiting for a flow to finish (there's no new-enquiry journey to finish here
