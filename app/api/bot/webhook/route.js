@@ -6,7 +6,7 @@
 // lib/botEngine.js.
 
 import { dbGetById, dbInsert, dbList, dbPatch, dbWhere } from '@/lib/db';
-import { parseWebhookByPhone, describeMetaError } from '@/lib/botWhatsapp';
+import { parseWebhookByPhone, describeMetaError, botMarkReadWithTyping, botWaConfigured } from '@/lib/botWhatsapp';
 import { runBotTurn } from '@/lib/botEngine';
 import { runFlowTurn, pickFlow } from '@/lib/botFlowEngine';
 import { parseRefFromText, referrerNoteFor, attributionCityFor } from '@/lib/attribution';
@@ -107,6 +107,15 @@ export async function POST(req) {
           id: m.id, tenantId: tenant.id, chatId: m.from, direction: 'in', body: m.text, ts: m.ts,
           status: 'received', sender: m.name || null,
         });
+
+        // Show "typing…" right away, before any of the (occasionally slow) engine/flow work
+        // below — see lib/botWhatsapp.js's botMarkReadWithTyping. Best-effort: a failure here
+        // must never stop the actual reply.
+        if (botWaConfigured(tenant)) {
+          await botMarkReadWithTyping({ phoneNumberId: tenant.waPhoneNumberId, token: tenant.waAccessToken }, m.id).catch((err) => {
+            console.error('botMarkReadWithTyping error:', err);
+          });
+        }
 
         let chat = await dbGetById('bot_chats', m.from);
         let flow = null;
