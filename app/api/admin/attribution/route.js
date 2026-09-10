@@ -14,19 +14,17 @@
 
 import { dbList, dbPatch } from '@/lib/db';
 import { getEmployee } from '@/lib/auth';
-import { createAttributionLink, funnelForAll, getHeseosBotTenant, buildWaLink } from '@/lib/attribution';
+import { createAttributionLink, funnelForAll, getHeseosBotTenant, trackedLinkUrl } from '@/lib/attribution';
 
 export const dynamic = 'force-dynamic';
 
-// Prefer a direct https://wa.me/<number>?text=...(ref:<code>) link straight into Heseos Buddy
-// (buildWaLink) over the tracked /go/<code> redirector — scanning/tapping opens WhatsApp
-// immediately instead of bouncing through our own domain first. Only falls back to /go/<code>
-// when WhatsApp isn't connected/verified yet, since that page's own friendly message is a
-// better dead end than a broken wa.me link — and it resolves correctly the moment it is
-// connected. See app/api/partner/attribution/route.js for the same logic, and its header
-// comment for why losing the tracked hop doesn't affect lead/conversion attribution.
+// Always the tracked /go/<code> redirector (trackedLinkUrl) — it logs the scan/click before
+// redirecting into WhatsApp in one near-instant hop, so every QR scan / link tap counts toward
+// the Growth tab's funnel, not just the ones that go on to become a completed lead. Falls back
+// to a direct wa.me link only when PUBLIC_BASE_URL isn't configured. See
+// app/api/partner/attribution/route.js for the same logic.
 function linkUrlFor(tenant, code) {
-  return (tenant ? buildWaLink(tenant, code) : null) || null;
+  return trackedLinkUrl(tenant, code) || null;
 }
 
 export async function GET() {

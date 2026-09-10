@@ -11,12 +11,13 @@
 //        previous batch before printing another one.
 // POST — generate a new batch of N blank codes.
 import { getEmployee } from '@/lib/auth';
-import { createBlankPartnerQrCodes, listUnclaimedPartnerQrCodes, funnelForAll, getHeseosBotTenant, buildWaLink } from '@/lib/attribution';
+import { createBlankPartnerQrCodes, listUnclaimedPartnerQrCodes, funnelForAll, getHeseosBotTenant, trackedLinkUrl } from '@/lib/attribution';
 
 export const dynamic = 'force-dynamic';
 
+// Always the tracked /go/<code> redirector — see app/api/admin/attribution/route.js for why.
 function linkUrlFor(tenant, code) {
-  return (tenant ? buildWaLink(tenant, code) : null) || null;
+  return trackedLinkUrl(tenant, code) || null;
 }
 
 async function withUrlsAndFunnels(links, tenant) {

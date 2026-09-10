@@ -8,7 +8,7 @@
 // GET  — every qr_partner code this partner has already claimed, with live funnel stats.
 // POST — claim a code by its printed value (body: { code }).
 import { getPartner } from '@/lib/auth';
-import { claimPartnerQrCode, funnelForAll, getHeseosBotTenant, buildWaLink } from '@/lib/attribution';
+import { claimPartnerQrCode, funnelForAll, getHeseosBotTenant, trackedLinkUrl } from '@/lib/attribution';
 import { dbWhere } from '@/lib/db';
 import { notifyHeseosPartnerQrClaimed } from '@/lib/heseosNotify';
 
@@ -19,10 +19,11 @@ function baseUrl() {
   return raw ? raw.replace(/\/$/, '') : '';
 }
 
+// Always the tracked /go/<code> redirector (trackedLinkUrl) so every scan of a partner's
+// printed sticker is logged before the near-instant redirect into WhatsApp — see
+// app/api/admin/attribution/route.js for the full rationale.
 function linkUrlFor(tenant, code) {
-  const base = baseUrl();
-  const fallback = base ? `${base}/go/${code}` : null;
-  return (tenant ? buildWaLink(tenant, code) : null) || fallback;
+  return trackedLinkUrl(tenant, code);
 }
 
 async function withUrlsAndFunnels(links, tenant) {
