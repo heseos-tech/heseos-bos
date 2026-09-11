@@ -344,11 +344,14 @@ function ProductModal({ product = null, categories, categoriesLoading, onClose, 
   );
 }
 
-// Server caps a single import request at 500 rows (see app/api/products/bulk-import/route.js) —
-// each row is its own DB round-trip done sequentially, so one request has to stay well inside a
-// serverless function's execution budget. A CSV bigger than that isn't blocked: it's split into
-// BATCH_SIZE-sized requests posted one after another, so the admin never has to split it by hand.
-const BATCH_SIZE = 400;
+// Server caps a single import request at MAX_ROWS (500, see
+// app/api/products/bulk-import/route.js) as a sanity ceiling on one request's size — the actual
+// per-row DB writes there now run concurrently, not sequentially, so 500 rows finishes in a
+// couple of seconds. A CSV bigger than the cap isn't blocked: it's split into BATCH_SIZE-sized
+// requests posted one after another, so the admin never has to split it by hand. Keep this equal
+// to the server's MAX_ROWS — it's just a client-side mirror of that same number, chosen so a
+// normal-sized import goes out as a single batch.
+const BATCH_SIZE = 500;
 
 function ImportModal({ categories, onClose, onDone }) {
   const [rows, setRows] = useState([]); // parsed rows, each tagged with _error
