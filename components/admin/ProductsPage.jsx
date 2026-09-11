@@ -344,11 +344,18 @@ function ProductModal({ product = null, categories, categoriesLoading, onClose, 
   );
 }
 
+// Server caps a single import request at 500 rows (see app/api/products/bulk-import/route.js) —
+// each row is its own DB round-trip done sequentially, so one request has to stay well inside a
+// serverless function's execution budget. A CSV bigger than that isn't blocked: it's split into
+// BATCH_SIZE-sized requests posted one after another, so the admin never has to split it by hand.
+const BATCH_SIZE = 400;
+
 function ImportModal({ categories, onClose, onDone }) {
   const [rows, setRows] = useState([]); // parsed rows, each tagged with _error
   const [fileName, setFileName] = useState('');
   const [parsing, setParsing] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [progress, setProgress] = useState(''); // e.g. "Importing 400 of 527…" — only set once >1 batch
   const [error, setError] = useState('');
   const [result, setResult] = useState(null); // { created, updated, errors }
 
@@ -379,16 +386,46 @@ function ImportModal({ categories, onClose, onDone }) {
   }
 
   async function submit() {
-    const good = rows.filter((r) => !r._error).map(({ _error, ...r }) => r);
+    // Tag each valid row with its real position in the uploaded file (header = row 1, so data
+    // starts at row 2) before splitting into batches — otherwise a later batch's error rows would
+    // get numbered as if they started at row 2 again instead of pointing at the true CSV row.
+    const good = rows
+      .map((r, i) => ({ ...r, _row: i + 2 }))
+      .filter((r) => !r._error);
     if (good.length === 0) return;
     setSubmitting(true);
     setError('');
+    setProgress('');
+    const totals = { created: 0, updated: 0, errors: [] };
+    const multiBatch = good.length > BATCH_SIZE;
     try {
-      const res = await fetch('/api/products/bulk-import', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ rows: good }) });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Import failed');
-      setResult(data);
-    } catch (e) { setError(e.message); } finally { setSubmitting(false); }
+      for (let start = 0; start < good.length; start += BATCH_SIZE) {
+        const batch = good.slice(start, start + BATCH_SIZE);
+        if (multiBatch) setProgress(`Importing ${Math.min(start + BATCH_SIZE, good.length)} of ${good.length}…`);
+        const res = await fetch('/api/products/bulk-import', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            rows: batch.map(({ _error, _row, ...r }) => r),
+            rowNumbers: batch.map((r) => r._row),
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Import failed');
+        totals.created += data.created;
+        totals.updated += data.updated;
+        totals.errors.push(...data.errors);
+      }
+      setResult(totals);
+    } catch (e) {
+      setError(e.message);
+      // Earlier batches may already have gone through — show what succeeded so far rather than
+      // hiding it behind the error.
+      if (totals.created || totals.updated || totals.errors.length) setResult(totals);
+    } finally {
+      setSubmitting(false);
+      setProgress('');
+    }
   }
 
   if (result) {
@@ -452,7 +489,7 @@ function ImportModal({ categories, onClose, onDone }) {
       <div className="lf-actions">
         <button className="lf-btn-back" onClick={onClose} disabled={submitting}>Cancel</button>
         <button className="lf-btn-next" onClick={submit} disabled={submitting || parsing || validCount === 0}>
-          {submitting ? 'Importing…' : `Import ${validCount || ''} product${validCount === 1 ? '' : 's'}`}
+          {submitting ? (progress || 'Importing…') : `Import ${validCount || ''} product${validCount === 1 ? '' : 's'}`}
         </button>
       </div>
     </Modal>

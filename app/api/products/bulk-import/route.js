@@ -4,6 +4,13 @@
 // the catalogue by SKU (case-insensitive) — a re-imported/edited export becomes a bulk update
 // rather than a pile of duplicate rows. Re-validates every field server-side too; the client
 // preview is a convenience, not the source of truth. Same admin-only gate as POST /api/products.
+//
+// Each row does its own DB round-trip (dbInsert/dbPatch), sequentially, so a single request stays
+// capped at MAX_ROWS to keep one call well inside a serverless function's execution time budget.
+// A file larger than that isn't rejected outright: ImportModal splits it into MAX_ROWS-sized
+// batches client-side and posts them one after another, so an admin never has to split the CSV
+// by hand. `rowNumbers[i]`, when sent, is the row's actual line number in the original file (so
+// error rows still point at the right CSV row even though later batches don't start at row 2).
 
 import { dbInsert, dbList, dbPatch } from '@/lib/db';
 import { getEmployee } from '@/lib/auth';
@@ -60,11 +67,14 @@ export async function POST(request) {
 
   const body = await request.json().catch(() => ({}));
   const rows = Array.isArray(body.rows) ? body.rows : null;
+  const rowNumbers = Array.isArray(body.rowNumbers) ? body.rowNumbers : null;
   if (!rows || rows.length === 0) {
     return Response.json({ error: 'No rows to import' }, { status: 400 });
   }
   if (rows.length > MAX_ROWS) {
-    return Response.json({ error: `Too many rows — split the file into batches of ${MAX_ROWS} or fewer` }, { status: 400 });
+    // ImportModal never sends more than MAX_ROWS at a time — it auto-splits on the client — so
+    // this only fires for a direct/API call. Kept as a hard safety net either way.
+    return Response.json({ error: `Too many rows in a single request — split the file into batches of ${MAX_ROWS} or fewer` }, { status: 400 });
   }
 
   const existing = await dbList('products');
@@ -79,7 +89,9 @@ export async function POST(request) {
   const now = new Date().toISOString();
 
   for (let i = 0; i < rows.length; i++) {
-    const rowNum = i + 2; // +2: header row is row 1, data starts at row 2 in a spreadsheet
+    // Prefer the client-supplied original file row number (batched imports don't start at
+    // row 2) — fall back to a plain offset when called without it.
+    const rowNum = (Array.isArray(rowNumbers) && Number.isFinite(rowNumbers[i])) ? rowNumbers[i] : i + 2;
     const { value, error } = validateRow(rows[i], validCategories);
     if (error) { errors.push({ row: rowNum, error }); continue; }
 
