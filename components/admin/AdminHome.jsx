@@ -21,7 +21,6 @@ import SettingsPage from "./SettingsPage";
 import GrowthPage from "./GrowthPage";
 import ProductsPage from "./ProductsPage";
 import QuotationsPage from "./QuotationsPage";
-import TasksPage from "./TasksPage";
 import DemoSchedulePage from "./DemoSchedulePage";
 import ConversionsPage from "./ConversionsPage";
 import PayoutsPage from "./PayoutsPage";
@@ -39,7 +38,6 @@ function renderTab(tab, employee) {
     case "growth": return <GrowthPage />;
     case "products": return <ProductsPage />;
     case "quotations": return <QuotationsPage />;
-    case "tasks": return <TasksPage />;
     case "demo-schedule": return <DemoSchedulePage />;
     case "conversions": return <ConversionsPage />;
     case "payouts": return <PayoutsPage />;
@@ -47,7 +45,7 @@ function renderTab(tab, employee) {
   }
 }
 
-const KNOWN_TABS = new Set(["dashboard", "leads", "partners", "employees", "sales-engineers", "presales", "reports", "settings", "growth", "products", "quotations", "tasks", "demo-schedule", "conversions", "payouts"]);
+const KNOWN_TABS = new Set(["dashboard", "leads", "partners", "employees", "sales-engineers", "presales", "reports", "settings", "growth", "products", "quotations", "demo-schedule", "conversions", "payouts"]);
 
 export default function AdminHome({ employee }) {
   const { tab: rawTab } = useDashboardTab();

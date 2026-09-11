@@ -2,7 +2,7 @@
 // Team-app "My Partners" — every partner this employee has onboarded (partner.onboardedByEmployeeId
 // — see app/api/team/partners/route.js), as a searchable list with each partner's own lead/
 // conversion count. Reached from Home's "My Partners" card, not a bottom-nav tab — same
-// reasoning as Catalogue/Tasks (the nav is already full at five slots — see
+// reasoning as Catalogue (the nav is already full at five slots — see
 // app/team/(app)/catalogue/page.jsx).
 //
 // Read-only: reassigning who onboarded a partner is an Admin -> Partners action

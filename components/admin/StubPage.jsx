@@ -1,6 +1,6 @@
 // A classy "coming soon" placeholder — used for nav items the admin sidebar links to that
 // don't have a full page built yet (Demo Schedule, Quotations, Conversions, Reports,
-// Payouts, Tasks, Settings). Keeps the sidebar honest: every item is a real route, but only
+// Payouts, Settings). Keeps the sidebar honest: every item is a real route, but only
 // says "coming soon" where there's genuinely nothing behind it yet.
 export default function StubPage({ title, description, Icon }) {
   return (

@@ -9,7 +9,7 @@ import { useRouter } from 'next/navigation';
 import { useDashboardTab, useDashboardTabState, DashboardTabContext } from '@/components/partner/ui';
 import {
   IconDashboard, IconLeads, IconPartners, IconEmployees, IconSalesEngineer, IconPresales, IconDemo,
-  IconProducts, IconQuotation, IconConversions, IconReports, IconPayouts, IconTasks, IconSettings,
+  IconProducts, IconQuotation, IconConversions, IconReports, IconPayouts, IconSettings,
   IconSearch, IconBell, IconChevronDown, IconChevronLeft, IconChevronRight, IconArrowUp,
   IconArrowDown, IconX, IconLogout, IconQrCode,
 } from './icons';
@@ -30,7 +30,6 @@ export const NAV_ITEMS = [
   { tab: 'reports', href: '/admin?tab=reports', label: 'Reports', Icon: IconReports },
   { tab: 'growth', href: '/admin?tab=growth', label: 'QR & Referrals', Icon: IconQrCode },
   { tab: 'payouts', href: '/admin?tab=payouts', label: 'Payouts', Icon: IconPayouts },
-  { tab: 'tasks', href: '/admin?tab=tasks', label: 'Tasks', Icon: IconTasks },
   { tab: 'settings', href: '/admin?tab=settings', label: 'Settings', Icon: IconSettings },
 ];
 

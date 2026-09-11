@@ -9,7 +9,6 @@ import { fmtDateTime, fmtDate } from '@/lib/date';
 import { stageOf, displayStatus, subUpdateOf, isFollowUpLead, CONTACT_STAGES } from '@/lib/leadStage';
 import { PRODUCT_INTEREST, PROPERTY_TYPE, LEAD_SOURCES } from '@/lib/formOptions';
 import { useApiResource } from '@/lib/useApiResource';
-import MyTasksPanel from './MyTasksPanel';
 
 // Small inline refresh glyph — same no-icon-library convention as this folder's siblings
 // (components/partner, components/admin each keep their own tiny icon set).
@@ -29,7 +28,6 @@ export default function PresalesPanel({ employee }) {
   // every existing call site below (the modal's onDone, the manual refresh button) keeps working
   // unchanged.
   const { data: leads, loading, refresh: fetchLeads } = useApiResource('/api/leads', { pollMs: 20000 });
-  const [view, setView] = useState('leads'); // 'leads' | 'tasks'
   const [tab, setTab] = useState('new');
   const [syncing, setSyncing] = useState(false);
   const [syncMsg, setSyncMsg] = useState('');
@@ -104,16 +102,7 @@ export default function PresalesPanel({ employee }) {
       </div>
 
       <div className="dash-body">
-        <div className="dash-tabs">
-          <button className={`dash-tab${view === 'leads' ? ' active' : ''}`} onClick={() => setView('leads')}>Leads</button>
-          <button className={`dash-tab${view === 'tasks' ? ' active' : ''}`} onClick={() => setView('tasks')}>My Tasks</button>
-        </div>
-
-        {view === 'tasks' ? (
-          <MyTasksPanel employee={employee} />
-        ) : (
-          <>
-          <div className="kpi-row">
+        <div className="kpi-row">
             <div className="kpi-card"><div className="kpi-label">New Leads</div><div className="kpi-val">{groups.new.length}</div></div>
             <div className="kpi-card"><div className="kpi-label">Follow-ups</div><div className="kpi-val">{groups.followup.length}</div></div>
             <div className="kpi-card"><div className="kpi-label">Demo Scheduled</div><div className="kpi-val">{groups.demo.length}</div></div>
@@ -186,11 +175,9 @@ export default function PresalesPanel({ employee }) {
               </table>
             </div>
           )}
-          </>
-        )}
       </div>
 
-      {view === 'leads' && modal && <PresalesModal modal={modal} onClose={() => setModal(null)} onDone={() => { setModal(null); fetchLeads(); }} />}
+      {modal && <PresalesModal modal={modal} onClose={() => setModal(null)} onDone={() => { setModal(null); fetchLeads(); }} />}
     </div>
   );
 

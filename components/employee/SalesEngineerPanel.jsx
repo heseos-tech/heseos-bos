@@ -11,7 +11,6 @@ import { stageOf, displayStatus, subUpdateOf, needsReschedule, DEMO_OUTCOMES } f
 import { PRODUCT_INTEREST, PROPERTY_TYPE, LEAD_SOURCES } from '@/lib/formOptions';
 import { useApiResource } from '@/lib/useApiResource';
 import QuotationBuilderModal from '@/components/shared/QuotationBuilder';
-import MyTasksPanel from './MyTasksPanel';
 
 const PI_LABEL = Object.fromEntries(PRODUCT_INTEREST.map((p) => [p.v, p.l]));
 const PT_LABEL = Object.fromEntries(PROPERTY_TYPE.map((p) => [p.v, p.l]));
@@ -25,7 +24,6 @@ export default function SalesEngineerPanel({ employee }) {
   // faster than Pre-sales (15s vs 20s) since open demos get claimed fast — first come first
   // served.
   const { data: leads, loading, refresh: fetchLeads } = useApiResource('/api/leads', { pollMs: 15000 });
-  const [view, setView] = useState('leads'); // 'leads' | 'tasks'
   const [tab, setTab] = useState('available');
   const [modal, setModal] = useState(null); // { type: 'quotation'|'outcome'|'timeline', lead }
   const [claimingId, setClaimingId] = useState(null);
@@ -109,16 +107,7 @@ export default function SalesEngineerPanel({ employee }) {
       <div className="dash-body">
         {notice && <div className="dash-notice" style={{ marginBottom: 16 }}>{notice}</div>}
 
-        <div className="dash-tabs">
-          <button className={`dash-tab${view === 'leads' ? ' active' : ''}`} onClick={() => setView('leads')}>Leads</button>
-          <button className={`dash-tab${view === 'tasks' ? ' active' : ''}`} onClick={() => setView('tasks')}>My Tasks</button>
-        </div>
-
-        {view === 'tasks' ? (
-          <MyTasksPanel employee={employee} />
-        ) : (
-          <>
-          <div className="kpi-row">
+        <div className="kpi-row">
             <div className="kpi-card"><div className="kpi-label">Available in {employee.location || 'your city'}</div><div className="kpi-val">{available.length}</div></div>
             <div className="kpi-card"><div className="kpi-label">Upcoming Demos</div><div className="kpi-val">{groups.upcoming.length}</div></div>
             <div className="kpi-card"><div className="kpi-label">Quotation Sent</div><div className="kpi-val">{groups.quoted.length}</div></div>
@@ -207,14 +196,12 @@ export default function SalesEngineerPanel({ employee }) {
               </table>
             </div>
           )}
-          </>
-        )}
       </div>
 
-      {view === 'leads' && modal?.type === 'quotation' && (
+      {modal?.type === 'quotation' && (
         <QuotationBuilderModal lead={modal.lead} onClose={() => setModal(null)} onDone={() => { setModal(null); fetchLeads(); flash('Quotation saved'); }} />
       )}
-      {view === 'leads' && modal && modal.type !== 'quotation' && <EngineerModal modal={modal} onClose={() => setModal(null)} onDone={() => { setModal(null); fetchLeads(); }} />}
+      {modal && modal.type !== 'quotation' && <EngineerModal modal={modal} onClose={() => setModal(null)} onDone={() => { setModal(null); fetchLeads(); }} />}
     </div>
   );
 }
