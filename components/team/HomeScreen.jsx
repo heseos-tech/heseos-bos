@@ -8,7 +8,7 @@ import Link from "next/link";
 import { Avatar } from "@/components/partner/ui";
 import { GENERIC_ROLES } from "@/components/team/ui";
 import { IconBell, IconLeads, IconGift, IconCheck, IconMapPin, IconWallet } from "@/components/partner/icons";
-import { IconProducts, IconTasks, IconChevronRight } from "@/components/admin/icons";
+import { IconProducts, IconTasks, IconPartners, IconChevronRight } from "@/components/admin/icons";
 import { fmtDateTime } from "@/lib/date";
 import { stageOf, displayStatus } from "@/lib/leadStage";
 import { PROPERTY_TYPE } from "@/lib/formOptions";
@@ -30,6 +30,11 @@ export default function TeamHomeScreen({ employee }) {
   // avoids two independent fetch-then-poll loops hitting /api/leads for the same data.
   const { data: leads, loading } = useApiResource("/api/leads", { pollMs: isPresales ? 20000 : 15000 });
   const { data: payoutConfig } = useApiResource("/api/payout-settings");
+  // Partners THIS employee has onboarded (partner.onboardedByEmployeeId — see
+  // app/api/team/partners/route.js) — just the count for the card below; the full searchable
+  // list lives on its own screen (components/team/PartnersScreen.jsx), same "card links to a
+  // full screen" pattern as Catalogue/My Tasks just below.
+  const { data: myPartners } = useApiResource("/api/team/partners", { pollMs: 30000 });
 
   const myCity = norm(employee.location);
   const available = useMemo(
@@ -167,6 +172,17 @@ export default function TeamHomeScreen({ employee }) {
         <div style={{ flex: 1 }}>
           <div style={{ fontSize: 14, fontWeight: 700, color: "#fff" }}>My Tasks</div>
           <div style={{ fontSize: 12, color: "var(--hp-text-soft)" }}>Follow-ups and reminders assigned to you</div>
+        </div>
+        <IconChevronRight size={18} style={{ color: "var(--hp-text-faint)", flexShrink: 0 }} />
+      </Link>
+
+      <Link href="/team/partners" className="hp-card" style={{ display: "flex", alignItems: "center", gap: 12, textDecoration: "none" }}>
+        <div className="hp-stat-icon" style={{ width: 38, height: 38, flexShrink: 0, margin: 0 }}><IconPartners size={19} /></div>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: "#fff" }}>My Partners</div>
+          <div style={{ fontSize: 12, color: "var(--hp-text-soft)" }}>
+            {myPartners.length > 0 ? `${myPartners.length} partner${myPartners.length === 1 ? "" : "s"} you've onboarded` : "Partners you onboard will show up here"}
+          </div>
         </div>
         <IconChevronRight size={18} style={{ color: "var(--hp-text-faint)", flexShrink: 0 }} />
       </Link>
