@@ -11,7 +11,7 @@
 // code at onboarding instead (see lib/attribution.js), so this route only covers the referral
 // link half of what used to be "Share & Earn".
 import { getPartner } from '@/lib/auth';
-import { getOrCreatePartnerLink, funnelFor, getHeseosBotTenant, trackedLinkUrl } from '@/lib/attribution';
+import { getOrCreatePartnerLink, funnelFor, getHeseosBotTenant, trackedLinkUrl, resolvePublicBaseUrl } from '@/lib/attribution';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,7 +26,7 @@ export async function GET() {
   ]);
   const referralFunnel = await funnelFor(referral.id);
 
-  const base = String(process.env.PUBLIC_BASE_URL || '').replace(/\/$/, '');
+  const base = resolvePublicBaseUrl();
 
   return Response.json({
     baseUrl: base,

@@ -8,15 +8,14 @@
 // GET  — every qr_partner code this partner has already claimed, with live funnel stats.
 // POST — claim a code by its printed value (body: { code }).
 import { getPartner } from '@/lib/auth';
-import { claimPartnerQrCode, funnelForAll, getHeseosBotTenant, trackedLinkUrl } from '@/lib/attribution';
+import { claimPartnerQrCode, funnelForAll, getHeseosBotTenant, trackedLinkUrl, resolvePublicBaseUrl } from '@/lib/attribution';
 import { dbWhere } from '@/lib/db';
 import { notifyHeseosPartnerQrClaimed } from '@/lib/heseosNotify';
 
 export const dynamic = 'force-dynamic';
 
 function baseUrl() {
-  const raw = process.env.PUBLIC_BASE_URL || '';
-  return raw ? raw.replace(/\/$/, '') : '';
+  return resolvePublicBaseUrl();
 }
 
 // Always the tracked /go/<code> redirector (trackedLinkUrl) so every scan of a partner's
