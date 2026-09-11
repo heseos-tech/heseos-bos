@@ -56,11 +56,11 @@ export default function BrochureCard() {
         Share the product brochure with a customer on WhatsApp, or keep a copy for yourself.
       </div>
       <div style={{ display: 'flex', gap: 8 }}>
-        <button type="button" className="hp-btn hp-btn-primary" style={{ flex: 1 }} onClick={share} disabled={sharing}>
-          <IconWhatsApp size={16} /> {sharing ? 'Preparing…' : 'Share'}
+        <button type="button" className="hp-btn hp-btn-primary hp-btn-sm" onClick={share} disabled={sharing}>
+          <IconWhatsApp size={14} /> {sharing ? 'Preparing…' : 'Share'}
         </button>
-        <a className="hp-btn hp-btn-outline" style={{ flex: 1 }} href={BROCHURE_PATH} download={BROCHURE_NAME}>
-          <IconDownload size={16} /> Download
+        <a className="hp-btn hp-btn-outline hp-btn-sm" href={BROCHURE_PATH} download={BROCHURE_NAME}>
+          <IconDownload size={14} /> Download
         </a>
       </div>
     </div>
