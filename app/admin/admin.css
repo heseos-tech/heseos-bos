@@ -412,8 +412,32 @@ button.adm-nav-link { background: none; border: none; cursor: pointer; text-alig
 
 @media print {
   body * { visibility: hidden; }
+  /* The modal chrome (.adm-modal-overlay is position:fixed + inset:0; .adm-modal-card caps
+     itself at max-height:88vh with overflow-y:auto for on-screen scrolling) still constrains
+     and CLIPS its content's rendered box even while visibility:hidden — visibility doesn't
+     remove an element from layout, so that ~88vh scroll clip was silently cutting off every QR
+     tile below the first screenful, which is exactly why only one page's worth ever printed
+     and the tile sitting at that clipped edge came out cut in half. Reset every box constraint
+     on both ancestors so the print sheet's content is free to flow across as many real pages as
+     it needs, with .adm-qr-print-tile's break-inside: avoid below then actually able to do its
+     job at genuine page boundaries instead of fighting an overflow clip.
+  */
+  .adm-modal-overlay, .adm-modal-card {
+    position: static !important;
+    inset: auto !important;
+    overflow: visible !important;
+    max-height: none !important;
+    height: auto !important;
+    width: auto !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    background: none !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+    display: block !important;
+  }
   .adm-qr-print-sheet, .adm-qr-print-sheet * { visibility: visible; }
-  .adm-qr-print-sheet { position: absolute; left: 0; top: 0; width: 100%; }
+  .adm-qr-print-sheet { position: static; width: 100%; }
   .adm-qr-grid { max-height: none; overflow: visible; }
   .adm-qr-tile { break-inside: avoid; }
   .adm-qr-print-noprint, .adm-modal-head { display: none !important; }
