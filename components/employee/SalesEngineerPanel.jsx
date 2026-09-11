@@ -62,7 +62,7 @@ export default function SalesEngineerPanel({ employee }) {
 
   const TABS = [
     { key: 'available', label: 'Available Leads', list: available },
-    { key: 'upcoming', label: 'Upcoming Demos', list: groups.upcoming },
+    { key: 'upcoming', label: 'Scheduled Demos', list: groups.upcoming },
     { key: 'reschedule', label: 'Needs Reschedule', list: groups.reschedule },
     { key: 'quoted', label: 'Quotation Sent', list: groups.quoted },
     { key: 'converted', label: 'Converted', list: groups.converted },
@@ -108,8 +108,8 @@ export default function SalesEngineerPanel({ employee }) {
         {notice && <div className="dash-notice" style={{ marginBottom: 16 }}>{notice}</div>}
 
         <div className="kpi-row">
-            <div className="kpi-card"><div className="kpi-label">Available in {employee.location || 'your city'}</div><div className="kpi-val">{available.length}</div></div>
-            <div className="kpi-card"><div className="kpi-label">Upcoming Demos</div><div className="kpi-val">{groups.upcoming.length}</div></div>
+            <div className="kpi-card"><div className="kpi-label">Claim Demos</div><div className="kpi-val">{available.length}</div></div>
+            <div className="kpi-card"><div className="kpi-label">Scheduled Demos</div><div className="kpi-val">{groups.upcoming.length}</div></div>
             <div className="kpi-card"><div className="kpi-label">Quotation Sent</div><div className="kpi-val">{groups.quoted.length}</div></div>
             <div className="kpi-card"><div className="kpi-label">Converted</div><div className="kpi-val">{groups.converted.length}</div></div>
           </div>

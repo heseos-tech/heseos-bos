@@ -72,8 +72,8 @@ export default function TeamHomeScreen({ employee }) {
       else if (l.demoScheduledAt) upcomingC++;
     }
     return [
-      { key: "available", label: `Available in ${employee.location || "your city"}`, val: available.length, icon: IconLeads },
-      { key: "upcoming", label: "Upcoming Demos", val: upcomingC, icon: IconGift },
+      { key: "available", label: "Claim Demos", val: available.length, icon: IconLeads },
+      { key: "upcoming", label: "Scheduled Demos", val: upcomingC, icon: IconGift },
       { key: "quoted", label: "Quotation Sent", val: quotedC, icon: IconGift },
       { key: "converted", label: "Converted", val: convC, icon: IconCheck },
     ];
