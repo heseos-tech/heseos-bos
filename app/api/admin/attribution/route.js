@@ -18,10 +18,8 @@ import { createAttributionLink, funnelForAll, getHeseosBotTenant, trackedLinkUrl
 
 export const dynamic = 'force-dynamic';
 
-// Always the tracked /go/<code> redirector (trackedLinkUrl) — it logs the scan/click before
-// redirecting into WhatsApp in one near-instant hop, so every QR scan / link tap counts toward
-// the Growth tab's funnel, not just the ones that go on to become a completed lead. Falls back
-// to a direct wa.me link only when PUBLIC_BASE_URL isn't configured. See
+// Always a direct wa.me link (trackedLinkUrl) — by design, no intermediate hop through our own
+// domain, so a QR scan / link tap isn't logged, only the leads it produces. See
 // app/api/partner/attribution/route.js for the same logic.
 function linkUrlFor(tenant, code) {
   return trackedLinkUrl(tenant, code) || null;

@@ -8,19 +8,14 @@
 // GET  — every qr_partner code this partner has already claimed, with live funnel stats.
 // POST — claim a code by its printed value (body: { code }).
 import { getPartner } from '@/lib/auth';
-import { claimPartnerQrCode, funnelForAll, getHeseosBotTenant, trackedLinkUrl, resolvePublicBaseUrl } from '@/lib/attribution';
+import { claimPartnerQrCode, funnelForAll, getHeseosBotTenant, trackedLinkUrl } from '@/lib/attribution';
 import { dbWhere } from '@/lib/db';
 import { notifyHeseosPartnerQrClaimed } from '@/lib/heseosNotify';
 
 export const dynamic = 'force-dynamic';
 
-function baseUrl() {
-  return resolvePublicBaseUrl();
-}
-
-// Always the tracked /go/<code> redirector (trackedLinkUrl) so every scan of a partner's
-// printed sticker is logged before the near-instant redirect into WhatsApp — see
-// app/api/admin/attribution/route.js for the full rationale.
+// Always a direct wa.me link (trackedLinkUrl) — by design, no intermediate hop through our
+// own domain, so a scan of a partner's printed sticker isn't logged, only the leads it produces.
 function linkUrlFor(tenant, code) {
   return trackedLinkUrl(tenant, code);
 }
@@ -44,7 +39,7 @@ export async function GET() {
   ]);
   const qrLinks = links.filter((l) => l.kind === 'qr_partner' && l.active !== false);
   qrLinks.sort((a, b) => (b.claimedAt || b.createdAt || '').localeCompare(a.claimedAt || a.createdAt || ''));
-  return Response.json({ baseUrl: baseUrl(), codes: await withUrlsAndFunnels(qrLinks, tenant) });
+  return Response.json({ codes: await withUrlsAndFunnels(qrLinks, tenant) });
 }
 
 export async function POST(request) {

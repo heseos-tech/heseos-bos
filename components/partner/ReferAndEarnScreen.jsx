@@ -81,10 +81,10 @@ export default function ReferAndEarnScreen() {
       <ScreenHeader title="Referral Link" backHref="/partner/home?tab=profile" />
 
       <div style={{ padding: '0 16px' }}>
-        {!data?.baseUrl && data !== null && (
+        {!data?.referral?.url && data !== null && (
           <div className="hp-card" style={{ borderColor: 'var(--hp-warn, #B7791F)' }}>
             <div className="hp-card-title">Link sharing isn&rsquo;t fully set up yet</div>
-            <div style={{ fontSize: 12.5, color: 'var(--hp-text-soft)' }}>Ask Heseos to finish setting up the app&rsquo;s domain — your link has been created, but the shareable URL can&rsquo;t be built yet.</div>
+            <div style={{ fontSize: 12.5, color: 'var(--hp-text-soft)' }}>Ask Heseos to finish connecting their WhatsApp number — your link has been created, but the shareable URL can&rsquo;t be built until that&rsquo;s done.</div>
           </div>
         )}
 

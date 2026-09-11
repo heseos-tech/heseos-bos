@@ -1,8 +1,12 @@
-// The unified QR-code / referral-link entry point — every printed QR (partner or billboard/
-// location) and every shared referral link (partner or customer) points at
-// https://<domain>/go/<code>. See lib/attribution.js for what a code is and how it's created,
-// and lib/heseosLeadSync.js's createHeseosLead/finalizeHeseosLead for the other half (turning
-// the resulting WhatsApp chat into an attributed lead).
+// LEGACY entry point, kept only so any already-printed QR sticker whose image happens to
+// encode an old https://<domain>/go/<code> URL keeps working. By deliberate choice
+// (lib/attribution.js's trackedLinkUrl), nothing generates new links in this shape anymore —
+// every QR code / referral link is now a direct https://wa.me/... deep link with no
+// intermediate hop through our own domain, so scans/clicks aren't logged going forward. See
+// lib/attribution.js for what a code is and how it's created, and lib/heseosLeadSync.js's
+// createHeseosLead/finalizeHeseosLead for the other half (turning the resulting WhatsApp chat
+// into an attributed lead — that part is unaffected, since it comes from the ref tag in the
+// message text, not from this route).
 //
 // This route: look up the code → log a scan/click → redirect into WhatsApp, pre-filled with a
 // message tagging the code so the webhook can attribute it. It never creates a lead itself —
