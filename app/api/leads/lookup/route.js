@@ -2,9 +2,14 @@
 //
 // Duplicate-lead check for the Partner App's and Team App's "Add Lead" wizards. Before a
 // partner or employee submits a new lead, the wizard calls this with the phone number they've
-// typed so far; if that number is already in the system, we warn them WHO already brought it in
-// (see lib/leadOrigin.js's describeLeadOrigin) so they don't duplicate a lead someone else — or
-// the customer themselves — already reached us through.
+// typed so far; if that number already has an OPEN (still-in-process) lead, we warn them WHO
+// already brought it in (see lib/leadOrigin.js's describeLeadOrigin) — the Partner App wizard
+// (components/partner/LeadWizard.jsx) treats this as a hard block (see app/api/leads's own
+// server-side enforcement for the Partner App), the Team App wizard still just warns. A lead
+// that's already CLOSED (Converted or Rejected — lib/leadStage.js's isLeadClosed) is done, one
+// way or the other, so that number is free again: this deliberately reports `exists: false` for
+// it, exactly as if no lead had ever existed, rather than surfacing a stale warning about a
+// finished enquiry.
 //
 // Gated to any logged-in partner OR employee (same as app/api/leads GET), since both apps use
 // this. Deliberately returns only { exists, origin, createdAt } — never the matching lead's id,
@@ -14,12 +19,13 @@
 //
 // Matching is last-10-digits, digits-only (lib/leadOrigin.js's normalizePhone) — see that file's
 // header comment for why partner/employee-entered numbers and WhatsApp MSISDNs need this to
-// line up. When more than one existing lead matches, the most recently created one wins (most
-// likely to be the freshest / most relevant "someone already has this" signal).
+// line up. When more than one existing OPEN lead matches, the most recently created one wins
+// (most likely to be the freshest / most relevant "someone already has this" signal).
 
 import { dbList } from '@/lib/db';
 import { getEmployee, getPartner } from '@/lib/auth';
 import { describeLeadOrigin, normalizePhone } from '@/lib/leadOrigin';
+import { isLeadClosed } from '@/lib/leadStage';
 
 export const dynamic = 'force-dynamic';
 
@@ -37,7 +43,7 @@ export async function GET(request) {
   ]);
 
   const matches = leads
-    .filter((l) => normalizePhone(l.phone) === phone)
+    .filter((l) => normalizePhone(l.phone) === phone && !isLeadClosed(l))
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
   if (!matches.length) return Response.json({ exists: false });

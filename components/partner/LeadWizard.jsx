@@ -27,8 +27,12 @@ export default function LeadWizard() {
   const [copied, setCopied] = useState(false);
   const [cities, setCities] = useState([]);
   const [citiesLoading, setCitiesLoading] = useState(true);
-  // Duplicate-lead notice — warns (non-blocking) when the phone number typed in step 0 is
-  // already in the system, and who brought it in earlier. See app/api/leads/lookup/route.js.
+  // Duplicate-lead notice — set when the phone number typed in step 0 already has an OPEN
+  // (still-in-process) lead in the system. Unlike the Team App, the Partner App treats this as
+  // a hard block, not just a warning: canNextStep1() below won't let the wizard move past this
+  // step while it's set, and app/api/leads enforces the same rule server-side either way. See
+  // app/api/leads/lookup/route.js — it deliberately reports no duplicate at all once that
+  // existing lead is closed (converted/rejected), since the number is free again by then.
   const [dupe, setDupe] = useState(null);
 
   useEffect(() => {
@@ -53,7 +57,7 @@ export default function LeadWizard() {
   }
 
   function canNextStep1() {
-    return form.name.trim() && /^\d{10}$/.test(form.phone.replace(/\D/g, '')) && form.city.trim();
+    return form.name.trim() && /^\d{10}$/.test(form.phone.replace(/\D/g, '')) && form.city.trim() && !dupe;
   }
   function canNextStep2() {
     return form.propertyType && form.configuration && form.budget && form.timeline && form.referralSource;
@@ -127,7 +131,7 @@ export default function LeadWizard() {
           {dupe && (
             <div className="hp-dupe-warn">
               <IconAlertTriangle size={16} />
-              <span>This number is already in our system — {dupe.origin}. You can still submit if this is a new enquiry.</span>
+              <span>This number is already in our system — {dupe.origin}. It'll open up for a new enquiry once that lead is closed.</span>
             </div>
           )}
           <TextField label="Alternate Number (Optional)" icon={<IconPhone size={18} />} placeholder="Enter alternate number" value={form.altPhone} onChange={(e) => set('altPhone', e.target.value)} inputMode="numeric" />

@@ -10,7 +10,7 @@ import { parseWebhookByPhone, describeMetaError, botMarkReadWithTyping, botWaCon
 import { runBotTurn } from '@/lib/botEngine';
 import { runFlowTurn, pickFlow } from '@/lib/botFlowEngine';
 import { parseRefFromText, referrerNoteFor, attributionCityFor } from '@/lib/attribution';
-import { createHeseosLead, heseosLeadSummary } from '@/lib/heseosLeadSync';
+import { createHeseosLead, heseosLeadSummary, heseosLeadOriginNote } from '@/lib/heseosLeadSync';
 import { findFirstLeadByPhone } from '@/lib/leadOrigin';
 import { stageOf } from '@/lib/leadStage';
 import { HESEOS_DEFAULT_FLOW_ID, ensureHeseosDefaultFlow } from '@/lib/heseosDefaultFlow';
@@ -197,7 +197,11 @@ export async function POST(req) {
               // lead when the chat doesn't already have one — so this can never double-create.
               patch.leadId = existingLeadId;
               patch.leadSummary = heseosLeadSummary(existingLead);
-              chat = { ...chat, leadId: existingLeadId, leadSummary: patch.leadSummary };
+              // Tells the customer HOW they're already in the system (scanned a QR code, came
+              // via a referral link, punched in by a partner/team member…) — see
+              // lib/heseosReturningFlow.js's greeting, {{leadOriginNote}}.
+              patch.leadOriginNote = await heseosLeadOriginNote(existingLead);
+              chat = { ...chat, leadId: existingLeadId, leadSummary: patch.leadSummary, leadOriginNote: patch.leadOriginNote };
             } else if (!picked) {
               // A flow is about to walk this chat through its own lead-capture question journey
               // (see lib/heseosDefaultFlow.js and finalizeHeseosLead, called once that flow
@@ -247,6 +251,7 @@ export async function POST(req) {
                 patch.flowNodeId = null;
                 patch.activeFlowId = returningFlow.id;
                 patch.leadSummary = heseosLeadSummary(lead);
+                patch.leadOriginNote = await heseosLeadOriginNote(lead);
               }
             } else {
               // Old lead is closed out (or this chat somehow has none) — unlink it and fall back
@@ -293,6 +298,7 @@ export async function POST(req) {
                 patch.flowNodeId = null;
                 patch.leadId = firstLead.id;
                 patch.leadSummary = heseosLeadSummary(firstLead);
+                patch.leadOriginNote = await heseosLeadOriginNote(firstLead);
               }
             }
           }

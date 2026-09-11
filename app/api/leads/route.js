@@ -11,10 +11,10 @@
 import { dbInsert, dbList, dbWhere } from '@/lib/db';
 import { istDateStr } from '@/lib/date';
 import { getEmployee, getPartner } from '@/lib/auth';
-import { pushHistory } from '@/lib/leadStage';
+import { pushHistory, isLeadClosed } from '@/lib/leadStage';
 import { autoAssignByCity } from '@/lib/leadAssign';
 import { LEAD_SOURCES } from '@/lib/formOptions';
-import { findFirstLeadByPhone, describeLeadOrigin } from '@/lib/leadOrigin';
+import { findFirstLeadByPhone, describeLeadOrigin, normalizePhone } from '@/lib/leadOrigin';
 import { notifyHeseosLeadAdded } from '@/lib/heseosNotify';
 
 export const dynamic = 'force-dynamic';
@@ -75,14 +75,38 @@ export async function POST(request) {
       source = 'manual_entry';
     }
 
-    // First-touch attribution — "our system only considers who gave the lead first." A partner
-    // or employee can still punch this in as its own enquiry (the duplicate-check warning in
-    // the wizard explicitly allows that — app/api/leads/lookup), but if this phone number
-    // already has an earlier lead from ANY channel, payout credit stays with whoever brought it
-    // in first: this new lead is created for pipeline visibility only, with no partnerId/
-    // addedByEmployeeId of its own, so lib/payout.js never counts the same customer's converted
-    // sale toward two different referrers.
     const existingLeads = await dbList('leads');
+
+    // Partner App hard block — a phone number that already has an OPEN (still-in-process) lead
+    // must not be punched in again from the Partner App: unlike the Team App/Admin wizards,
+    // which only ever WARN and still allow the submission (app/api/leads/lookup), a partner
+    // gets refused outright here. Once that existing lead is CLOSED — Converted (won) or
+    // Rejected (lost), lib/leadStage.js's isLeadClosed — the number is open again for a fresh
+    // enquiry, so this only ever blocks on an OPEN match, never a closed one.
+    if (source === 'partner_app') {
+      const targetPhone = normalizePhone(phone);
+      const openMatch = existingLeads
+        .filter((l) => normalizePhone(l.phone) === targetPhone && !isLeadClosed(l))
+        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0];
+      if (openMatch) {
+        const [blockPartners, blockEmployees, blockLinks] = await Promise.all([
+          dbList('partners'), dbList('employees'), dbList('attribution_links'),
+        ]);
+        const origin = describeLeadOrigin(openMatch, { partners: blockPartners, employees: blockEmployees, leads: existingLeads, links: blockLinks });
+        return Response.json({
+          error: `This number is already in our system — ${origin}. It'll be open for a new enquiry once that lead is closed (converted or rejected).`,
+        }, { status: 409 });
+      }
+    }
+
+    // First-touch attribution — "our system only considers who gave the lead first." An
+    // employee can still punch this in as its own enquiry once the number is otherwise open
+    // (the duplicate-check warning in the Team App wizard explicitly allows that —
+    // app/api/leads/lookup), but if this phone number already has an earlier lead from ANY
+    // channel, payout credit stays with whoever brought it in first: this new lead is created
+    // for pipeline visibility only, with no partnerId/addedByEmployeeId of its own, so
+    // lib/payout.js never counts the same customer's converted sale toward two different
+    // referrers.
     const firstLead = findFirstLeadByPhone(phone, existingLeads);
     let duplicateNote = null;
     // Preserved for the history entry below even after partnerId/addedByEmployeeId get nulled,
