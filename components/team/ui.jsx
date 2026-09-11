@@ -4,7 +4,9 @@
 // components/partner/ui.jsx — no need to fork it.
 import { useRef, useContext } from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { IconHome, IconLeads, IconUser, IconPlus, IconGift } from '@/components/partner/icons';
+import { IconProducts } from '@/components/admin/icons';
 import { useNavHeightVar, useDashboardTab, useDashboardTabState, DashboardTabContext, SessionContext, useSessionGate } from '@/components/partner/ui';
 import SplashScreen from '@/components/partner/SplashScreen';
 
@@ -25,29 +27,35 @@ export function useEmployeeSession() {
 // Small per-item visual nudge so the icons either side of the center "Add Lead" circle
 // don't read as crowded against it — mirrors the Partner app's own navItemShiftClass
 // (components/partner/ui.jsx) and the .hp-nav-item--shift-left/-right rules in
-// partner-app.css, which both apps share.
+// partner-app.css, which both apps share. Keyed off an explicit `shift` on the item (not just
+// `tab`) so the Catalogue item below — which sits in the exact same slot Leads/Demo would
+// occupy, but isn't a home tab — still gets the same nudge.
 function navItemShiftClass(item) {
-  if (item.tab === 'leads') return ' hp-nav-item--shift-left';
-  if (item.tab === 'rewards') return ' hp-nav-item--shift-right';
+  if (item.shift === 'left' || item.tab === 'leads') return ' hp-nav-item--shift-left';
+  if (item.shift === 'right' || item.tab === 'rewards') return ' hp-nav-item--shift-right';
   return '';
 }
 
 // Operations/Marketing/Management have no assigned-lead pipeline to work (LeadsScreen.jsx is
-// built entirely around demos assigned to a presales/sales_engineer employee), so they get a
-// basic Team app view: Home, Add Lead and Rewards/Profile, but no Leads/Demo tab.
+// built entirely around demos assigned to a presales/sales_engineer employee), so Leads/Demo
+// isn't a real tab for them — they get Catalogue in that slot instead (a real route, not a
+// /team/home?tab= — see the `route: true` handling in TeamBottomNav below), so the nav still
+// reads as a normal, symmetric 4-icons-plus-center-Add-Lead bar instead of looking sparse with
+// an empty slot.
 export const GENERIC_ROLES = ['operations', 'marketing', 'management'];
 
 function navItemsFor(role) {
   const isSE = role === 'sales_engineer';
   const isGeneric = GENERIC_ROLES.includes(role);
-  const items = [
+  return [
     { tab: 'home', href: '/team/home', label: 'Home', icon: IconHome },
-    { tab: 'leads', href: '/team/home?tab=leads', label: isSE ? 'Demo' : 'Leads', icon: IconLeads },
+    isGeneric
+      ? { href: '/team/catalogue', label: 'Catalogue', icon: IconProducts, route: true, shift: 'left' }
+      : { tab: 'leads', href: '/team/home?tab=leads', label: isSE ? 'Demo' : 'Leads', icon: IconLeads },
     { href: '/team/leads/new', label: 'Add Lead', icon: IconPlus, center: true },
     { tab: 'rewards', href: '/team/home?tab=rewards', label: 'Rewards', icon: IconGift },
     { tab: 'profile', href: '/team/home?tab=profile', label: 'Profile', icon: IconUser },
   ];
-  return isGeneric ? items.filter((item) => item.tab !== 'leads') : items;
 }
 
 // Fixed-positioned (not a flex sibling of the scroll area) so it's pinned to the literal
@@ -62,6 +70,7 @@ function navItemsFor(role) {
 export function TeamBottomNav() {
   const { role } = useEmployeeSession() || {};
   const { tab, setTab, isHome, homePath } = useDashboardTab();
+  const pathname = usePathname();
   const activeTab = isHome ? tab : null;
   const navRef = useRef(null);
   useNavHeightVar(navRef);
@@ -75,6 +84,17 @@ export function TeamBottomNav() {
             <Link key={item.href} href={item.href} className="hp-nav-center">
               <span className="hp-nav-center-btn"><Icon size={22} /></span>
               <span className="hp-nav-center-label">{item.label}</span>
+            </Link>
+          );
+        }
+        // A real route (e.g. Catalogue for generic roles) rather than a /team/home?tab= — always
+        // a plain <Link>, active-state by pathname, never the isHome tab-switch button below.
+        if (item.route) {
+          const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
+          return (
+            <Link key={item.href} href={item.href} className={`hp-nav-item${active ? ' active' : ''}${navItemShiftClass(item)}`}>
+              <Icon size={21} />
+              <span>{item.label}</span>
             </Link>
           );
         }

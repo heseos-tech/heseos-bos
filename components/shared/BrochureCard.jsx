@@ -7,44 +7,36 @@
 //
 // The PDF itself lives at public/brochure/heseos-brochure.pdf, so it's a plain static asset —
 // no API route, no auth, same as any other file under /public.
-import { useState } from 'react';
+//
+// Share is text+link only (window.location.origin + the PDF path), same wa.me pattern as
+// CatalogueScreen's product share — deliberately NOT fetching the PDF into a Blob/File to
+// attach via the Web Share API: this is a ~20MB file, and on a real mobile connection that
+// fetch could take a long time (or stall entirely behind a slow/flaky network, or the PWA's own
+// service worker, public/sw.js, intercepting the request) — which is exactly what showed up as
+// the Share button sticking on "Preparing…" for partners/employees in the field. A link opens
+// instantly and the recipient can view or download the actual PDF from it either way.
 import { IconWhatsApp, IconDownload, IconQuotation } from '@/components/admin/icons';
 
 const BROCHURE_PATH = '/brochure/heseos-brochure.pdf';
 const BROCHURE_NAME = 'Heseos-Brochure.pdf';
 
 export default function BrochureCard() {
-  const [sharing, setSharing] = useState(false);
-
   async function share() {
-    if (sharing) return;
-    setSharing(true);
-    try {
-      const url = `${window.location.origin}${BROCHURE_PATH}`;
-      // Prefer attaching the actual PDF via the native share sheet — WhatsApp then shows it as
-      // a real file the recipient can open right in the chat, not just a link they have to tap.
-      // Falls back to a plain wa.me text+link share wherever file sharing isn't supported
-      // (desktop browsers, older mobile browsers) — same wa.me pattern as CatalogueScreen's
-      // product share and lib/attribution.js's buildWaLink.
-      if (typeof navigator !== 'undefined' && navigator.share && navigator.canShare) {
-        try {
-          const res = await fetch(BROCHURE_PATH);
-          const blob = await res.blob();
-          const file = new File([blob], BROCHURE_NAME, { type: 'application/pdf' });
-          if (navigator.canShare({ files: [file] })) {
-            await navigator.share({ files: [file], title: 'Heseos Brochure', text: 'Heseos — smart home, office & hospitality automation' });
-            return;
-          }
-        } catch (err) {
-          if (err?.name === 'AbortError') return; // user cancelled the native share sheet
-          // anything else (fetch failure, no file-share support) — fall through to the link below
-        }
+    const url = `${window.location.origin}${BROCHURE_PATH}`;
+    const text = `Check out the Heseos product brochure: ${url}`;
+    // navigator.share (no files — just title/text/url) opens the native share sheet where
+    // supported, same as ReferAndEarnScreen's referral-link share; falls back to a plain wa.me
+    // link everywhere else (desktop browsers, unsupported mobile browsers).
+    if (typeof navigator !== 'undefined' && navigator.share) {
+      try {
+        await navigator.share({ title: 'Heseos Brochure', text, url });
+        return;
+      } catch (err) {
+        if (err?.name === 'AbortError') return; // user cancelled the native share sheet
+        // anything else — fall through to the wa.me link below
       }
-      const text = `Check out the Heseos product brochure: ${url}`;
-      window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank', 'noopener,noreferrer');
-    } finally {
-      setSharing(false);
     }
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank', 'noopener,noreferrer');
   }
 
   return (
@@ -56,8 +48,8 @@ export default function BrochureCard() {
         Share the product brochure with a customer on WhatsApp, or keep a copy for yourself.
       </div>
       <div style={{ display: 'flex', gap: 8 }}>
-        <button type="button" className="hp-btn hp-btn-primary hp-btn-sm" onClick={share} disabled={sharing}>
-          <IconWhatsApp size={14} /> {sharing ? 'Preparing…' : 'Share'}
+        <button type="button" className="hp-btn hp-btn-primary hp-btn-sm" onClick={share}>
+          <IconWhatsApp size={14} /> Share
         </button>
         <a className="hp-btn hp-btn-outline hp-btn-sm" href={BROCHURE_PATH} download={BROCHURE_NAME}>
           <IconDownload size={14} /> Download
