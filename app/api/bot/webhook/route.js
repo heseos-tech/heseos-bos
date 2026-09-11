@@ -318,8 +318,12 @@ export async function POST(req) {
 
         if (chat.botOn !== false) {
           try {
-            if (flow) await runFlowTurn(tenant, flow, chat, m.text);
-            else await runBotTurn(tenant, chat, m.text);
+            // m.replyId is set only for an interactive button/list tap (see
+            // lib/botWhatsapp.js's parseWebhookByPhone) — both engines match it against the
+            // option's own id first, before falling back to typed text, see
+            // lib/botFlowEngine.js's/lib/botEngine.js's matchMenuOption.
+            if (flow) await runFlowTurn(tenant, flow, chat, m.text, m.replyId);
+            else await runBotTurn(tenant, chat, m.text, m.replyId);
           } catch (err) {
             console.error('Bot engine error:', err);
           }
