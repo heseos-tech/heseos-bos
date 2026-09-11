@@ -14,6 +14,7 @@ import { stageOf, displayStatus } from "@/lib/leadStage";
 import { PROPERTY_TYPE } from "@/lib/formOptions";
 import { useApiResource } from "@/lib/useApiResource";
 import { payoutFor } from "@/lib/payout";
+import BrochureCard from "@/components/shared/BrochureCard";
 
 const PT_LABEL = Object.fromEntries(PROPERTY_TYPE.map((p) => [p.v, p.l]));
 function norm(s) { return String(s || "").trim().toLowerCase(); }
@@ -177,6 +178,8 @@ export default function TeamHomeScreen({ employee }) {
         </div>
         <IconChevronRight size={18} style={{ color: "var(--hp-text-faint)", flexShrink: 0 }} />
       </Link>
+
+      <BrochureCard />
 
       {!isPresales && !isGeneric && !myCity && (
         <div className="hp-card" style={{ background: "var(--hp-warn-dim)", border: "1px solid var(--hp-warn)" }}>

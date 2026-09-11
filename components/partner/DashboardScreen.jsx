@@ -7,6 +7,7 @@ import { fmtDateTime } from '@/lib/date';
 import { partnerStatusOf, PROPERTY_TYPE_LABEL } from '@/lib/partnerMock';
 import { useApiResource } from '@/lib/useApiResource';
 import { payoutFor } from '@/lib/payout';
+import BrochureCard from '@/components/shared/BrochureCard';
 
 // Shared with MyLeadsScreen/RewardsScreen (they all stay mounted together in PartnerHome) via
 // useApiResource (lib/useApiResource.js), instead of each independently fetching the same
@@ -76,6 +77,8 @@ export default function DashboardScreen({ partner }) {
         </div>
         <IconChevronRight size={18} style={{ color: 'var(--hp-text-faint)', flexShrink: 0 }} />
       </Link>
+
+      <BrochureCard />
 
       <div className="hp-section-head" style={{ marginTop: 0 }}>
         <div className="hp-section-title">Recent Leads</div>
