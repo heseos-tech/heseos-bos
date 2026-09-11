@@ -60,7 +60,7 @@ export default function LeadWizard() {
     return form.name.trim() && /^\d{10}$/.test(form.phone.replace(/\D/g, '')) && form.city.trim() && !dupe;
   }
   function canNextStep2() {
-    return form.propertyType && form.configuration && form.budget && form.timeline && form.referralSource;
+    return form.propertyType && form.configuration && form.budget && form.timeline && form.referralSource && !dupe;
   }
 
   async function submit() {
@@ -123,17 +123,18 @@ export default function LeadWizard() {
       <ScreenHeader title="Punch New Lead" onBack={() => (step === 0 ? router.push('/partner/home') : setStep((s) => s - 1))} />
       <ProgressSteps step={step} total={3} />
 
+      {dupe && (
+        <div className="hp-dupe-warn" style={{ margin: '0 20px 12px' }}>
+          <IconAlertTriangle size={16} />
+          <span>This number is already in our system — {dupe.origin}. It'll open up for a new enquiry once that lead is closed — you can't punch it in again until then.</span>
+        </div>
+      )}
+
       {step === 0 && (
         <div className="hp-card">
           <div className="hp-card-title">Customer Details</div>
           <TextField label="Full Name" icon={<IconUser size={18} />} placeholder="Enter full name" value={form.name} onChange={(e) => set('name', e.target.value)} />
           <TextField label="Mobile Number" icon={<IconPhone size={18} />} placeholder="Enter 10 digit mobile number" value={form.phone} onChange={(e) => set('phone', e.target.value)} inputMode="numeric" />
-          {dupe && (
-            <div className="hp-dupe-warn">
-              <IconAlertTriangle size={16} />
-              <span>This number is already in our system — {dupe.origin}. It'll open up for a new enquiry once that lead is closed.</span>
-            </div>
-          )}
           <TextField label="Alternate Number (Optional)" icon={<IconPhone size={18} />} placeholder="Enter alternate number" value={form.altPhone} onChange={(e) => set('altPhone', e.target.value)} inputMode="numeric" />
           <SelectField label="City" icon={<IconMapPin size={18} />} value={form.city} onChange={(e) => set('city', e.target.value)} options={cities.map((c) => ({ v: c, l: c }))} placeholder={citiesLoading ? 'Loading cities…' : (cities.length ? 'Select city' : 'No cities configured yet')} disabled={citiesLoading || cities.length === 0} />
         </div>
@@ -180,7 +181,7 @@ export default function LeadWizard() {
           <Button block disabled={step === 0 ? !canNextStep1() : !canNextStep2()} onClick={() => setStep((s) => s + 1)}>Next</Button>
         )}
         {step === 2 && (
-          <Button block disabled={submitting} onClick={submit}>{submitting ? 'Submitting…' : 'Submit Lead'}</Button>
+          <Button block disabled={submitting || !!dupe} onClick={submit}>{submitting ? 'Submitting…' : 'Submit Lead'}</Button>
         )}
       </div>
     </>
