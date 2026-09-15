@@ -86,7 +86,6 @@ export default function GrowthPage() {
         <div><h1 className="adm-h1">QR Codes &amp; Referral Links</h1><p className="adm-page-sub">Partner QR codes, billboard/standee QR codes, and referral links — every scan and click, and every lead and conversion it drives</p></div>
         <div className="adm-page-head-actions">
           <button className="adm-btn-outline" onClick={() => setModal({ type: 'blank-qr' })}><IconPlus size={15} /> Create Partner QR Codes</button>
-          <button className="adm-btn-outline" onClick={() => setModal({ type: 'print-qr' })}><IconDownload size={15} /> Print QR Codes</button>
           <button className="adm-btn-outline" onClick={() => setModal({ type: 'download-qr' })}><IconDownload size={15} /> Download QR Codes</button>
           <button className="adm-btn-primary" onClick={() => setModal({ type: 'create' })}><IconPlus size={15} /> Create Location QR</button>
         </div>
@@ -160,7 +159,6 @@ export default function GrowthPage() {
       )}
       {modal?.type === 'view' && <LinkDetailModal link={modal.link} onClose={() => setModal(null)} onCopied={() => flash('Link copied')} />}
       {modal?.type === 'blank-qr' && <BlankQrModal onClose={() => setModal(null)} />}
-      {modal?.type === 'print-qr' && <PrintQrModal links={links} onClose={() => setModal(null)} />}
       {modal?.type === 'download-qr' && <DownloadQrModal links={links} onClose={() => setModal(null)} />}
     </>
   );
@@ -420,190 +418,11 @@ function BlankQrModal({ onClose }) {
   );
 }
 
-// Print QR codes — either every location QR code already created via "Create Location QR"
-// (billboards, standees, shop windows), or a batch of unclaimed partner QR codes generated via
-// "Create Partner QR Codes" above — both laid out on one print sheet at a consistent physical
-// size. Nothing is created here — this only prints codes that already exist, each labelled so a
-// batch of stickers can be told apart once they're off the sheet (location name for location
-// codes, the code itself + its batch label for partner codes).
-//
-// QR_SIZE_OPTIONS are physical inches (square tiles) and SHEET_SIZES are physical mm — both
-// render as real CSS `in`/`mm` units, so what you see on screen is a good approximation of what
-// prints, and the flex-wrap flow container just lets the browser's own print pagination add
-// further sheets once a page's worth of tiles is full — no manual per-page math needed. Both QR
-// kinds share this exact same sizing/layout machinery, so either one can be printed at any size.
-const QR_SIZE_OPTIONS_IN = [1, 1.5, 2, 2.5, 3, 4];
-const SHEET_SIZES_MM = {
-  a4: { label: 'A4 (210 × 297 mm)', w: 210, h: 297 },
-  a5: { label: 'A5 (148 × 210 mm)', w: 148, h: 210 },
-  letter: { label: 'Letter (8.5 × 11 in)', w: 215.9, h: 279.4 },
-  legal: { label: 'Legal (8.5 × 14 in)', w: 215.9, h: 355.6 },
-};
-const PRINT_MARGIN_MM = 10;
-const MM_PER_IN = 25.4;
-
-function PrintQrModal({ links, onClose }) {
-  const [printKind, setPrintKind] = useState('location'); // 'location' | 'partner'
-  const [qrSizeIn, setQrSizeIn] = useState(2);
-  const [sheetKey, setSheetKey] = useState('a4');
-  const [batch, setBatch] = useState('all');
-  const [employeeFilter, setEmployeeFilter] = useState('all');
-
-  const locations = useMemo(() => links.filter((l) => l.kind === 'qr_location'), [links]);
-  // Same unclaimed-codes endpoint "Create Partner QR Codes" uses — useApiResource shares one
-  // cache per URL, so this doesn't duplicate that fetch if both modals have been opened.
-  const { data: unclaimed, loading: partnerLoading } = useApiResource('/api/admin/attribution/blank-qr', { pollMs: 20000 });
-  const { data: allEmployees } = useApiResource('/api/admin/employees', { pollMs: 20000 });
-  const employeeName = (id) => allEmployees.find((e) => e.id === id)?.name || 'Unassigned';
-
-  // Partner codes are generated in batches (see "Create Partner QR Codes"), so printing needs a
-  // batch picker rather than always printing every unclaimed code at once.
-  const batches = useMemo(() => {
-    const labels = [];
-    let hasUnlabeled = false;
-    unclaimed.forEach((u) => {
-      if (u.batchLabel) { if (!labels.includes(u.batchLabel)) labels.push(u.batchLabel); }
-      else hasUnlabeled = true;
-    });
-    return { labels, hasUnlabeled };
-  }, [unclaimed]);
-
-  // Same idea, but by the employee a batch was tagged with at generation time (see
-  // "Create Partner QR Codes") — lets admin print (and later analyse) just one employee's
-  // stickers, independently of which batch/print run they came from.
-  const employeeOptions = useMemo(() => {
-    const ids = [];
-    let hasUnassigned = false;
-    unclaimed.forEach((u) => {
-      if (u.employeeId) { if (!ids.includes(u.employeeId)) ids.push(u.employeeId); }
-      else hasUnassigned = true;
-    });
-    return { ids, hasUnassigned };
-  }, [unclaimed]);
-
-  const partnerCodes = useMemo(() => {
-    let out = unclaimed;
-    if (batch === '__unlabeled__') out = out.filter((u) => !u.batchLabel);
-    else if (batch !== 'all') out = out.filter((u) => u.batchLabel === batch);
-    if (employeeFilter === '__unassigned__') out = out.filter((u) => !u.employeeId);
-    else if (employeeFilter !== 'all') out = out.filter((u) => u.employeeId === employeeFilter);
-    return out;
-  }, [unclaimed, batch, employeeFilter]);
-
-  const items = printKind === 'location' ? locations : partnerCodes;
-  const sheet = SHEET_SIZES_MM[sheetKey];
-
-  // Rough "how many fit per sheet" hint — the browser's own print layout is the real source of
-  // truth (see the CSS comment above), this is just so the admin can sanity-check a size choice
-  // before printing 40 sheets by mistake.
-  const perSheet = useMemo(() => {
-    const printableWIn = (sheet.w - PRINT_MARGIN_MM * 2) / MM_PER_IN;
-    const printableHIn = (sheet.h - PRINT_MARGIN_MM * 2) / MM_PER_IN;
-    const cols = Math.max(1, Math.floor(printableWIn / qrSizeIn));
-    const rows = Math.max(1, Math.floor(printableHIn / qrSizeIn));
-    return cols * rows;
-  }, [sheet, qrSizeIn]);
-
-  return (
-    <Modal
-      title="Print QR Codes"
-      sub="Print location QR codes, or a batch of unclaimed partner QR codes, at one consistent physical size on the paper size you choose."
-      onClose={onClose}
-      wide
-    >
-      <div className="adm-qr-print-noprint">
-        <div className="adm-tabs">
-          <button type="button" className={`adm-tab${printKind === 'location' ? ' active' : ''}`} onClick={() => setPrintKind('location')}>Location QR Codes</button>
-          <button type="button" className={`adm-tab${printKind === 'partner' ? ' active' : ''}`} onClick={() => setPrintKind('partner')}>Partner QR Codes (Batch)</button>
-        </div>
-
-        <div className="lf-field-row">
-          {printKind === 'partner' && (
-            <div className="lf-field">
-              <label className="lf-label">Batch</label>
-              <select className="lf-input" value={batch} onChange={(e) => setBatch(e.target.value)}>
-                <option value="all">All unclaimed codes</option>
-                {batches.labels.map((b) => <option key={b} value={b}>{b}</option>)}
-                {batches.hasUnlabeled && <option value="__unlabeled__">No batch label</option>}
-              </select>
-            </div>
-          )}
-          {printKind === 'partner' && (
-            <div className="lf-field">
-              <label className="lf-label">Employee</label>
-              <select className="lf-input" value={employeeFilter} onChange={(e) => setEmployeeFilter(e.target.value)}>
-                <option value="all">All employees</option>
-                {employeeOptions.ids.map((id) => <option key={id} value={id}>{employeeName(id)}</option>)}
-                {employeeOptions.hasUnassigned && <option value="__unassigned__">No employee</option>}
-              </select>
-            </div>
-          )}
-          <div className="lf-field">
-            <label className="lf-label">QR code size</label>
-            <select className="lf-input" value={qrSizeIn} onChange={(e) => setQrSizeIn(Number(e.target.value))}>
-              {QR_SIZE_OPTIONS_IN.map((s) => <option key={s} value={s}>{s}&quot; × {s}&quot;</option>)}
-            </select>
-          </div>
-          <div className="lf-field">
-            <label className="lf-label">Sheet size</label>
-            <select className="lf-input" value={sheetKey} onChange={(e) => setSheetKey(e.target.value)}>
-              {Object.entries(SHEET_SIZES_MM).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
-            </select>
-          </div>
-        </div>
-        <div className="lf-actions" style={{ marginBottom: 18 }}>
-          <button className="adm-btn-primary" onClick={() => window.print()} disabled={!items.length}>Print This Sheet</button>
-        </div>
-        <div className="adm-meta-hint">
-          {printKind === 'partner' && partnerLoading ? 'Loading unclaimed codes…' : items.length === 0
-            ? (printKind === 'location' ? 'No location QR codes yet — use "Create Location QR" first.' : 'No unclaimed partner codes match — generate a batch from "Create Partner QR Codes" first.')
-            : `${items.length} ${printKind === 'location' ? 'location' : 'partner'} QR code${items.length === 1 ? '' : 's'} · about ${perSheet} per ${sheet.label.split(' (')[0]} sheet at this size · ${Math.ceil(items.length / perSheet)} sheet${Math.ceil(items.length / perSheet) === 1 ? '' : 's'} total`}
-        </div>
-      </div>
-
-      {/* Sets the actual paper size/margins for the print job itself — independent of whatever
-          default the browser's print dialog would otherwise use. */}
-      <style>{`@page { size: ${sheet.w}mm ${sheet.h}mm; margin: ${PRINT_MARGIN_MM}mm; }`}</style>
-
-      <div className="adm-qr-print-sheet">
-        {items.length === 0 ? (
-          <div className="adm-empty">{printKind === 'location' ? 'No location QR codes yet.' : 'No unclaimed partner codes.'}</div>
-        ) : (
-          <div className="adm-qr-print-flow">
-            {items.map((l) => {
-              const shareUrl = l.url || `${typeof window !== 'undefined' ? window.location.origin : ''}/go/${l.id}`;
-              // Request enough source pixels for a crisp print at ~300dpi at the chosen size,
-              // capped at the QR API's max — CSS then scales the image down to the exact
-              // physical tile size, never up.
-              const px = Math.min(1000, Math.round(qrSizeIn * 300));
-              const qrImg = `https://api.qrserver.com/v1/create-qr-code/?size=${px}x${px}&data=${encodeURIComponent(shareUrl)}`;
-              // Location tiles show the location name + area; partner tiles show the code
-              // itself (what's printed is a blank sticker, not tied to a partner yet) + its
-              // batch label, if it has one — same two label slots, different content.
-              const primaryLabel = printKind === 'location' ? (l.label || l.id) : l.id;
-              const secondaryLabel = printKind === 'location'
-                ? [l.locality, l.city].filter(Boolean).join(', ')
-                : [l.batchLabel, l.employeeId ? employeeName(l.employeeId) : ''].filter(Boolean).join(' · ');
-              return (
-                <div className="adm-qr-print-tile" style={{ width: `${qrSizeIn}in` }} key={l.id}>
-                  <img src={qrImg} alt={primaryLabel} />
-                  <div className="adm-qr-print-tile-name">{primaryLabel}</div>
-                  {secondaryLabel && <div className="adm-qr-print-tile-area">{secondaryLabel}</div>}
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
-    </Modal>
-  );
-}
-
-// Download QR codes as plain image files (PNG or JPEG) instead of printing them — reuses the
-// same location/partner + batch/employee filtering as "Print QR Codes" above, but the result is
-// a browser download: a single image file when exactly one code is selected, or a .zip bundle
-// (via lib/zipBuilder.js — a small dependency-free ZIP writer, since no zip package could be
-// installed here) when more than one is selected.
+// Download QR codes as plain image files (PNG or JPEG) — either every location QR code
+// already created via "Create Location QR", or a batch of unclaimed partner QR codes
+// generated via "Create Partner QR Codes" above. A single selection downloads directly as
+// one image file; more than one is bundled into a .zip (via lib/zipBuilder.js — a small
+// dependency-free ZIP writer, since no zip package could be installed here).
 function sanitizeQrFilename(s) {
   const cleaned = String(s || '').trim().replace(/[\\/:*?"<>|]/g, '-').replace(/\s+/g, ' ').trim();
   return cleaned || 'qr-code';

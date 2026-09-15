@@ -401,7 +401,7 @@ button.adm-nav-link { background: none; border: none; cursor: pointer; text-alig
 
 /* ─────────────────────────────────────────
    BLANK/UNCLAIMED PARTNER QR CODES
-   (Growth tab -> "Create Partner QR Codes"; printed via "Print QR Codes" below)
+   (Growth tab -> "Create Partner QR Codes"; downloaded via "Download QR Codes")
 ───────────────────────────────────────── */
 .adm-qr-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 16px; max-height: 420px; overflow-y: auto; padding: 4px 2px; }
 .adm-qr-tile { border: 1px solid var(--adm-border); border-radius: 10px; padding: 14px 10px; text-align: center; background: var(--adm-bg); }
@@ -422,8 +422,8 @@ button.adm-nav-link { background: none; border: none; cursor: pointer; text-alig
      tile below the first screenful, which is exactly why only one page's worth ever printed
      and the tile sitting at that clipped edge came out cut in half. Reset every box constraint
      on both ancestors so the print sheet's content is free to flow across as many real pages as
-     it needs, with .adm-qr-print-tile's break-inside: avoid below then actually able to do its
-     job at genuine page boundaries instead of fighting an overflow clip.
+     it needs, with .adm-qr-tile's break-inside: avoid below then actually able to do its job
+     at genuine page boundaries instead of fighting an overflow clip.
   */
   .adm-modal-overlay, .adm-modal-card {
     position: static !important;
@@ -444,26 +444,6 @@ button.adm-nav-link { background: none; border: none; cursor: pointer; text-alig
   .adm-qr-grid { max-height: none; overflow: visible; }
   .adm-qr-tile { break-inside: avoid; }
   .adm-qr-print-noprint, .adm-modal-head { display: none !important; }
-}
-
-/* ─────────────────────────────────────────
-   PRINTED QR CODES — location QR codes created via "Create Location QR", or a batch of
-   unclaimed partner QR codes from "Create Partner QR Codes", laid out at a chosen physical
-   size (in inches) on a chosen paper size (A4/A5/Letter/Legal). Unlike .adm-qr-grid above (a
-   screen-only auto-fill grid used for the partner-code creation preview), each tile here is
-   sized in real inches so what prints is the size the admin actually picked — the flex-wrap
-   container just lets the browser's own print pagination add pages as needed. Shared by both
-   QR kinds (Growth tab -> "Print QR Codes").
-───────────────────────────────────────── */
-.adm-qr-print-flow { display: flex; flex-wrap: wrap; gap: 6mm; align-content: flex-start; }
-.adm-qr-print-tile { display: flex; flex-direction: column; align-items: center; text-align: center; box-sizing: border-box; padding: 3mm 2mm; }
-.adm-qr-print-tile img { display: block; width: 100%; height: auto; }
-.adm-qr-print-tile-name { margin-top: 2mm; font-size: 12px; font-weight: 700; color: var(--adm-ink); line-height: 1.25; word-break: break-word; }
-.adm-qr-print-tile-area { margin-top: 1mm; font-size: 10px; color: var(--adm-text-faint); line-height: 1.25; word-break: break-word; }
-
-@media print {
-  .adm-qr-print-flow { max-height: none; overflow: visible; }
-  .adm-qr-print-tile { break-inside: avoid; page-break-inside: avoid; }
 }
 
 /* ─────────────────────────────────────────
