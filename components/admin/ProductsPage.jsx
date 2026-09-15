@@ -5,7 +5,7 @@
 // facing catalogue view — see app/api/products/route.js's header for the access rules.
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { StatCard, Modal, Pagination } from './ui';
-import { IconSearch, IconPlus, IconProducts, IconTrash, IconUpload, IconDownload, IconX } from './icons';
+import { IconSearch, IconPlus, IconProducts, IconTrash, IconUpload, IconDownload, IconX, IconImage } from './icons';
 import { useApiResource, invalidate } from '@/lib/useApiResource';
 import { parseCsv, toCsv, downloadCsv } from '@/lib/csv';
 
@@ -142,6 +142,7 @@ export default function ProductsPage() {
         <div className="adm-page-head-actions">
           <button className="adm-chip-btn" onClick={downloadTemplate}><IconDownload size={15} /> Download Template</button>
           <button className="adm-chip-btn" onClick={() => setModal({ type: 'import' })}><IconUpload size={15} /> Bulk Import</button>
+          <button className="adm-chip-btn" onClick={() => setModal({ type: 'bulkPhotos' })}><IconImage size={15} /> Bulk Photos</button>
           <button className="adm-chip-btn" onClick={() => setModal({ type: 'categories' })}>Manage Categories</button>
           <button className="adm-btn-primary" onClick={() => setModal({ type: 'add' })}><IconPlus size={15} /> Add Product</button>
         </div>
@@ -206,6 +207,9 @@ export default function ProductsPage() {
       )}
       {modal?.type === 'import' && (
         <ImportModal categories={categories} onClose={() => setModal(null)} onDone={() => { setModal(null); load(); }} />
+      )}
+      {modal?.type === 'bulkPhotos' && (
+        <BulkPhotosModal products={products} onClose={() => setModal(null)} onDone={() => { setModal(null); load(); }} />
       )}
       {modal?.type === 'categories' && (
         <CategoriesModal categories={categories} onClose={() => setModal(null)} onChanged={setCategories} />
@@ -493,6 +497,200 @@ function ImportModal({ categories, onClose, onDone }) {
         <button className="lf-btn-back" onClick={onClose} disabled={submitting}>Cancel</button>
         <button className="lf-btn-next" onClick={submit} disabled={submitting || parsing || validCount === 0}>
           {submitting ? (progress || 'Importing…') : `Import ${validCount || ''} product${validCount === 1 ? '' : 's'}`}
+        </button>
+      </div>
+    </Modal>
+  );
+}
+
+// Admin -> Products -> Bulk Photos: upload many image files at once, matched to existing SKUs by
+// filename, instead of adding photos to one product at a time in ProductModal. Matching: the
+// filename (minus extension) either equals a SKU exactly, or starts with a SKU followed by a
+// separator and anything else — e.g. "HES-TP-4G.jpg", or "HES-TP-4G_1.jpg" / "HES-TP-4G_2.jpg"
+// for more than one photo on the same SKU. The LONGEST matching SKU wins (skuIndex is sorted
+// longest-first) so one SKU that happens to be a prefix of another doesn't steal its photos.
+// Multiple files for the same SKU are sorted by filename (numeric-aware, so "_2" sorts before
+// "_10") and become that product's photo set in that order — first is the cover. Per the chosen
+// behaviour, this REPLACES whatever photos that product already had; it doesn't add to them.
+// Reuses fileToCompressedDataUrl (same client-side downscale/compress as ProductModal) and
+// PATCHes each matched product individually through the same /api/products/:id route
+// ProductModal already uses — no new API route needed, since every product write here is
+// independent by id (unlike the CSV bulk-import route, there's no shared key two rows could
+// race on) and each request only ever carries one product's own photos.
+const BULK_PHOTO_CONCURRENCY = 4; // a few products' worth of photo PATCHes in flight at once
+const SKU_SEPARATOR_RE = /^[\s_.\-()]/;
+
+function matchSkuForFilename(baseName, skuIndex) {
+  const lower = baseName.toLowerCase();
+  for (const [skuLower, sku] of skuIndex) {
+    if (lower === skuLower) return sku;
+    if (lower.startsWith(skuLower) && SKU_SEPARATOR_RE.test(lower.slice(skuLower.length))) return sku;
+  }
+  return null;
+}
+
+function BulkPhotosModal({ products, onClose, onDone }) {
+  const [files, setFiles] = useState([]);
+  const [submitting, setSubmitting] = useState(false);
+  const [progress, setProgress] = useState('');
+  const [result, setResult] = useState(null); // { updated: [{sku,name,count}], failed: [{sku,name,error}], unmatched: [filename] }
+
+  const skuIndex = useMemo(() => {
+    const pairs = products
+      .map((p) => String(p.sku || '').trim())
+      .filter(Boolean)
+      .map((sku) => [sku.toLowerCase(), sku]);
+    pairs.sort((a, b) => b[0].length - a[0].length);
+    return pairs;
+  }, [products]);
+
+  const skuToProduct = useMemo(() => {
+    const m = new Map();
+    for (const p of products) {
+      const lower = String(p.sku || '').trim().toLowerCase();
+      if (lower) m.set(lower, p);
+    }
+    return m;
+  }, [products]);
+
+  const { groups, unmatched } = useMemo(() => {
+    const bySkuLower = new Map(); // skuLower -> { product, files: File[] }
+    const leftover = [];
+    for (const file of files) {
+      const baseName = file.name.replace(/\.[^.]+$/, '');
+      const matchedSku = matchSkuForFilename(baseName, skuIndex);
+      const product = matchedSku ? skuToProduct.get(matchedSku.toLowerCase()) : null;
+      if (!product) { leftover.push(file.name); continue; }
+      const key = matchedSku.toLowerCase();
+      if (!bySkuLower.has(key)) bySkuLower.set(key, { product, files: [] });
+      bySkuLower.get(key).files.push(file);
+    }
+    // Plain "SKU.jpg" before "SKU_2.jpg" before "SKU_10.jpg" within one product's photo set.
+    for (const g of bySkuLower.values()) {
+      g.files.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
+    }
+    return { groups: Array.from(bySkuLower.values()), unmatched: leftover };
+  }, [files, skuIndex, skuToProduct]);
+
+  function handleFiles(fileList) {
+    setResult(null);
+    setFiles(Array.from(fileList || []).filter((f) => f.type.startsWith('image/')));
+  }
+
+  async function submit() {
+    if (groups.length === 0) return;
+    setSubmitting(true);
+    setResult(null);
+    const updated = [];
+    const failed = [];
+    let next = 0;
+    let completed = 0;
+
+    async function worker() {
+      while (next < groups.length) {
+        const { product, files: groupFiles } = groups[next++];
+        try {
+          const photos = [];
+          for (const file of groupFiles.slice(0, MAX_PHOTOS)) {
+            const dataUrl = await fileToCompressedDataUrl(file);
+            photos.push({ id: `ph_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`, name: file.name, dataUrl });
+          }
+          const res = await fetch(`${PRODUCTS_URL}/${product.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ photos }) });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) throw new Error(data.error || 'Failed to save');
+          updated.push({ sku: product.sku, name: product.name, count: photos.length });
+        } catch (e) {
+          failed.push({ sku: product.sku, name: product.name, error: e.message });
+        } finally {
+          completed++;
+          setProgress(`Updating ${completed} of ${groups.length}…`);
+        }
+      }
+    }
+
+    await Promise.all(Array.from({ length: Math.min(BULK_PHOTO_CONCURRENCY, groups.length) }, worker));
+    setSubmitting(false);
+    setProgress('');
+    setResult({ updated, failed, unmatched });
+  }
+
+  if (result) {
+    return (
+      <Modal title="Bulk photos complete" onClose={onClose} wide>
+        <div className="adm-detail-grid">
+          <div><span className="adm-detail-label">Updated</span>{result.updated.length}</div>
+          <div><span className="adm-detail-label">Failed</span>{result.failed.length}</div>
+          <div><span className="adm-detail-label">Unmatched files</span>{result.unmatched.length}</div>
+        </div>
+        {result.failed.length > 0 && (
+          <div className="adm-table-scroll" style={{ marginTop: 12 }}>
+            <table className="adm-table">
+              <thead><tr><th>SKU</th><th>Product</th><th>Error</th></tr></thead>
+              <tbody>{result.failed.map((f, i) => <tr key={i}><td>{f.sku}</td><td>{f.name}</td><td>{f.error}</td></tr>)}</tbody>
+            </table>
+          </div>
+        )}
+        {result.unmatched.length > 0 && (
+          <div style={{ marginTop: 12 }}>
+            <div className="adm-detail-label" style={{ marginBottom: 6 }}>Files that didn't match a SKU</div>
+            <div className="adm-meta-hint">{result.unmatched.join(', ')}</div>
+          </div>
+        )}
+        <div className="lf-actions">
+          <button className="lf-btn-next" onClick={onDone}>Done</button>
+        </div>
+      </Modal>
+    );
+  }
+
+  return (
+    <Modal
+      title="Bulk update product photos"
+      sub="Name each file to match a SKU — e.g. HES-TP-4G.jpg, or HES-TP-4G_1.jpg / HES-TP-4G_2.jpg for more than one photo. This replaces that product's existing photos."
+      onClose={onClose}
+      wide
+    >
+      <div className="lf-field">
+        <label className="lf-label">Image files</label>
+        <input type="file" accept="image/*" multiple onChange={(e) => handleFiles(e.target.files)} disabled={submitting} />
+      </div>
+
+      {files.length > 0 && (
+        <>
+          <div className="adm-detail-grid" style={{ marginBottom: 12 }}>
+            <div><span className="adm-detail-label">Files selected</span>{files.length}</div>
+            <div><span className="adm-detail-label">SKUs matched</span>{groups.length}</div>
+            <div><span className="adm-detail-label">Unmatched</span>{unmatched.length}</div>
+          </div>
+          {groups.length > 0 && (
+            <div className="adm-table-scroll" style={{ maxHeight: 280 }}>
+              <table className="adm-table">
+                <thead><tr><th>SKU</th><th>Product</th><th>Photos</th></tr></thead>
+                <tbody>
+                  {groups.map((g, i) => (
+                    <tr key={i}>
+                      <td>{g.product.sku}</td>
+                      <td>{g.product.name}</td>
+                      <td>{g.files.length} — {g.files.map((f) => f.name).join(', ')}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          {unmatched.length > 0 && (
+            <div style={{ marginTop: 10 }}>
+              <div className="adm-detail-label" style={{ marginBottom: 4, color: '#ff8484' }}>Didn't match any SKU</div>
+              <div className="adm-meta-hint">{unmatched.join(', ')}</div>
+            </div>
+          )}
+        </>
+      )}
+
+      <div className="lf-actions">
+        <button className="lf-btn-back" onClick={onClose} disabled={submitting}>Cancel</button>
+        <button className="lf-btn-next" onClick={submit} disabled={submitting || groups.length === 0}>
+          {submitting ? (progress || 'Updating…') : `Update ${groups.length || ''} product${groups.length === 1 ? '' : 's'}`}
         </button>
       </div>
     </Modal>
