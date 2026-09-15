@@ -409,6 +409,9 @@ button.adm-nav-link { background: none; border: none; cursor: pointer; text-alig
 .adm-qr-tile-code { margin-top: 8px; font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 13px; font-weight: 700; letter-spacing: 0.5px; color: var(--adm-ink); }
 .adm-qr-tile-batch { margin-top: 2px; font-size: 11px; color: var(--adm-text-faint); }
 .adm-qr-tile-scanned { margin-top: 6px; font-size: 10.5px; color: #B7791F; font-weight: 600; }
+.adm-qr-tile--pick { cursor: pointer; user-select: none; position: relative; transition: border-color 0.15s, box-shadow 0.15s; }
+.adm-qr-tile--pick.selected { border-color: var(--adm-orange); box-shadow: 0 0 0 2px rgba(255, 122, 0, 0.15); }
+.adm-qr-tile-checkbox { position: absolute; top: 8px; left: 8px; width: 17px; height: 17px; accent-color: var(--adm-orange); cursor: pointer; }
 
 @media print {
   body * { visibility: hidden; }

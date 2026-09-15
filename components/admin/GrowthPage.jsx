@@ -6,6 +6,7 @@
 // else in the app — lib/leadStage.js's stageOf).
 import { useEffect, useMemo, useState } from 'react';
 import { useApiResource } from '@/lib/useApiResource';
+import { buildZip } from '@/lib/zipBuilder';
 import { ATTR_KIND_LABEL } from '@/lib/attributionConstants';
 import { StatCard, Modal } from './ui';
 import { IconQrCode, IconLink, IconLeads, IconConversions, IconSearch, IconPlus, IconDownload, IconTrash } from './icons';
@@ -86,6 +87,7 @@ export default function GrowthPage() {
         <div className="adm-page-head-actions">
           <button className="adm-btn-outline" onClick={() => setModal({ type: 'blank-qr' })}><IconPlus size={15} /> Create Partner QR Codes</button>
           <button className="adm-btn-outline" onClick={() => setModal({ type: 'print-qr' })}><IconDownload size={15} /> Print QR Codes</button>
+          <button className="adm-btn-outline" onClick={() => setModal({ type: 'download-qr' })}><IconDownload size={15} /> Download QR Codes</button>
           <button className="adm-btn-primary" onClick={() => setModal({ type: 'create' })}><IconPlus size={15} /> Create Location QR</button>
         </div>
       </div>
@@ -159,6 +161,7 @@ export default function GrowthPage() {
       {modal?.type === 'view' && <LinkDetailModal link={modal.link} onClose={() => setModal(null)} onCopied={() => flash('Link copied')} />}
       {modal?.type === 'blank-qr' && <BlankQrModal onClose={() => setModal(null)} />}
       {modal?.type === 'print-qr' && <PrintQrModal links={links} onClose={() => setModal(null)} />}
+      {modal?.type === 'download-qr' && <DownloadQrModal links={links} onClose={() => setModal(null)} />}
     </>
   );
 }
@@ -592,6 +595,266 @@ function PrintQrModal({ links, onClose }) {
           </div>
         )}
       </div>
+    </Modal>
+  );
+}
+
+// Download QR codes as plain image files (PNG or JPEG) instead of printing them — reuses the
+// same location/partner + batch/employee filtering as "Print QR Codes" above, but the result is
+// a browser download: a single image file when exactly one code is selected, or a .zip bundle
+// (via lib/zipBuilder.js — a small dependency-free ZIP writer, since no zip package could be
+// installed here) when more than one is selected.
+function sanitizeQrFilename(s) {
+  const cleaned = String(s || '').trim().replace(/[\\/:*?"<>|]/g, '-').replace(/\s+/g, ' ').trim();
+  return cleaned || 'qr-code';
+}
+
+function dedupeQrFilename(base, ext, usedNames) {
+  let name = `${base}.${ext}`;
+  let i = 2;
+  while (usedNames.has(name)) { name = `${base}-${i}.${ext}`; i += 1; }
+  usedNames.add(name);
+  return name;
+}
+
+// api.qrserver.com always returns a PNG — for a PNG download that PNG blob IS the output, no
+// conversion needed. For JPEG, draw it onto a canvas over a white background first (JPEG has no
+// alpha channel, and a QR code's "transparent" area is really just white space) and re-encode.
+async function qrBlobToFormat(blob, format) {
+  if (format === 'png') return blob;
+  const bitmap = await createImageBitmap(blob);
+  const canvas = document.createElement('canvas');
+  canvas.width = bitmap.width;
+  canvas.height = bitmap.height;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.drawImage(bitmap, 0, 0);
+  return new Promise((resolve, reject) => {
+    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('JPEG conversion failed'))), 'image/jpeg', 0.92);
+  });
+}
+
+function triggerQrDownload(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+const DOWNLOAD_QR_CONCURRENCY = 4;
+
+function DownloadQrModal({ links, onClose }) {
+  const [downloadKind, setDownloadKind] = useState('location'); // 'location' | 'partner'
+  const [format, setFormat] = useState('png'); // 'png' | 'jpeg'
+  const [batch, setBatch] = useState('all');
+  const [employeeFilter, setEmployeeFilter] = useState('all');
+  const [selected, setSelected] = useState(() => new Set());
+  const [downloading, setDownloading] = useState(false);
+  const [error, setError] = useState('');
+  const [failedCount, setFailedCount] = useState(0);
+
+  const locations = useMemo(() => links.filter((l) => l.kind === 'qr_location'), [links]);
+  // Same unclaimed-codes endpoint "Create Partner QR Codes" / "Print QR Codes" use —
+  // useApiResource shares one cache per URL, so this doesn't duplicate that fetch.
+  const { data: unclaimed, loading: partnerLoading } = useApiResource('/api/admin/attribution/blank-qr', { pollMs: 20000 });
+  const { data: allEmployees } = useApiResource('/api/admin/employees', { pollMs: 20000 });
+  const employeeName = (id) => allEmployees.find((e) => e.id === id)?.name || 'Unassigned';
+
+  const batches = useMemo(() => {
+    const labels = [];
+    let hasUnlabeled = false;
+    unclaimed.forEach((u) => {
+      if (u.batchLabel) { if (!labels.includes(u.batchLabel)) labels.push(u.batchLabel); }
+      else hasUnlabeled = true;
+    });
+    return { labels, hasUnlabeled };
+  }, [unclaimed]);
+
+  const employeeOptions = useMemo(() => {
+    const ids = [];
+    let hasUnassigned = false;
+    unclaimed.forEach((u) => {
+      if (u.employeeId) { if (!ids.includes(u.employeeId)) ids.push(u.employeeId); }
+      else hasUnassigned = true;
+    });
+    return { ids, hasUnassigned };
+  }, [unclaimed]);
+
+  const partnerCodes = useMemo(() => {
+    let out = unclaimed;
+    if (batch === '__unlabeled__') out = out.filter((u) => !u.batchLabel);
+    else if (batch !== 'all') out = out.filter((u) => u.batchLabel === batch);
+    if (employeeFilter === '__unassigned__') out = out.filter((u) => !u.employeeId);
+    else if (employeeFilter !== 'all') out = out.filter((u) => u.employeeId === employeeFilter);
+    return out;
+  }, [unclaimed, batch, employeeFilter]);
+
+  const items = downloadKind === 'location' ? locations : partnerCodes;
+
+  // Default to "everything currently in view" selected, so an admin who wants a whole filtered
+  // batch doesn't have to tick every box — switching tab/filter resets to the new full set
+  // rather than carrying over a selection that may no longer apply to what's shown.
+  useEffect(() => {
+    setSelected(new Set(items.map((l) => l.id)));
+  }, [items]);
+
+  function toggleOne(id) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleAll() {
+    setSelected((prev) => (prev.size === items.length ? new Set() : new Set(items.map((l) => l.id))));
+  }
+
+  async function download() {
+    const chosen = items.filter((l) => selected.has(l.id));
+    if (!chosen.length || downloading) return;
+    setDownloading(true);
+    setError('');
+    setFailedCount(0);
+    try {
+      const results = [];
+      const usedNames = new Set();
+      let next = 0;
+      let failed = 0;
+      async function worker() {
+        while (next < chosen.length) {
+          const l = chosen[next++];
+          try {
+            const shareUrl = l.url || `${window.location.origin}/go/${l.id}`;
+            const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=1000x1000&data=${encodeURIComponent(shareUrl)}`;
+            const res = await fetch(qrUrl);
+            if (!res.ok) throw new Error(`QR fetch failed (${res.status})`);
+            const pngBlob = await res.blob();
+            const outBlob = await qrBlobToFormat(pngBlob, format);
+            const base = sanitizeQrFilename(downloadKind === 'location' ? (l.label || l.id) : l.id);
+            const name = dedupeQrFilename(base, format === 'jpeg' ? 'jpg' : 'png', usedNames);
+            results.push({ name, blob: outBlob });
+          } catch {
+            failed += 1;
+          }
+        }
+      }
+      await Promise.all(Array.from({ length: Math.min(DOWNLOAD_QR_CONCURRENCY, chosen.length) }, worker));
+
+      if (!results.length) {
+        setError('Could not download any of the selected QR codes — check your connection and try again.');
+        return;
+      }
+      if (results.length === 1) {
+        triggerQrDownload(results[0].blob, results[0].name);
+      } else {
+        const files = [];
+        for (const r of results) {
+          files.push({ name: r.name, data: new Uint8Array(await r.blob.arrayBuffer()) });
+        }
+        const zipBlob = buildZip(files);
+        triggerQrDownload(zipBlob, `qr-codes-${downloadKind}-${format}.zip`);
+      }
+      if (failed) setFailedCount(failed);
+    } catch (e) {
+      setError(e.message || 'Download failed');
+    } finally {
+      setDownloading(false);
+    }
+  }
+
+  return (
+    <Modal
+      title="Download QR Codes"
+      sub="Download location QR codes, or a batch of unclaimed partner QR codes, as individual PNG or JPEG image files — bundled into a .zip when more than one is selected."
+      onClose={onClose}
+      wide
+    >
+      <div className="adm-tabs">
+        <button type="button" className={`adm-tab${downloadKind === 'location' ? ' active' : ''}`} onClick={() => setDownloadKind('location')}>Location QR Codes</button>
+        <button type="button" className={`adm-tab${downloadKind === 'partner' ? ' active' : ''}`} onClick={() => setDownloadKind('partner')}>Partner QR Codes (Batch)</button>
+      </div>
+
+      <div className="lf-field-row">
+        {downloadKind === 'partner' && (
+          <div className="lf-field">
+            <label className="lf-label">Batch</label>
+            <select className="lf-input" value={batch} onChange={(e) => setBatch(e.target.value)}>
+              <option value="all">All unclaimed codes</option>
+              {batches.labels.map((b) => <option key={b} value={b}>{b}</option>)}
+              {batches.hasUnlabeled && <option value="__unlabeled__">No batch label</option>}
+            </select>
+          </div>
+        )}
+        {downloadKind === 'partner' && (
+          <div className="lf-field">
+            <label className="lf-label">Employee</label>
+            <select className="lf-input" value={employeeFilter} onChange={(e) => setEmployeeFilter(e.target.value)}>
+              <option value="all">All employees</option>
+              {employeeOptions.ids.map((id) => <option key={id} value={id}>{employeeName(id)}</option>)}
+              {employeeOptions.hasUnassigned && <option value="__unassigned__">No employee</option>}
+            </select>
+          </div>
+        )}
+        <div className="lf-field">
+          <label className="lf-label">Image format</label>
+          <select className="lf-input" value={format} onChange={(e) => setFormat(e.target.value)}>
+            <option value="png">PNG</option>
+            <option value="jpeg">JPEG</option>
+          </select>
+        </div>
+      </div>
+
+      {error && <div className="lf-error">{error}</div>}
+      {!!failedCount && <div className="lf-error">{failedCount} QR code{failedCount === 1 ? '' : 's'} failed to download and {failedCount === 1 ? 'was' : 'were'} skipped.</div>}
+
+      <div className="lf-actions" style={{ marginBottom: 12 }}>
+        <button type="button" className="adm-chip-btn" onClick={toggleAll} disabled={!items.length}>{selected.size === items.length && items.length ? 'Deselect All' : 'Select All'}</button>
+        <button className="adm-btn-primary" onClick={download} disabled={!selected.size || downloading}>
+          {downloading ? 'Preparing…' : `Download Selected (${selected.size})`}
+        </button>
+      </div>
+
+      <div className="adm-meta-hint">
+        {downloadKind === 'partner' && partnerLoading ? 'Loading unclaimed codes…' : items.length === 0
+          ? (downloadKind === 'location' ? 'No location QR codes yet — use "Create Location QR" first.' : 'No unclaimed partner codes match — generate a batch from "Create Partner QR Codes" first.')
+          : `${selected.size} of ${items.length} ${downloadKind === 'location' ? 'location' : 'partner'} QR code${items.length === 1 ? '' : 's'} selected · ${selected.size > 1 ? 'downloads as a .zip' : 'downloads as a single image'}`}
+      </div>
+
+      {items.length === 0 ? (
+        <div className="adm-empty">{downloadKind === 'location' ? 'No location QR codes yet.' : 'No unclaimed partner codes.'}</div>
+      ) : (
+        <div className="adm-qr-grid">
+          {items.map((l) => {
+            const shareUrl = l.url || `${typeof window !== 'undefined' ? window.location.origin : ''}/go/${l.id}`;
+            const qrImg = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(shareUrl)}`;
+            const primaryLabel = downloadKind === 'location' ? (l.label || l.id) : l.id;
+            const secondaryLabel = downloadKind === 'location'
+              ? [l.locality, l.city].filter(Boolean).join(', ')
+              : [l.batchLabel, l.employeeId ? employeeName(l.employeeId) : ''].filter(Boolean).join(' · ');
+            const isSelected = selected.has(l.id);
+            return (
+              <div className={`adm-qr-tile adm-qr-tile--pick${isSelected ? ' selected' : ''}`} key={l.id} onClick={() => toggleOne(l.id)}>
+                <input
+                  type="checkbox"
+                  className="adm-qr-tile-checkbox"
+                  checked={isSelected}
+                  onChange={() => toggleOne(l.id)}
+                  onClick={(e) => e.stopPropagation()}
+                />
+                <img src={qrImg} alt={primaryLabel} width={140} height={140} />
+                <div className="adm-qr-tile-code">{primaryLabel}</div>
+                {secondaryLabel && <div className="adm-qr-tile-batch">{secondaryLabel}</div>}
+              </div>
+            );
+          })}
+        </div>
+      )}
     </Modal>
   );
 }
