@@ -13,6 +13,7 @@ import { pushHistory } from '@/lib/leadStage';
 import { mapMetaLead } from '@/lib/metaLeadMap';
 import { getMetaSettings, activeAccessToken, enabledFormIds } from '@/lib/metaAds';
 import { autoAssignByCity } from '@/lib/leadAssign';
+import { notifyHeseosMetaLeadCaptured } from '@/lib/heseosNotify';
 
 export const dynamic = 'force-dynamic';
 
@@ -131,6 +132,15 @@ export async function POST(req) {
           lead.history = pushHistory(lead, { event: 'Auto-assigned by city', by: 'system', note: (mapped.city || '') + ' · pre-sales matched' });
         }
         await dbInsert('leads', id, lead);
+
+        // Welcome the customer and set expectations — never lets a WhatsApp hiccup fail the
+        // webhook (see notifyHeseosMetaLeadCaptured's own header comment). Meta gives webhooks a
+        // short response window, but this is one text-template send, not a bulk operation, so
+        // awaiting it here (rather than firing-and-forgetting) is the same pattern already used
+        // for every other notification in this file.
+        await notifyHeseosMetaLeadCaptured(lead).catch((err) => {
+          console.error('notifyHeseosMetaLeadCaptured error:', err);
+        });
       } catch (err) {
         console.error('Meta lead webhook error:', err);
       }
