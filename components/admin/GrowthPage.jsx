@@ -617,21 +617,41 @@ function dedupeQrFilename(base, ext, usedNames) {
   return name;
 }
 
-// api.qrserver.com always returns a PNG — for a PNG download that PNG blob IS the output, no
-// conversion needed. For JPEG, draw it onto a canvas over a white background first (JPEG has no
-// alpha channel, and a QR code's "transparent" area is really just white space) and re-encode.
-async function qrBlobToFormat(blob, format) {
-  if (format === 'png') return blob;
-  const bitmap = await createImageBitmap(blob);
+// The raw QR image from api.qrserver.com is just the scannable pattern — nothing printed on
+// it says what the code actually is. Bake the plain-text code in underneath it (via canvas, the
+// only way to get text into a flat downloaded image file) so whoever opens the file can read the
+// code directly and type it into the app by hand if scanning isn't convenient. This also
+// replaces the old PNG "pass the original blob straight through" path, since PNG downloads need
+// the label added too, and does the JPEG white-background compositing (JPEG has no alpha
+// channel, and a QR code's "transparent" area is really just white space) in the same pass.
+async function composeQrImageWithLabel(qrBlob, code, format) {
+  const bitmap = await createImageBitmap(qrBlob);
+  const labelH = Math.round(bitmap.width * 0.16);
   const canvas = document.createElement('canvas');
   canvas.width = bitmap.width;
-  canvas.height = bitmap.height;
+  canvas.height = bitmap.height + labelH;
   const ctx = canvas.getContext('2d');
   ctx.fillStyle = '#ffffff';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   ctx.drawImage(bitmap, 0, 0);
+
+  // Shrink the font until a long code still fits within the tile's width, rather than letting
+  // it overflow or get clipped.
+  let fontSize = Math.round(bitmap.width * 0.09);
+  const maxTextWidth = bitmap.width * 0.92;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = '#0b1b2e';
+  ctx.font = `700 ${fontSize}px ui-monospace, "SF Mono", Menlo, monospace`;
+  while (ctx.measureText(code).width > maxTextWidth && fontSize > 10) {
+    fontSize -= 2;
+    ctx.font = `700 ${fontSize}px ui-monospace, "SF Mono", Menlo, monospace`;
+  }
+  ctx.fillText(code, canvas.width / 2, bitmap.height + labelH / 2);
+
+  const mime = format === 'jpeg' ? 'image/jpeg' : 'image/png';
   return new Promise((resolve, reject) => {
-    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('JPEG conversion failed'))), 'image/jpeg', 0.92);
+    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('Image composition failed'))), mime, format === 'jpeg' ? 0.92 : undefined);
   });
 }
 
@@ -735,7 +755,7 @@ function DownloadQrModal({ links, onClose }) {
             const res = await fetch(qrUrl);
             if (!res.ok) throw new Error(`QR fetch failed (${res.status})`);
             const pngBlob = await res.blob();
-            const outBlob = await qrBlobToFormat(pngBlob, format);
+            const outBlob = await composeQrImageWithLabel(pngBlob, l.id, format);
             const base = sanitizeQrFilename(downloadKind === 'location' ? (l.label || l.id) : l.id);
             const name = dedupeQrFilename(base, format === 'jpeg' ? 'jpg' : 'png', usedNames);
             results.push({ name, blob: outBlob });
@@ -771,7 +791,7 @@ function DownloadQrModal({ links, onClose }) {
   return (
     <Modal
       title="Download QR Codes"
-      sub="Download location QR codes, or a batch of unclaimed partner QR codes, as individual PNG or JPEG image files — bundled into a .zip when more than one is selected."
+      sub="Download location QR codes, or a batch of unclaimed partner QR codes, as individual PNG or JPEG image files with the code printed underneath so it can be read and typed in by hand — bundled into a .zip when more than one is selected."
       onClose={onClose}
       wide
     >
