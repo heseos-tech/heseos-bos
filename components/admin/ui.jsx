@@ -11,7 +11,7 @@ import {
   IconDashboard, IconLeads, IconPartners, IconEmployees, IconSalesEngineer, IconPresales, IconDemo,
   IconProducts, IconQuotation, IconConversions, IconReports, IconPayouts, IconSettings,
   IconSearch, IconBell, IconChevronDown, IconChevronLeft, IconChevronRight, IconArrowUp,
-  IconArrowDown, IconX, IconLogout, IconQrCode,
+  IconArrowDown, IconX, IconLogout, IconQrCode, IconStar,
 } from './icons';
 
 // Every item points at the SAME route (/admin) with a different ?tab= — see
@@ -224,6 +224,19 @@ export function StatusBadge({ status }) {
 
 export function PerformanceTag({ tag }) {
   return <span className={`adm-perf adm-perf--${tag.tone}`}>{tag.label}</span>;
+}
+
+// Average customer rating for one employee (Sales Engineers / Pre-sales tables) — `avgRating`
+// is null when nobody's rated them yet (adminMetrics.js's engineerStats/presalesStats only
+// average over leads that actually got a 1-5 reply), so that's shown as a plain dash rather
+// than a misleading "0".
+export function RatingBadge({ avgRating, ratingCount }) {
+  if (avgRating == null || !ratingCount) return <span className="adm-rating adm-rating--empty">No ratings yet</span>;
+  return (
+    <span className="adm-rating">
+      <IconStar size={13} /> {avgRating.toFixed(1)} <span className="adm-rating-count">({ratingCount})</span>
+    </span>
+  );
 }
 
 export function Pagination({ page, pageCount, total, pageSize, onPage }) {

@@ -43,3 +43,6 @@ export const IconInfo = (p) => S(<><circle cx="12" cy="12" r="9" /><path d="M12 
 export const IconProducts = (p) => S(<><path d="M3.5 7.5l8.5-4 8.5 4-8.5 4-8.5-4z" /><path d="M3.5 7.5v9l8.5 4 8.5-4v-9" /><path d="M12 11.5v9" /></>, p?.size);
 export const IconImage = (p) => S(<><rect x="3" y="4" width="18" height="16" rx="2.2" /><circle cx="8.5" cy="9.5" r="1.6" /><path d="M3 16l5-5 4 4 3-3 6 5.5" /></>, p?.size);
 export const IconEmployees = (p) => S(<><rect x="4" y="3.5" width="16" height="17" rx="2.5" /><circle cx="12" cy="10" r="2.6" /><path d="M8 17c.6-2.3 2.2-3.5 4-3.5s3.4 1.2 4 3.5" /></>, p?.size);
+// A filled star — used for the per-employee average customer rating (Sales Engineers /
+// Pre-sales tabs), so it reads as a rating at a glance rather than another outlined icon.
+export const IconStar = (p) => S(<path d="M12 2.5l2.9 6.1 6.6.7-4.9 4.5 1.3 6.6L12 17l-5.9 3.4 1.3-6.6-4.9-4.5 6.6-.7z" fill="currentColor" stroke="none" />, p?.size);

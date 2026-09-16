@@ -2,7 +2,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import { EMPLOYEE_ROLES } from '@/lib/formOptions';
 import { engineerStats, performanceTag, windowDelta } from '@/lib/adminMetrics';
-import { StatCard, Pagination, PerformanceTag, Modal } from './ui';
+import { StatCard, Pagination, PerformanceTag, RatingBadge, Modal } from './ui';
 import { IconSearch, IconDownload, IconSalesEngineer, IconDemo, IconQuotation, IconConversions } from './icons';
 import { useApiResource } from '@/lib/useApiResource';
 
@@ -33,6 +33,10 @@ export default function SalesEngineersPage() {
   const demosThisWeek = rows.reduce((s, r) => s + r.stats.demosThisWeek, 0);
   const totalQuotations = rows.reduce((s, r) => s + r.stats.quotationsSent, 0);
   const totalConversions = rows.reduce((s, r) => s + r.stats.conversions, 0);
+  // Weighted by each engineer's own rating count, not a plain average-of-averages, so one
+  // engineer with 30 ratings doesn't count the same as one with a single 5-star reply.
+  const totalRatings = rows.reduce((s, r) => s + r.stats.ratingCount, 0);
+  const orgAvgRating = totalRatings ? Math.round((rows.reduce((s, r) => s + (r.stats.avgRating || 0) * r.stats.ratingCount, 0) / totalRatings) * 10) / 10 : null;
 
   const filtered = useMemo(() => rows.filter((e) => {
     if (status === 'active' && e.active === false) return false;
@@ -45,8 +49,8 @@ export default function SalesEngineersPage() {
   const pageRows = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   function exportCsv() {
-    const cols = ['name', 'email', 'location', 'assigned', 'demosDone', 'quotationsSent', 'conversions', 'conversionRate'];
-    const csv = [cols.join(','), ...filtered.map((e) => [e.name, e.email, e.location || '', e.stats.assigned, e.stats.demosDone, e.stats.quotationsSent, e.stats.conversions, e.stats.conversionRate].map((v) => `"${String(v ?? '')}"`).join(','))].join('\n');
+    const cols = ['name', 'email', 'location', 'assigned', 'demosDone', 'quotationsSent', 'conversions', 'conversionRate', 'avgRating', 'ratingCount'];
+    const csv = [cols.join(','), ...filtered.map((e) => [e.name, e.email, e.location || '', e.stats.assigned, e.stats.demosDone, e.stats.quotationsSent, e.stats.conversions, e.stats.conversionRate, e.stats.avgRating ?? '', e.stats.ratingCount].map((v) => `"${String(v ?? '')}"`).join(','))].join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a'); a.href = url; a.download = 'heseos-sales-engineers.csv'; a.click();
@@ -70,6 +74,7 @@ export default function SalesEngineersPage() {
         <StatCard label="Demos This Week" value={demosThisWeek} Icon={IconDemo} tone="purple" />
         <StatCard label="Quotations Sent" value={totalQuotations} Icon={IconQuotation} tone="teal" />
         <StatCard label="Conversions" value={totalConversions} Icon={IconConversions} tone="blue" />
+        <StatCard label="Avg Rating" value={orgAvgRating != null ? `${orgAvgRating.toFixed(1)} ★` : '—'} Icon={IconSalesEngineer} tone="orange" />
       </div>
 
       <div className="adm-card">
@@ -82,9 +87,9 @@ export default function SalesEngineersPage() {
 
         <div className="adm-table-scroll">
           <table className="adm-table">
-            <thead><tr><th>Engineer Details</th><th>Location</th><th>Assigned Leads</th><th>Demos Done</th><th>Quotations Sent</th><th>Conversions</th><th>Conv. Rate</th><th>Performance</th><th>Status</th><th></th></tr></thead>
+            <thead><tr><th>Engineer Details</th><th>Location</th><th>Assigned Leads</th><th>Demos Done</th><th>Quotations Sent</th><th>Conversions</th><th>Conv. Rate</th><th>Rating</th><th>Performance</th><th>Status</th><th></th></tr></thead>
             <tbody>
-              {loading ? <tr><td colSpan={10} className="adm-empty">Loading…</td></tr> : pageRows.length === 0 ? <tr><td colSpan={10} className="adm-empty">No sales engineers yet.</td></tr> : pageRows.map((e) => (
+              {loading ? <tr><td colSpan={11} className="adm-empty">Loading…</td></tr> : pageRows.length === 0 ? <tr><td colSpan={11} className="adm-empty">No sales engineers yet.</td></tr> : pageRows.map((e) => (
                 <tr key={e.id}>
                   <td><div className="adm-lead-name">{e.name}</div><div className="adm-lead-sub">{e.phone || e.email}</div></td>
                   <td>{e.location || '—'}</td>
@@ -93,6 +98,7 @@ export default function SalesEngineersPage() {
                   <td>{e.stats.quotationsSent}</td>
                   <td>{e.stats.conversions}</td>
                   <td>{e.stats.conversionRate}%</td>
+                  <td><RatingBadge avgRating={e.stats.avgRating} ratingCount={e.stats.ratingCount} /></td>
                   <td><PerformanceTag tag={performanceTag(e.stats.conversionRate)} /></td>
                   <td><span className={`adm-status-pill${e.active !== false ? ' active' : ''}`}>{e.active !== false ? 'Active' : 'Inactive'}</span></td>
                   <td className="adm-row-actions"><div className="adm-row-actions-inner"><button className="adm-chip-btn" onClick={() => toggleActive(e)}>{e.active !== false ? 'Deactivate' : 'Activate'}</button></div></td>
