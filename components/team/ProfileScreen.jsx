@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Avatar } from "@/components/partner/ui";
 import { IconUser, IconHistory, IconHelp, IconFile, IconShield, IconLogout, IconChevronRight } from "@/components/partner/icons";
+import InstallAppMenuItem from "@/components/partner/InstallApp";
 
 const ROLE_LABEL = { presales: "Pre-Sales Executive", sales_engineer: "Sales Engineer", operations: "Operations", marketing: "Marketing", management: "Management" };
 
@@ -58,6 +59,10 @@ export default function TeamProfileScreen({ employee }) {
       </div>
 
       <div className="hp-menu-list">
+        {/* Renders nothing once the app is already installed — sits in the SAME list as
+            Logout rather than its own, so there's never an empty bordered box left behind
+            once it disappears. */}
+        <InstallAppMenuItem appName="Team App" />
         <button className="hp-menu-item danger" onClick={logout} disabled={loggingOut}>
           <span className="hp-menu-icon"><IconLogout size={17} /></span>
           <span className="hp-menu-label">{loggingOut ? "Logging out…" : "Logout"}</span>
