@@ -1,17 +1,19 @@
 'use client';
 // Profile → My Profile. Name and phone stay fixed here (phone is the login identifier, changing
 // it is a support-desk job, not self-service) — everything else here is self-service: the
-// partner's own name, their business's name, their category, and their address. Category writes
+// partner's own name, their business's name, their category, their address, and an optional
+// GST number (for partners who are registered businesses). Category writes
 // to the same `type` field Admin → Partners already filters and reports by (lib/formOptions.js's
 // PARTNER_CATEGORY); city/pincode/state/addressLine likewise write to the same flat fields
 // Admin → Partners already has a City column for (components/admin/PartnersPage.jsx) — so
 // filling this in from here is exactly what shows up there too.
 import { useState, useEffect, useCallback } from 'react';
 import { ScreenHeader, TextField, SelectField, Button } from './ui';
-import { IconBuilding, IconTag, IconUser, IconPhone, IconMapPin } from './icons';
+import { IconBuilding, IconTag, IconUser, IconPhone, IconMapPin, IconFile } from './icons';
 import { PARTNER_CATEGORY } from '@/lib/formOptions';
 
 const PINCODE_RE = /^\d{6}$/;
+const GST_RE = /^\d{2}[A-Z]{5}\d{4}[A-Z]\d[Z][A-Z\d]$/;
 
 function formatJoined(iso) {
   if (!iso) return '—';
@@ -36,6 +38,7 @@ export default function MyProfileScreen() {
   const [pincode, setPincode] = useState('');
   const [city, setCity] = useState('');
   const [state, setState] = useState('');
+  const [gstNumber, setGstNumber] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [toast, setToast] = useState('');
@@ -51,6 +54,7 @@ export default function MyProfileScreen() {
       setPincode(p.pincode || '');
       setCity(p.city || '');
       setState(p.state || '');
+      setGstNumber(p.gstNumber || '');
     });
   }, []);
   useEffect(() => { load(); }, [load]);
@@ -65,12 +69,14 @@ export default function MyProfileScreen() {
     || pincode.trim() !== (partner.pincode || '')
     || city.trim() !== (partner.city || '')
     || state.trim() !== (partner.state || '')
+    || gstNumber.trim() !== (partner.gstNumber || '')
   );
 
   async function save() {
     if (!partnerName.trim()) { setError('Partner name cannot be empty'); return; }
     if (!category) { setError('Please choose your partner category'); return; }
     if (pincode.trim() && !PINCODE_RE.test(pincode.trim())) { setError('Pincode must be 6 digits'); return; }
+    if (gstNumber.trim() && !GST_RE.test(gstNumber.trim().toUpperCase())) { setError('That doesn\u2019t look like a valid GSTIN (e.g. 22AAAAA0000A1Z5)'); return; }
     setError(''); setSaving(true);
     try {
       const res = await fetch('/api/partner/profile', {
@@ -84,6 +90,7 @@ export default function MyProfileScreen() {
           pincode: pincode.trim(),
           city: city.trim(),
           state: state.trim(),
+          gstNumber: gstNumber.trim().toUpperCase(),
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -156,6 +163,14 @@ export default function MyProfileScreen() {
                 value={state}
                 onChange={(e) => setState(e.target.value)}
                 placeholder="e.g. Maharashtra"
+              />
+              <TextField
+                label="GST Number (optional)"
+                icon={<IconFile size={18} />}
+                value={gstNumber}
+                onChange={(e) => setGstNumber(e.target.value.toUpperCase().slice(0, 15))}
+                placeholder="22AAAAA0000A1Z5"
+                maxLength={15}
               />
               {error && <div className="hp-error">{error}</div>}
               <Button block onClick={save} disabled={saving || !dirty} style={{ marginTop: 4 }}>

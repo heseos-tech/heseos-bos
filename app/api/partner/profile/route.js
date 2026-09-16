@@ -9,7 +9,9 @@
 // Admin → Partners' City column already reads, just never populated until now), and bank
 // details for reference when a payout gets settled manually (see app/api/admin/payouts — there
 // is no payment gateway anywhere in this app, so these fields are never used to move money,
-// only so an admin has somewhere to look them up).
+// only so an admin has somewhere to look them up), and an optional GSTIN (`gstNumber`) for
+// partners who are registered businesses — validated for format when provided, but never
+// required.
 import { dbPatch } from '@/lib/db';
 import { getPartner, invalidateAccountCache } from '@/lib/auth';
 import { PARTNER_CATEGORY } from '@/lib/formOptions';
@@ -19,6 +21,7 @@ export const dynamic = 'force-dynamic';
 const CATEGORY_VALUES = new Set(PARTNER_CATEGORY.map((c) => c.v));
 const IFSC_RE = /^[A-Z]{4}0[A-Z0-9]{6}$/;
 const PINCODE_RE = /^\d{6}$/;
+const GST_RE = /^\d{2}[A-Z]{5}\d{4}[A-Z]\d[Z][A-Z\d]$/;
 
 // Never hand the password hash (or anything else internal) to the client.
 function publicPartner(p) {
@@ -71,6 +74,12 @@ export async function PATCH(request) {
     const pincode = String(body.pincode || '').trim();
     if (pincode && !PINCODE_RE.test(pincode)) return Response.json({ error: 'Pincode must be 6 digits' }, { status: 400 });
     patch.pincode = pincode;
+  }
+
+  if (body.gstNumber !== undefined) {
+    const gstNumber = String(body.gstNumber || '').trim().toUpperCase();
+    if (gstNumber && !GST_RE.test(gstNumber)) return Response.json({ error: 'That doesn\u2019t look like a valid GSTIN (e.g. 22AAAAA0000A1Z5)' }, { status: 400 });
+    patch.gstNumber = gstNumber;
   }
 
   if (body.bankDetails !== undefined) {
