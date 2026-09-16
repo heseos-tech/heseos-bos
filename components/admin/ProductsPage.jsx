@@ -8,10 +8,12 @@ import { StatCard, Modal, Pagination } from './ui';
 import { IconSearch, IconPlus, IconProducts, IconTrash, IconUpload, IconDownload, IconX, IconImage } from './icons';
 import { useApiResource, invalidate } from '@/lib/useApiResource';
 import { parseCsv, toCsv, downloadCsv } from '@/lib/csv';
+import { PLACEHOLDER_PRODUCT_PHOTO } from '@/lib/placeholderProductPhoto';
 
 const PRODUCTS_URL = '/api/products';
 const PAGE_SIZE = 20;
 const MAX_PHOTOS = 8;
+const PLACEHOLDER_CONCURRENCY = 4; // a few products' worth of placeholder PATCHes in flight at once
 const MAX_DIM = 1100; // px, longest side after client-side downscale
 const JPEG_QUALITY = 0.82;
 
@@ -135,6 +137,37 @@ export default function ProductsPage() {
     flash('Product removed');
   }
 
+  // Admin -> Products -> Add Placeholder Photo: a temporary stand-in (lib/placeholderProductPhoto.js)
+  // for whichever products don't have a real photo yet, so the catalogue, quotation builder and
+  // quotation PDFs show something rather than a blank/generic slot until the real photos are in.
+  // Only touches products with an EMPTY photos array — never overwrites a product that already
+  // has a real photo. A later real upload/edit on that product just replaces this one normally;
+  // there's no separate cleanup step needed once real photos are ready.
+  async function addPlaceholderPhotos() {
+    const missing = products.filter((p) => !Array.isArray(p.photos) || p.photos.length === 0);
+    if (missing.length === 0) { flash('Every product already has a photo.'); return; }
+    if (!window.confirm(`Add the placeholder photo to ${missing.length} product${missing.length === 1 ? '' : 's'} that don't have one yet? Replacing it with a real photo later works exactly like any other photo edit.`)) return;
+
+    let next = 0;
+    let updated = 0;
+    let failed = 0;
+    async function worker() {
+      while (next < missing.length) {
+        const p = missing[next++];
+        try {
+          const res = await fetch(`${PRODUCTS_URL}/${p.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ photos: [PLACEHOLDER_PRODUCT_PHOTO] }) });
+          if (!res.ok) throw new Error();
+          updated++;
+        } catch {
+          failed++;
+        }
+      }
+    }
+    await Promise.all(Array.from({ length: Math.min(PLACEHOLDER_CONCURRENCY, missing.length) }, worker));
+    load();
+    flash(`Added the placeholder photo to ${updated} product${updated === 1 ? '' : 's'}${failed ? ` — ${failed} failed` : ''}.`);
+  }
+
   return (
     <>
       <div className="adm-page-head">
@@ -143,6 +176,7 @@ export default function ProductsPage() {
           <button className="adm-chip-btn" onClick={downloadTemplate}><IconDownload size={15} /> Download Template</button>
           <button className="adm-chip-btn" onClick={() => setModal({ type: 'import' })}><IconUpload size={15} /> Bulk Import</button>
           <button className="adm-chip-btn" onClick={() => setModal({ type: 'bulkPhotos' })}><IconImage size={15} /> Bulk Photos</button>
+          <button className="adm-chip-btn" onClick={addPlaceholderPhotos}><IconImage size={15} /> Add Placeholder Photo</button>
           <button className="adm-chip-btn" onClick={() => setModal({ type: 'categories' })}>Manage Categories</button>
           <button className="adm-btn-primary" onClick={() => setModal({ type: 'add' })}><IconPlus size={15} /> Add Product</button>
         </div>
