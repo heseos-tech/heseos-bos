@@ -5,8 +5,17 @@
 
 import { dbGetById, dbPatch, dbClaim } from '@/lib/db';
 import { getEmployee, getPartner } from '@/lib/auth';
-import { pushHistory, CONTACT_LABEL, DEMO_OUTCOME_LABEL, DEMO_OUTCOME_KIND, INSTALL_STATUS_LABEL, INVOICE_STATUS_LABEL } from '@/lib/leadStage';
-import { notifyHeseosDemoClaimed } from '@/lib/heseosNotify';
+import { pushHistory, CONTACT_LABEL, DEMO_OUTCOME_LABEL, DEMO_OUTCOME_KIND, CONTACT_REJECT_REASON_LABEL, DEMO_REJECT_REASON_LABEL, INSTALL_STATUS_LABEL, INVOICE_STATUS_LABEL } from '@/lib/leadStage';
+import {
+  notifyHeseosDemoClaimed,
+  notifyHeseosDemoScheduled,
+  notifyHeseosContactRejected,
+  notifyHeseosFollowUpConfirmed,
+  notifyHeseosDemoReschedule,
+  notifyHeseosDemoRejectedBeforeDemo,
+  notifyHeseosDemoConvertedRating,
+  notifyHeseosDemoRejectedRating,
+} from '@/lib/heseosNotify';
 
 export const dynamic = 'force-dynamic';
 
@@ -67,6 +76,10 @@ export async function PATCH(request, { params }) {
   }
 
   let patch = {};
+  // Set inside a branch below to run a WhatsApp notification AFTER the write succeeds, with
+  // the freshly patched lead (not the stale pre-write `lead`) — never blocks or fails the
+  // actual save if the notification itself errors (see the final `if (afterSave)` block).
+  let afterSave = null;
 
   if (body.type === 'contact') {
     // Pre-sales / lead-nurturing outcomes that don't (yet) schedule a demo:
@@ -74,16 +87,35 @@ export async function PATCH(request, { params }) {
     if (!CONTACT_LABEL[body.contactStage] || body.contactStage === 'qualified') {
       return Response.json({ error: 'Invalid contactStage' }, { status: 400 });
     }
+    // A structured reason on a rejection — not just "call completed" — is what actually makes
+    // the funnel drop-off breakdown on Admin -> Reports meaningful. Required, not optional: an
+    // unexplained rejection is exactly the gap this was meant to close.
+    if (body.contactStage === 'not_interested' && !CONTACT_REJECT_REASON_LABEL[body.reason]) {
+      return Response.json({ error: 'A reason is required to mark a lead Not Interested' }, { status: 400 });
+    }
     const now = new Date().toISOString();
     patch = {
       contactStage: body.contactStage,
       contactStageAt: now,
       contactStageBy: employee.id,
       contactNote: body.note || '',
+      contactRejectReason: body.contactStage === 'not_interested' ? body.reason : null,
       followUpAt: body.contactStage === 'follow_up' ? (body.followUpAt || null) : (lead.followUpAt || null),
       assignedTo: lead.assignedTo || employee.id,
     };
-    patch.history = pushHistory(lead, { event: CONTACT_LABEL[body.contactStage], by: actorLabel, note: body.note || '' });
+    const rejectNote = body.contactStage === 'not_interested'
+      ? `${CONTACT_REJECT_REASON_LABEL[body.reason]}${body.note ? ' — ' + body.note : ''}`
+      : (body.note || '');
+    patch.history = pushHistory(lead, { event: CONTACT_LABEL[body.contactStage], by: actorLabel, note: rejectNote });
+    // Pre-sales' own stage of the journey ends here either way (rejected outright, or handed
+    // off once qualified) — the two terminal outcomes below each fire their own WhatsApp
+    // message; "Call Not Picked" isn't terminal (still pre-sales' lead to keep working), so it
+    // gets none.
+    if (body.contactStage === 'not_interested') {
+      afterSave = (updated) => notifyHeseosContactRejected(updated, employee);
+    } else if (body.contactStage === 'follow_up') {
+      afterSave = (updated) => notifyHeseosFollowUpConfirmed(updated, patch.followUpAt);
+    }
 
   } else if (body.type === 'scheduleDemo') {
     // Qualifies the lead AND books the visit in one step — address, date, time are required,
@@ -110,6 +142,9 @@ export async function PATCH(request, { params }) {
       salesEngineerId: body.salesEngineerId || lead.salesEngineerId || null,
     };
     patch.history = pushHistory(lead, { event: `Demo Scheduled — ${body.demoDate} ${body.demoTime}`, by: actorLabel, note: body.demoAddress });
+    // Pre-sales' stage of the journey ends here too (the successful counterpart to the
+    // 'not_interested' branch above) — confirms the slot and starts the pre-sales rating ask.
+    afterSave = (updated) => notifyHeseosDemoScheduled(updated, employee);
 
   } else if (body.type === 'demoOutcome') {
     // Sales engineer marks the final outcome of the visit.
@@ -124,12 +159,20 @@ export async function PATCH(request, { params }) {
     if (body.demoOutcome === 'converted' && (body.finalPrice === undefined || body.finalPrice === null || body.finalPrice === '')) {
       return Response.json({ error: 'Final price is required to mark a lead as Converted' }, { status: 400 });
     }
+    // Same "structured outcome, not just call completed" requirement as the pre-sales 'contact'
+    // branch above, for both ways this stage can die — before the visit even happened
+    // (rejected_before_demo) or after it (not_interested_after_demo).
+    const isDeadOutcome = DEMO_OUTCOME_KIND[body.demoOutcome] === 'dead';
+    if (isDeadOutcome && !DEMO_REJECT_REASON_LABEL[body.reason]) {
+      return Response.json({ error: 'A reason is required to mark this outcome' }, { status: 400 });
+    }
     const now = new Date().toISOString();
     patch = {
       demoOutcome: body.demoOutcome,
       demoOutcomeAt: now,
       demoOutcomeBy: employee.id,
       demoOutcomeNote: body.note || '',
+      demoRejectReason: isDeadOutcome ? body.reason : null,
     };
     if (body.demoOutcome === 'converted') {
       patch.convertedAt = now;
@@ -137,7 +180,17 @@ export async function PATCH(request, { params }) {
       patch.finalPriceAt = now;
       patch.finalPriceBy = employee.id;
     }
-    if (DEMO_OUTCOME_KIND[body.demoOutcome] === 'dead') patch.rejectedAt = now;
+    if (isDeadOutcome) patch.rejectedAt = now;
+    // Converting or rejecting after a demo is also, in this system, the exact moment any
+    // quotation that had already gone out gets resolved — see lib/leadStage.js's comment on
+    // why this doesn't need its own separate "Quotation Accepted/Rejected" action: there's no
+    // customer-facing accept/reject step distinct from the sales engineer's own final call.
+    // Left null (nothing to resolve) when no quotation was ever sent for this lead.
+    if (lead.quotationSentAt && (body.demoOutcome === 'converted' || body.demoOutcome === 'not_interested_after_demo')) {
+      patch.quotationStatus = body.demoOutcome === 'converted' ? 'accepted' : 'rejected';
+      patch.quotationStatusAt = now;
+      patch.quotationRejectReason = body.demoOutcome === 'not_interested_after_demo' ? body.reason : null;
+    }
     // Reschedule outcomes may come with a fresh date/time/address right away.
     if (DEMO_OUTCOME_KIND[body.demoOutcome] === 'reschedule' && body.demoDate && body.demoTime) {
       patch.demoDate = body.demoDate;
@@ -150,8 +203,23 @@ export async function PATCH(request, { params }) {
     }
     const outcomeNote = body.demoOutcome === 'converted'
       ? `Final price ₹${patch.finalPrice}${body.note ? ' — ' + body.note : ''}`
-      : (body.note || '');
+      : isDeadOutcome
+        ? `${DEMO_REJECT_REASON_LABEL[body.reason]}${body.note ? ' — ' + body.note : ''}`
+        : (body.note || '');
     patch.history = pushHistory(lead, { event: DEMO_OUTCOME_LABEL[body.demoOutcome], by: actorLabel, note: outcomeNote });
+    // The sales engineer's stage of the journey ends on either terminal outcome below, each
+    // starting the sales-engineer rating ask — except rejected_before_demo, which gets a plain
+    // goodbye with no rating (no demo actually happened for the engineer to be rated on). A
+    // reschedule outcome isn't terminal, so it gets its own notification but no rating.
+    if (body.demoOutcome === 'converted') {
+      afterSave = (updated) => notifyHeseosDemoConvertedRating(updated, employee);
+    } else if (body.demoOutcome === 'not_interested_after_demo') {
+      afterSave = (updated) => notifyHeseosDemoRejectedRating(updated, employee);
+    } else if (body.demoOutcome === 'rejected_before_demo') {
+      afterSave = (updated) => notifyHeseosDemoRejectedBeforeDemo(updated);
+    } else if (DEMO_OUTCOME_KIND[body.demoOutcome] === 'reschedule') {
+      afterSave = (updated) => notifyHeseosDemoReschedule(updated);
+    }
 
   } else if (body.type === 'quotation') {
     // Admin/sales-engineer sends (or REVISES) a quotation. Every call appends a new entry to
@@ -243,5 +311,10 @@ export async function PATCH(request, { params }) {
   }
 
   const updated = await dbPatch('leads', id, patch);
+  if (afterSave) {
+    await afterSave(updated).catch((err) => {
+      console.error('Lead update notify error:', err);
+    });
+  }
   return Response.json(updated);
 }
