@@ -7,7 +7,7 @@ import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { fmtDateTime, fmtDate } from '@/lib/date';
-import { stageOf, displayStatus, subUpdateOf, needsReschedule, DEMO_OUTCOMES } from '@/lib/leadStage';
+import { stageOf, displayStatus, subUpdateOf, needsReschedule, DEMO_OUTCOMES, DEMO_OUTCOME_KIND, DEMO_REJECT_REASONS } from '@/lib/leadStage';
 import { PRODUCT_INTEREST, PROPERTY_TYPE, LEAD_SOURCES } from '@/lib/formOptions';
 import { useApiResource } from '@/lib/useApiResource';
 import QuotationBuilderModal from '@/components/shared/QuotationBuilder';
@@ -212,6 +212,7 @@ function EngineerModal({ modal, onClose, onDone }) {
   const [error, setError] = useState('');
 
   const [outcome, setOutcome] = useState(needsReschedule(lead) ? lead.demoOutcome : '');
+  const [reason, setReason] = useState('');
   const [finalPrice, setFinalPrice] = useState(lead.quotationAmount || '');
   const [note, setNote] = useState('');
   const [demoDate, setDemoDate] = useState(lead.demoDate || '');
@@ -226,9 +227,11 @@ function EngineerModal({ modal, onClose, onDone }) {
       if (type === 'outcome') {
         if (!outcome) { setError('Choose an outcome.'); setSubmitting(false); return; }
         if (outcome === 'converted' && !finalPrice) { setError('Enter the final price to mark this Converted.'); setSubmitting(false); return; }
+        if (DEMO_OUTCOME_KIND[outcome] === 'dead' && !reason) { setError('Choose a reason.'); setSubmitting(false); return; }
         body = {
           type: 'demoOutcome',
           demoOutcome: outcome,
+          reason: DEMO_OUTCOME_KIND[outcome] === 'dead' ? reason : undefined,
           note,
           ...(outcome === 'converted' ? { finalPrice: Number(finalPrice) } : {}),
           ...(demoDate && demoTime ? { demoDate, demoTime, demoAddress } : {}),
@@ -259,7 +262,7 @@ function EngineerModal({ modal, onClose, onDone }) {
                 ))}
               </div>
             </div>
-            {(outcome === 'out_of_station' || outcome === 'future_demo') && (
+            {(outcome === 'out_of_station' || outcome === 'future_demo' || outcome === 'engineer_no_contact') && (
               <>
                 <div className="lf-field"><label className="lf-label">New date</label><input className="lf-input" type="date" value={demoDate} onChange={(e) => setDemoDate(e.target.value)} /></div>
                 <div className="lf-field"><label className="lf-label">New time</label><input className="lf-input" type="time" value={demoTime} onChange={(e) => setDemoTime(e.target.value)} /></div>
@@ -271,6 +274,15 @@ function EngineerModal({ modal, onClose, onDone }) {
                 <label className="lf-label">Final price (₹) — after negotiation</label>
                 <input className="lf-input" type="number" value={finalPrice} onChange={(e) => setFinalPrice(e.target.value)} placeholder="The price the deal actually closed at" />
                 {lead.quotationAmount != null && <div className="lead-meta" style={{ marginTop: 4 }}>Last quoted: ₹{lead.quotationAmount}</div>}
+              </div>
+            )}
+            {DEMO_OUTCOME_KIND[outcome] === 'dead' && (
+              <div className="lf-field">
+                <label className="lf-label">Reason</label>
+                <select className="lf-input" value={reason} onChange={(e) => setReason(e.target.value)}>
+                  <option value="">Choose a reason…</option>
+                  {DEMO_REJECT_REASONS.map((r) => <option key={r.key} value={r.key}>{r.label}</option>)}
+                </select>
               </div>
             )}
             <div className="lf-field">

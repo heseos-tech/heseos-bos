@@ -6,7 +6,7 @@ import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { fmtDateTime, fmtDate } from '@/lib/date';
-import { stageOf, displayStatus, subUpdateOf, isFollowUpLead, CONTACT_STAGES } from '@/lib/leadStage';
+import { stageOf, displayStatus, subUpdateOf, isFollowUpLead, CONTACT_STAGES, CONTACT_REJECT_REASONS } from '@/lib/leadStage';
 import { PRODUCT_INTEREST, PROPERTY_TYPE, LEAD_SOURCES } from '@/lib/formOptions';
 import { useApiResource } from '@/lib/useApiResource';
 
@@ -160,7 +160,7 @@ export default function PresalesPanel({ employee }) {
                             {canWork && (
                               <>
                                 <button className="chip-btn" onClick={() => quickContact(l, 'call_not_picked')}>Not Picked</button>
-                                <button className="chip-btn danger" onClick={() => quickContact(l, 'not_interested')}>Not Interested</button>
+                                <button className="chip-btn danger" onClick={() => setModal({ type: 'contact', lead: l, initialStage: 'not_interested' })}>Not Interested</button>
                                 <button className="chip-btn" onClick={() => setModal({ type: 'contact', lead: l })}>Follow-up</button>
                                 <button className="chip-btn primary" onClick={() => setModal({ type: 'schedule', lead: l })}>Schedule Demo</button>
                               </>
@@ -192,7 +192,8 @@ function PresalesModal({ modal, onClose, onDone }) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
-  const [contactStage, setContactStage] = useState('follow_up');
+  const [contactStage, setContactStage] = useState(modal.initialStage || 'follow_up');
+  const [reason, setReason] = useState('');
   const [note, setNote] = useState('');
   const [followUpAt, setFollowUpAt] = useState('');
 
@@ -205,7 +206,10 @@ function PresalesModal({ modal, onClose, onDone }) {
     setSubmitting(true);
     try {
       let body;
-      if (type === 'contact') body = { type: 'contact', contactStage, note, followUpAt: followUpAt || null };
+      if (type === 'contact') {
+        if (contactStage === 'not_interested' && !reason) { setError('Choose a reason.'); setSubmitting(false); return; }
+        body = { type: 'contact', contactStage, reason: contactStage === 'not_interested' ? reason : undefined, note, followUpAt: followUpAt || null };
+      }
       else if (type === 'schedule') {
         if (!demoAddress || !demoDate || !demoTime) { setError('Address, date and time are all required.'); setSubmitting(false); return; }
         body = { type: 'scheduleDemo', demoAddress, demoDate, demoTime };
@@ -235,6 +239,15 @@ function PresalesModal({ modal, onClose, onDone }) {
                 ))}
               </div>
             </div>
+            {contactStage === 'not_interested' && (
+              <div className="lf-field">
+                <label className="lf-label">Reason</label>
+                <select className="lf-input" value={reason} onChange={(e) => setReason(e.target.value)}>
+                  <option value="">Choose a reason…</option>
+                  {CONTACT_REJECT_REASONS.map((r) => <option key={r.key} value={r.key}>{r.label}</option>)}
+                </select>
+              </div>
+            )}
             {contactStage === 'follow_up' && (
               <div className="lf-field">
                 <label className="lf-label">Follow up at</label>
