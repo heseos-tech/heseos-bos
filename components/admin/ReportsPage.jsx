@@ -5,9 +5,9 @@
 // other admin page already uses — nothing fabricated.
 import { useState, useMemo } from 'react';
 import {
-  revenueOverview, revenueByMonth, revenueBySource, revenueByEngineer, revenueByCity, filterByRange,
+  revenueOverview, revenueByMonth, revenueBySource, revenueByEngineer, revenueByCity, filterByRange, dropOffByReason,
 } from '@/lib/adminMetrics';
-import { StatCard, Donut, DonutLegend } from './ui';
+import { StatCard, Donut, DonutLegend, Funnel } from './ui';
 import { IconConversions, IconQuotation, IconSalesEngineer, IconLeads, IconDownload } from './icons';
 import { useApiResource } from '@/lib/useApiResource';
 
@@ -37,6 +37,7 @@ export default function ReportsPage() {
   const bySource = useMemo(() => revenueBySource(scoped), [scoped]);
   const byEngineer = useMemo(() => revenueByEngineer(scoped, employees), [scoped, employees]);
   const byCity = useMemo(() => revenueByCity(scoped), [scoped]);
+  const dropOff = useMemo(() => dropOffByReason(scoped), [scoped]);
 
   const trendMax = Math.max(1, ...trend.map((t) => t.revenue));
 
@@ -152,6 +153,28 @@ export default function ReportsPage() {
                   </tbody>
                 </table>
               </div>
+            </div>
+          </div>
+
+          <div className="adm-grid-2">
+            <div className="adm-card">
+              <div className="adm-card-title-row"><div className="adm-card-title">Pre-Sales Drop-off Reasons</div></div>
+              <div className="adm-card-sub">Why Not Interested leads were lost before a demo was ever booked</div>
+              {dropOff.preSales.every((r) => !r.count) ? (
+                <div className="adm-empty">No Not Interested leads in this range yet.</div>
+              ) : (
+                <Funnel rows={dropOff.preSales} />
+              )}
+            </div>
+
+            <div className="adm-card">
+              <div className="adm-card-title-row"><div className="adm-card-title">Post-Demo Drop-off Reasons</div></div>
+              <div className="adm-card-sub">Why a demo ended in rejection, before or after the visit</div>
+              {dropOff.postDemo.every((r) => !r.count) ? (
+                <div className="adm-empty">No rejected demos in this range yet.</div>
+              ) : (
+                <Funnel rows={dropOff.postDemo} />
+              )}
             </div>
           </div>
         </>

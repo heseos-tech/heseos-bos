@@ -102,6 +102,10 @@ export async function PATCH(request, { params }) {
       contactRejectReason: body.contactStage === 'not_interested' ? body.reason : null,
       followUpAt: body.contactStage === 'follow_up' ? (body.followUpAt || null) : (lead.followUpAt || null),
       assignedTo: lead.assignedTo || employee.id,
+      // A human just worked this lead directly — whatever automated no-answer cadence
+      // app/api/cron/lead-reminders/route.js was running for it (if any) no longer applies.
+      noAnswerAttempts: 0,
+      noAnswerLastAttemptAt: null,
     };
     const rejectNote = body.contactStage === 'not_interested'
       ? `${CONTACT_REJECT_REASON_LABEL[body.reason]}${body.note ? ' — ' + body.note : ''}`
@@ -140,6 +144,13 @@ export async function PATCH(request, { params }) {
       demoOutcomeNote: null,
       assignedTo: lead.assignedTo || employee.id,
       salesEngineerId: body.salesEngineerId || lead.salesEngineerId || null,
+      // No longer sitting unworked, so any automated no-answer cadence is moot — and this is a
+      // brand-new slot, so app/api/cron/lead-reminders/route.js's 24h/2h reminders need to be
+      // free to fire again for it (see that route's own comment on why these two flags exist).
+      noAnswerAttempts: 0,
+      noAnswerLastAttemptAt: null,
+      demoReminder24hSentAt: null,
+      demoReminder2hSentAt: null,
     };
     patch.history = pushHistory(lead, { event: `Demo Scheduled — ${body.demoDate} ${body.demoTime}`, by: actorLabel, note: body.demoAddress });
     // Pre-sales' stage of the journey ends here too (the successful counterpart to the
@@ -200,6 +211,9 @@ export async function PATCH(request, { params }) {
       patch.demoOutcome = null; // back to awaiting-visit state with the new slot
       patch.demoOutcomeAt = null;
       patch.demoOutcomeBy = null;
+      // New slot, new reminder eligibility — see the 'scheduleDemo' branch's own comment.
+      patch.demoReminder24hSentAt = null;
+      patch.demoReminder2hSentAt = null;
     }
     const outcomeNote = body.demoOutcome === 'converted'
       ? `Final price ₹${patch.finalPrice}${body.note ? ' — ' + body.note : ''}`

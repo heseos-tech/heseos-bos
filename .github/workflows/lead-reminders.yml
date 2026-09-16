@@ -1,0 +1,33 @@
+# Hourly trigger for app/api/cron/lead-reminders/route.js — the no-answer follow-up nudges and
+# demo-time reminders. This exists here (rather than as a Vercel Cron entry in vercel.json)
+# because Vercel's Hobby plan only allows cron jobs to run once a day with imprecise timing
+# (anywhere in a ~1 hour window) — nowhere near tight enough for a "2 hours before the demo"
+# reminder. GitHub Actions' own `schedule` trigger has the same few-minutes-of-slop as any
+# cron-based scheduler, but can run hourly on any plan, so it's what actually calls the route.
+#
+# One-time setup: add a repo secret named CRON_SECRET (Settings → Secrets and variables →
+# Actions) with the SAME value as the CRON_SECRET environment variable set in the Vercel
+# project (see .env.example) — this workflow authenticates with it exactly the way the route
+# itself checks (`Authorization: Bearer <CRON_SECRET>`).
+name: Lead reminders (no-answer nudges + demo reminders)
+
+on:
+  schedule:
+    - cron: '0 * * * *' # every hour, on the hour (UTC) — GitHub may run this a few minutes late
+  workflow_dispatch: {} # lets anyone trigger a run by hand from the Actions tab, for testing
+
+jobs:
+  call-cron-route:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call /api/cron/lead-reminders
+        run: |
+          status=$(curl -sS -o /tmp/response.json -w '%{http_code}' \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "${{ vars.APP_BASE_URL || 'https://heseos-bos-psi.vercel.app' }}/api/cron/lead-reminders")
+          echo "HTTP status: $status"
+          cat /tmp/response.json
+          if [ "$status" -ge 300 ]; then
+            echo "::error::lead-reminders cron call failed with status $status"
+            exit 1
+          fi
