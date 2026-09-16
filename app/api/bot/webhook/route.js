@@ -16,6 +16,7 @@ import { stageOf } from '@/lib/leadStage';
 import { HESEOS_DEFAULT_FLOW_ID, ensureHeseosDefaultFlow } from '@/lib/heseosDefaultFlow';
 import { HESEOS_RETURNING_FLOW_ID, ensureHeseosReturningFlow } from '@/lib/heseosReturningFlow';
 import { ensureHeseosOrganicFlow } from '@/lib/heseosOrganicFlow';
+import { ensureHeseosRatingFlow } from '@/lib/heseosRatingFlow';
 
 export const dynamic = 'force-dynamic';
 
@@ -99,6 +100,7 @@ export async function POST(req) {
         tenantFlows = await ensureHeseosDefaultFlow(tenant, tenantFlows);
         tenantFlows = await ensureHeseosReturningFlow(tenant, tenantFlows);
         tenantFlows = await ensureHeseosOrganicFlow(tenant, tenantFlows);
+        tenantFlows = await ensureHeseosRatingFlow(tenant, tenantFlows);
       }
 
       for (const m of g.messages) {
