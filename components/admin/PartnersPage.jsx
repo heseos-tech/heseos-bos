@@ -53,7 +53,7 @@ export default function PartnersPage() {
     else if (onboardedBy !== 'all' && onboardedBy !== '__none__' && p.onboardedByEmployeeId !== onboardedBy) return false;
     if (q.trim()) {
       const s = q.trim().toLowerCase();
-      if (!(`${p.businessName} ${p.name} ${p.phone} ${p.city || ''}`.toLowerCase().includes(s))) return false;
+      if (!(`${p.shopName || ''} ${p.businessName} ${p.name} ${p.phone} ${p.city || ''}`.toLowerCase().includes(s))) return false;
     }
     return true;
   }), [rows, status, category, onboardedBy, q]);
@@ -62,8 +62,8 @@ export default function PartnersPage() {
   const pageRows = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   function exportCsv() {
-    const cols = ['id', 'businessName', 'name', 'phone', 'category', 'city', 'accountManager', 'leads', 'converted', 'conversionRate', 'active'];
-    const csv = [cols.join(','), ...filtered.map((p) => [p.id, p.businessName, p.name, p.phone, partnerCategoryLabel(p.type), p.city || '', employeeName(p.onboardedByEmployeeId), p.stats.leadsCount, p.stats.converted, p.stats.conversionRate, p.active !== false].map((v) => `"${String(v ?? '')}"`).join(','))].join('\n');
+    const cols = ['id', 'shopName', 'businessName', 'name', 'phone', 'category', 'city', 'accountManager', 'leads', 'converted', 'conversionRate', 'active'];
+    const csv = [cols.join(','), ...filtered.map((p) => [p.id, p.shopName || '', p.businessName, p.name, p.phone, partnerCategoryLabel(p.type), p.city || '', employeeName(p.onboardedByEmployeeId), p.stats.leadsCount, p.stats.converted, p.stats.conversionRate, p.active !== false].map((v) => `"${String(v ?? '')}"`).join(','))].join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a'); a.href = url; a.download = 'heseos-partners.csv'; a.click();
@@ -113,7 +113,7 @@ export default function PartnersPage() {
               {loading ? <tr><td colSpan={10} className="adm-empty">Loading…</td></tr> : pageRows.length === 0 ? <tr><td colSpan={10} className="adm-empty">No partners match these filters.</td></tr> : pageRows.map((p) => (
                 <tr key={p.id}>
                   <td>
-                    <div className="adm-lead-name">{p.businessName || p.name}</div>
+                    <div className="adm-lead-name">{p.shopName || p.businessName || p.name}</div>
                     <div className="adm-lead-sub">{p.name} • {p.phone}</div>
                   </td>
                   <td>{partnerCategoryLabel(p.type)}</td>
@@ -140,7 +140,7 @@ export default function PartnersPage() {
 
       {modal?.type === 'add' && <AddPartnerModal onClose={() => setModal(null)} onDone={() => { setModal(null); flash('Partner added'); load(); }} />}
       {modal?.type === 'view' && (
-        <Modal title={modal.partner.businessName || modal.partner.name} sub={`${modal.partner.name} • ${modal.partner.phone}`} onClose={() => setModal(null)}>
+        <Modal title={modal.partner.shopName || modal.partner.businessName || modal.partner.name} sub={`${modal.partner.name} • ${modal.partner.phone}`} onClose={() => setModal(null)}>
           <div className="adm-detail-grid">
             <div><span className="adm-detail-label">Category</span>{partnerCategoryLabel(modal.partner.type)}</div>
             <div><span className="adm-detail-label">City</span>{modal.partner.city || '—'}</div>
