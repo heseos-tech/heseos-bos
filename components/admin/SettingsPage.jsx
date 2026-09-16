@@ -413,7 +413,7 @@ function PayoutSettingsCard() {
         <div className="adm-card-title">Lead Conversion Payout</div>
       </div>
       <p className="adm-card-sub">
-        Set tier-wise payout % for conversion based on total converted sale value this month — independently for partner referrals, employee-added leads, and customer referrals. Changing this updates everyone's payout in that category immediately — there's no per-person override.
+        Set tier-wise payout % for conversion based on total converted sale value this month — independently for partner referrals, employee-added leads, and customer referrals. Calculated like an income-tax slab: each tier's % applies only to the slice of sale value within that tier, not the whole total, so a bigger month always pays out more overall even where the rate on the extra steps down. Changing this updates everyone's payout in that category immediately — there's no per-person override.
       </p>
 
       {notice && <div className="adm-notice">{notice}</div>}
@@ -480,7 +480,7 @@ function PayoutSettingsCard() {
 
                   <div className={`adm-payout-card-note adm-payout-card-note--${key}`}>
                     <IconInfo size={14} />
-                    <span>Payout % applies to the total converted sale value within the payout period.</span>
+                    <span>Slab-style, like income tax: each tier&rsquo;s % applies only to the portion of sale value in that range.</span>
                   </div>
                 </div>
               );
@@ -489,7 +489,7 @@ function PayoutSettingsCard() {
 
           <div className="adm-payout-foot-note">
             <IconInfo size={16} />
-            <span>The payout is calculated on the total converted sale value each calendar month. There is no per-person override.</span>
+            <span>Payout is calculated progressively (tax-slab style) on total converted sale value each calendar month — earlier tiers keep paying what they always did as a referrer moves into a higher tier, so more revenue always means more payout, just at a lower rate on the newest slice. There is no per-person override.</span>
           </div>
 
           <div style={{ display: 'flex', justifyContent: 'flex-end' }}>

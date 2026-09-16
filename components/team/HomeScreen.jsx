@@ -139,7 +139,7 @@ export default function TeamHomeScreen({ employee }) {
           <div className="hp-earn-label">Referral Payout — This {payout.period === "quarterly" ? "Quarter" : "Month"}</div>
           <div className="hp-earn-val">₹{payout.payout.toLocaleString("en-IN")}</div>
           <div className="hp-earn-period">
-            {payout.hasTiers ? `${payout.rate}% of ₹${payout.totalValue.toLocaleString("en-IN")} converted · Add Lead →` : "Set up in Settings by an admin · Add Lead →"}
+            {payout.hasTiers ? `${payout.effectiveRate}% overall on ₹${payout.totalValue.toLocaleString("en-IN")} converted · Add Lead →` : "Set up in Settings by an admin · Add Lead →"}
           </div>
         </Link>
       )}

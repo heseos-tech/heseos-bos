@@ -7,6 +7,10 @@
 // boundary is deliberate.
 import { useMemo, useState } from 'react';
 import { fmtDate, fmtDateTime } from '@/lib/date';
+// `est.effectiveRate` (payout ÷ sale value, blended) is what's shown here — NOT est.rate, which
+// is the marginal rate on the referrer's next rupee under the progressive/slab payout model
+// (lib/payout.js's header) and would understate what a partner in multiple tiers is actually
+// being paid on their full total.
 import { payoutFor } from '@/lib/payout';
 import { StatCard, Modal } from './ui';
 import { IconPayouts, IconSearch, IconTrash } from './icons';
@@ -90,7 +94,7 @@ export default function PayoutsPage() {
         {loading ? <div className="adm-empty">Loading…</div> : estimates.length === 0 ? <div className="adm-empty">No partner has an estimated payout this period.</div> : (
           <div className="adm-table-scroll">
             <table className="adm-table">
-              <thead><tr><th>Partner</th><th>Period</th><th>Converted</th><th>Sale Value</th><th>Rate</th><th>Estimated Payout</th><th></th></tr></thead>
+              <thead><tr><th>Partner</th><th>Period</th><th>Converted</th><th>Sale Value</th><th>Effective Rate</th><th>Estimated Payout</th><th></th></tr></thead>
               <tbody>
                 {estimates.map(({ partner, est }) => (
                   <tr key={partner.id}>
@@ -98,7 +102,7 @@ export default function PayoutsPage() {
                     <td>{est.periodLabel}</td>
                     <td>{est.convertedCount}</td>
                     <td>{currency(est.totalValue)}</td>
-                    <td>{est.rate}%</td>
+                    <td>{est.effectiveRate}%</td>
                     <td>{currency(est.payout)}</td>
                     <td className="adm-row-actions">
                       <div className="adm-row-actions-inner">
