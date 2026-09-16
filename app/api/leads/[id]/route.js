@@ -151,6 +151,7 @@ export async function PATCH(request, { params }) {
       noAnswerLastAttemptAt: null,
       demoReminder24hSentAt: null,
       demoReminder2hSentAt: null,
+      rescheduleRequestedAt: null,
     };
     patch.history = pushHistory(lead, { event: `Demo Scheduled — ${body.demoDate} ${body.demoTime}`, by: actorLabel, note: body.demoAddress });
     // Pre-sales' stage of the journey ends here too (the successful counterpart to the
@@ -214,6 +215,7 @@ export async function PATCH(request, { params }) {
       // New slot, new reminder eligibility — see the 'scheduleDemo' branch's own comment.
       patch.demoReminder24hSentAt = null;
       patch.demoReminder2hSentAt = null;
+      patch.rescheduleRequestedAt = null;
     }
     const outcomeNote = body.demoOutcome === 'converted'
       ? `Final price ₹${patch.finalPrice}${body.note ? ' — ' + body.note : ''}`
@@ -234,6 +236,41 @@ export async function PATCH(request, { params }) {
     } else if (DEMO_OUTCOME_KIND[body.demoOutcome] === 'reschedule') {
       afterSave = (updated) => notifyHeseosDemoReschedule(updated);
     }
+
+  } else if (body.type === 'reschedule') {
+    // A lightweight slot move — date/time (and optionally address) only, no outcome or reason
+    // required. Distinct from 'demoOutcome's reschedule-kind outcomes above (out_of_station/
+    // future_demo/engineer_no_contact), which record why a VISIT ATTEMPT didn't happen; this is
+    // for moving an already-agreed slot before any attempt was ever made — most commonly
+    // because the customer asked to via WhatsApp (lib/heseosReturningFlow.js's "Yes, change
+    // it" branch sets lead.rescheduleRequestedAt for exactly this — see
+    // components/employee/PresalesPanel.jsx / SalesEngineerPanel.jsx for the button that
+    // surfaces it). Open to any employee, matching this route's existing trust model for
+    // scheduleDemo/demoOutcome above — the UI decides who sees the button (the claimed sales
+    // engineer, or pre-sales/admin while the demo is still unclaimed), not this check.
+    if (!lead.demoScheduledAt) {
+      return Response.json({ error: 'No demo scheduled for this lead yet' }, { status: 400 });
+    }
+    if (lead.demoOutcome) {
+      return Response.json({ error: 'This demo already has an outcome logged — use Mark Outcome instead' }, { status: 400 });
+    }
+    if (!body.demoDate || !body.demoTime) {
+      return Response.json({ error: 'Date and time are required' }, { status: 400 });
+    }
+    const now = new Date().toISOString();
+    patch = {
+      demoDate: body.demoDate,
+      demoTime: body.demoTime,
+      demoAddress: body.demoAddress || lead.demoAddress,
+      demoScheduledAt: now,
+      // Same reset as the 'scheduleDemo' branch above — a moved slot needs its own fresh
+      // reminder eligibility, and resolves whatever prompted the move in the first place.
+      demoReminder24hSentAt: null,
+      demoReminder2hSentAt: null,
+      rescheduleRequestedAt: null,
+    };
+    patch.history = pushHistory(lead, { event: `Demo Rescheduled — ${body.demoDate} ${body.demoTime}`, by: actorLabel, note: body.demoAddress || '' });
+    afterSave = (updated) => notifyHeseosDemoReschedule(updated);
 
   } else if (body.type === 'quotation') {
     // Admin/sales-engineer sends (or REVISES) a quotation. Every call appends a new entry to

@@ -150,6 +150,9 @@ export default function PresalesPanel({ employee }) {
                             <span className="badge-dot" />{status.label}
                           </span>
                           {sub && <div className="lead-meta" style={{ color: '#B7791F', marginTop: 4 }}>{sub.label}</div>}
+                          {l.rescheduleRequestedAt && (
+                            <div className="lead-meta" style={{ color: '#C0392B', marginTop: 4, fontWeight: 600 }}>🔔 Customer asked to reschedule</div>
+                          )}
                           {l.demoScheduledAt && stageOf(l) === 'Demo Scheduled' && (
                             <div className="lead-meta">{fmtDate(l.demoDate)} · {l.demoTime}</div>
                           )}
@@ -164,6 +167,9 @@ export default function PresalesPanel({ employee }) {
                                 <button className="chip-btn" onClick={() => setModal({ type: 'contact', lead: l })}>Follow-up</button>
                                 <button className="chip-btn primary" onClick={() => setModal({ type: 'schedule', lead: l })}>Schedule Demo</button>
                               </>
+                            )}
+                            {tab === 'demo' && !l.salesEngineerId && !l.demoOutcome && (
+                              <button className="chip-btn" onClick={() => setModal({ type: 'reschedule', lead: l })}>Reschedule Demo</button>
                             )}
                             <button className="chip-btn" onClick={() => setModal({ type: 'timeline', lead: l })}>Timeline</button>
                           </div>
@@ -213,6 +219,10 @@ function PresalesModal({ modal, onClose, onDone }) {
       else if (type === 'schedule') {
         if (!demoAddress || !demoDate || !demoTime) { setError('Address, date and time are all required.'); setSubmitting(false); return; }
         body = { type: 'scheduleDemo', demoAddress, demoDate, demoTime };
+      }
+      else if (type === 'reschedule') {
+        if (!demoDate || !demoTime) { setError('Date and time are required.'); setSubmitting(false); return; }
+        body = { type: 'reschedule', demoDate, demoTime, demoAddress };
       }
       const res = await fetch(`/api/leads/${lead.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
       if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Failed'); }
@@ -268,6 +278,19 @@ function PresalesModal({ modal, onClose, onDone }) {
             <div className="lf-field"><label className="lf-label">Demo address</label><input className="lf-input" value={demoAddress} onChange={(e) => setDemoAddress(e.target.value)} placeholder="Full address for the visit" /></div>
             <div className="lf-field"><label className="lf-label">Date</label><input className="lf-input" type="date" value={demoDate} onChange={(e) => setDemoDate(e.target.value)} /></div>
             <div className="lf-field"><label className="lf-label">Time</label><input className="lf-input" type="time" value={demoTime} onChange={(e) => setDemoTime(e.target.value)} /></div>
+          </>
+        )}
+
+        {type === 'reschedule' && (
+          <>
+            <div className="modal-title">Reschedule demo</div>
+            <div className="modal-sub">{lead.name} · {lead.phone} · currently {fmtDate(lead.demoDate)} {lead.demoTime}</div>
+            {lead.rescheduleRequestedAt && (
+              <div className="lf-error" style={{ background: '#FEE2E2', color: '#C0392B' }}>Customer asked to reschedule this via WhatsApp.</div>
+            )}
+            <div className="lf-field"><label className="lf-label">Demo address</label><input className="lf-input" value={demoAddress} onChange={(e) => setDemoAddress(e.target.value)} placeholder="Full address for the visit" /></div>
+            <div className="lf-field"><label className="lf-label">New date</label><input className="lf-input" type="date" value={demoDate} onChange={(e) => setDemoDate(e.target.value)} /></div>
+            <div className="lf-field"><label className="lf-label">New time</label><input className="lf-input" type="time" value={demoTime} onChange={(e) => setDemoTime(e.target.value)} /></div>
           </>
         )}
 

@@ -165,6 +165,9 @@ export default function SalesEngineerPanel({ employee }) {
                                 <span className="badge-dot" />{status.label}
                               </span>
                               {sub && <div className="lead-meta" style={{ color: '#B7791F', marginTop: 4 }}>{sub.label}</div>}
+                              {l.rescheduleRequestedAt && (
+                                <div className="lead-meta" style={{ color: '#C0392B', marginTop: 4, fontWeight: 600 }}>🔔 Customer asked to reschedule</div>
+                              )}
                               {l.quotationSentAt && (
                                 <div className="lead-meta" style={{ marginTop: 4 }}>
                                   Quoted {l.quotationAmount ? `₹${l.quotationAmount}` : ''}
@@ -179,6 +182,9 @@ export default function SalesEngineerPanel({ employee }) {
                           <div className="row-actions">
                             {tab === 'available' && (
                               <button className="chip-btn primary" onClick={() => acceptLead(l)} disabled={claimingId === l.id}>{claimingId === l.id ? 'Claiming…' : 'Accept Lead'}</button>
+                            )}
+                            {tab === 'upcoming' && (
+                              <button className="chip-btn" onClick={() => setModal({ type: 'reschedule', lead: l })}>Reschedule Demo</button>
                             )}
                             {canAct && (
                               <>
@@ -236,6 +242,9 @@ function EngineerModal({ modal, onClose, onDone }) {
           ...(outcome === 'converted' ? { finalPrice: Number(finalPrice) } : {}),
           ...(demoDate && demoTime ? { demoDate, demoTime, demoAddress } : {}),
         };
+      } else if (type === 'reschedule') {
+        if (!demoDate || !demoTime) { setError('Date and time are required.'); setSubmitting(false); return; }
+        body = { type: 'reschedule', demoDate, demoTime, demoAddress };
       }
       const res = await fetch(`/api/leads/${lead.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
       if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Failed'); }
@@ -289,6 +298,19 @@ function EngineerModal({ modal, onClose, onDone }) {
               <label className="lf-label">Note (optional)</label>
               <input className="lf-input" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Any context" />
             </div>
+          </>
+        )}
+
+        {type === 'reschedule' && (
+          <>
+            <div className="modal-title">Reschedule demo</div>
+            <div className="modal-sub">{lead.name} · currently {fmtDate(lead.demoDate)} {lead.demoTime}</div>
+            {lead.rescheduleRequestedAt && (
+              <div className="lf-error" style={{ background: '#FEE2E2', color: '#C0392B' }}>Customer asked to reschedule this via WhatsApp.</div>
+            )}
+            <div className="lf-field"><label className="lf-label">New date</label><input className="lf-input" type="date" value={demoDate} onChange={(e) => setDemoDate(e.target.value)} /></div>
+            <div className="lf-field"><label className="lf-label">New time</label><input className="lf-input" type="time" value={demoTime} onChange={(e) => setDemoTime(e.target.value)} /></div>
+            <div className="lf-field"><label className="lf-label">Address (if changed)</label><input className="lf-input" value={demoAddress} onChange={(e) => setDemoAddress(e.target.value)} /></div>
           </>
         )}
 

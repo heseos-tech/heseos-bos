@@ -117,6 +117,9 @@ export default function DemoSchedulePage() {
                       <div className="demo-row-body">
                         <div className="demo-row-name">{l.name} <span className="demo-row-city">· {l.city}</span></div>
                         <div className="demo-row-meta">{(l.productInterest || []).map((p) => PI_LABEL[p] || p).join(', ') || '—'}{l.demoAddress ? ` · ${l.demoAddress}` : ''}</div>
+                        {l.rescheduleRequestedAt && (
+                          <div className="demo-row-meta" style={{ color: '#C0392B', fontWeight: 600 }}>🔔 Customer asked to reschedule via WhatsApp</div>
+                        )}
                       </div>
                       <div className="demo-row-engineer">{engName || <span className="demo-row-unclaimed">Unclaimed</span>}</div>
                       <StatusBadge status={status} />
