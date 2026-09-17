@@ -11,7 +11,7 @@ import { stageOf, displayStatus, subUpdateOf, needsReschedule, DEMO_OUTCOMES, DE
 import { PRODUCT_INTEREST, PROPERTY_TYPE, LEAD_SOURCES } from '@/lib/formOptions';
 import { windowDelta } from '@/lib/adminMetrics';
 import { useApiResource } from '@/lib/useApiResource';
-import { IconLeads, IconDemo, IconQuotation, IconConversions, IconSearch } from '@/components/admin/icons';
+import { IconLeads, IconDemo, IconQuotation, IconConversions, IconSearch, IconEye } from '@/components/admin/icons';
 import { Pagination } from '@/components/admin/ui';
 import {
   EmployeeShell, TrendKpiCard, sourceLabelFor, sourceIconFor, attributionFor, partnerDisplayName,
@@ -222,8 +222,7 @@ export default function SalesEngineerPanel({ employee }) {
                             <div className="adm-lead-sub">{l.phone} · {l.city}</div>
                           </td>
                           <td>
-                            <div>{(l.productInterest || []).map((p) => PI_LABEL[p] || p).join(', ') || '—'}</div>
-                            <div className="adm-lead-sub">{PT_LABEL[l.propertyType] || ''}</div>
+                            <button className="adm-icon-btn" title="View interest & property type" onClick={() => setModal({ type: 'interest', lead: l })}><IconEye size={17} /></button>
                           </td>
                           <td>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -460,6 +459,23 @@ function EngineerModal({ modal, onClose, onDone }) {
           </>
         )}
 
+        {type === 'interest' && (
+          <>
+            <div className="modal-title">Interest &amp; property type</div>
+            <div className="modal-sub">{lead.name} · {lead.phone}</div>
+            <div className="lf-field">
+              <label className="lf-label">Product interest</label>
+              <div style={{ fontSize: 13.5, color: 'var(--adm-ink)' }}>
+                {(lead.productInterest || []).length > 0 ? (lead.productInterest || []).map((p) => PI_LABEL[p] || p).join(', ') : '—'}
+              </div>
+            </div>
+            <div className="lf-field">
+              <label className="lf-label">Property type</label>
+              <div style={{ fontSize: 13.5, color: 'var(--adm-ink)' }}>{PT_LABEL[lead.propertyType] || lead.propertyType || '—'}</div>
+            </div>
+          </>
+        )}
+
         {type === 'timeline' && (
           <>
             <div className="modal-title">Lead timeline</div>
@@ -483,8 +499,8 @@ function EngineerModal({ modal, onClose, onDone }) {
         {error && <div className="lf-error">{error}</div>}
 
         <div className="lf-actions">
-          <button className="lf-btn-back" onClick={onClose} disabled={submitting}>{type === 'timeline' ? 'Close' : 'Cancel'}</button>
-          {type !== 'timeline' && <button className="lf-btn-next" onClick={submit} disabled={submitting}>{submitting ? 'Saving…' : 'Save'}</button>}
+          <button className="lf-btn-back" onClick={onClose} disabled={submitting}>{(type === 'timeline' || type === 'interest') ? 'Close' : 'Cancel'}</button>
+          {type !== 'timeline' && type !== 'interest' && <button className="lf-btn-next" onClick={submit} disabled={submitting}>{submitting ? 'Saving…' : 'Save'}</button>}
         </div>
       </div>
     </div>
