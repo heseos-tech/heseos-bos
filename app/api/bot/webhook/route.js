@@ -6,7 +6,7 @@
 // lib/botEngine.js.
 
 import { dbGetById, dbInsert, dbList, dbPatch, dbWhere } from '@/lib/db';
-import { parseWebhookByPhone, describeMetaError, botMarkReadWithTyping, botWaConfigured, botSendImage } from '@/lib/botWhatsapp';
+import { parseWebhookByPhone, describeMetaError, botMarkReadWithTyping, botWaConfigured } from '@/lib/botWhatsapp';
 import { runBotTurn } from '@/lib/botEngine';
 import { runFlowTurn, pickFlow } from '@/lib/botFlowEngine';
 import { parseRefFromText, referrerNoteFor, attributionCityFor } from '@/lib/attribution';
@@ -221,27 +221,6 @@ export async function POST(req) {
             await dbPatch('bot_chats', m.from, patch);
           }
           flow = picked;
-
-          // Heseos's own bot only: a fixed brand poster image, sent as its own message right
-          // before this brand-new conversation's first flow reply — every entry point a
-          // customer can start a fresh enquiry from (QR scan, referral link, or an organic
-          // "hi" with no attribution at all — whichever flow pickFlow() matched above). This is
-          // deliberately NOT a Flow Builder feature (no per-tenant image-node UI, nothing
-          // editable here) — just a one-off hook for Heseos's own brand, matching how
-          // ensureHeseosDefaultFlow etc. above are already gated on tenant.botKind === 'heseos'.
-          // Skipped for a returning customer (existingLeadId set, routed to the "welcome back"
-          // flow instead — that's a reconnection, not a first impression) and best-effort: a
-          // failed/misconfigured send here must never block the actual flow reply below.
-          if (tenant.botKind === 'heseos' && flow && !existingLeadId && botWaConfigured(tenant)) {
-            const base = (process.env.PUBLIC_BASE_URL || '').replace(/\/$/, '');
-            if (base) {
-              await botSendImage(
-                { phoneNumberId: tenant.waPhoneNumberId, token: tenant.waAccessToken },
-                m.from,
-                { link: `${base}/whatsapp/heseos-welcome.jpg` }
-              ).catch((err) => console.error('Heseos welcome image send error:', err));
-            }
-          }
         } else {
           const patch = {
             name: chat.name || m.name || m.from,
