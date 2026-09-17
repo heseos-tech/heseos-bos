@@ -2,46 +2,61 @@
 // Pre-sales panel — shows ONLY the leads assigned to this exec (city auto-assigned, or handed
 // to them by an admin), not the whole pipeline. Their job: work New leads, log Follow-ups,
 // and Schedule Demo to hand a qualified lead over to a sales engineer.
+//
+// Visual system: the same sidebar + topbar + stat-card + table + pagination language as
+// Admin (components/employee/ui.jsx's EmployeeShell/TrendKpiCard, reusing app/admin/admin.css
+// — see app/employee/layout.jsx) instead of this panel's own bespoke look, so Pre-sales,
+// Sales Engineer and Admin all read as one product. See SalesEngineerPanel.jsx for the same
+// treatment applied to that role.
 import { useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import Image from 'next/image';
 import { fmtDateTime, fmtDate } from '@/lib/date';
 import { stageOf, displayStatus, subUpdateOf, isFollowUpLead, CONTACT_STAGES, CONTACT_REJECT_REASONS } from '@/lib/leadStage';
 import { PRODUCT_INTEREST, PROPERTY_TYPE, LEAD_SOURCES } from '@/lib/formOptions';
+import { windowDelta } from '@/lib/adminMetrics';
 import { useApiResource } from '@/lib/useApiResource';
-
-// Small inline refresh glyph — same no-icon-library convention as this folder's siblings
-// (components/partner, components/admin each keep their own tiny icon set).
-const IconRefresh = (p) => (
-  <svg width={p?.size || 17} height={p?.size || 17} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
-    <path d="M4 12a8 8 0 0114.5-4.5M20 12a8 8 0 01-14.5 4.5" />
-    <path d="M18.5 3v4.5H14M5.5 21v-4.5H10" />
-  </svg>
-);
+import { IconLeads, IconPhone, IconDemo, IconConversions, IconSearch, IconRefresh } from '@/components/admin/icons';
+import { Pagination } from '@/components/admin/ui';
+import { EmployeeShell, TrendKpiCard, sourceLabelFor, sourceIconFor, attributionFor } from '@/components/employee/ui';
 
 const PI_LABEL = Object.fromEntries(PRODUCT_INTEREST.map((p) => [p.v, p.l]));
 const PT_LABEL = Object.fromEntries(PROPERTY_TYPE.map((p) => [p.v, p.l]));
+const PAGE_SIZE = 8;
 
 export default function PresalesPanel({ employee }) {
-  const router = useRouter();
   // Shared via useApiResource (lib/useApiResource.js) — refresh is aliased to fetchLeads so
-  // every existing call site below (the modal's onDone, the manual refresh button) keeps working
-  // unchanged.
+  // every existing call site below (the modal's onDone, the manual refresh button) keeps
+  // working unchanged. Partners/employees/attribution links are only for resolving the Source
+  // column's "who referred this" line below the channel name (see attributionFor) — GET on
+  // both /api/admin/partners and /api/admin/employees was relaxed from admin-only to any
+  // authenticated employee for exactly this.
   const { data: leads, loading, refresh: fetchLeads } = useApiResource('/api/leads', { pollMs: 20000 });
+  const { data: partners } = useApiResource('/api/admin/partners', { pollMs: 30000 });
+  const { data: employees } = useApiResource('/api/admin/employees', { pollMs: 30000 });
+  const { data: links } = useApiResource('/api/admin/attribution', { pollMs: 30000 });
+
+  const [section, setSection] = useState('leads'); // 'leads' | 'analytics' | 'settings'
   const [tab, setTab] = useState('new');
+  const [q, setQ] = useState('');
+  const [page, setPage] = useState(1);
   const [syncing, setSyncing] = useState(false);
   const [syncMsg, setSyncMsg] = useState('');
   const [modal, setModal] = useState(null); // { type: 'contact'|'schedule'|'timeline', lead }
 
-  async function logout() {
-    await fetch('/api/auth/employee', { method: 'DELETE' });
-    router.push('/employee/login');
-    router.refresh();
+  // Sidebar "Follow-ups"/"Demos" are shortcuts into this same Leads table with a tab preset —
+  // there's no separate data behind them — while "Analytics"/"Settings" are their own small
+  // sections below. The sidebar highlight runs the other way too: whichever tab is active
+  // (however it got there — sidebar or a pill click) decides which nav item looks active, so
+  // the two stay in sync without duplicating state.
+  function goSection(key) {
+    if (key === 'analytics' || key === 'settings') { setSection(key); return; }
+    setSection('leads');
+    setPage(1);
+    if (key === 'followups') setTab('followup');
+    else if (key === 'demos') setTab('demo');
+    else setTab('new');
   }
+  const activeNavKey = section !== 'leads' ? section : (tab === 'followup' ? 'followups' : tab === 'demo' ? 'demos' : 'leads');
 
-  // Pulls in any leads Meta's webhook missed — same underlying sync as Admin → Settings →
-  // Meta Lead Ads' "Sync Leads Now" button, just available right here so pre-sales don't need
-  // admin access to catch a gap. See app/api/leads/sync/route.js.
   async function syncFromMeta() {
     setSyncing(true); setSyncMsg('');
     try {
@@ -83,114 +98,214 @@ export default function PresalesPanel({ employee }) {
   const active = TABS.find((t) => t.key === tab) || TABS[0];
   const canWork = tab === 'new' || tab === 'followup';
 
+  const filtered = useMemo(() => {
+    if (!q.trim()) return active.list;
+    const s = q.trim().toLowerCase();
+    return active.list.filter((l) => `${l.name} ${l.phone} ${l.city}`.toLowerCase().includes(s));
+  }, [active.list, q]);
+  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const pageRows = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+  const dNew = useMemo(() => windowDelta(mine, 'createdAt'), [mine]);
+  const dFollowup = useMemo(() => windowDelta(groups.followup, 'contactStageAt'), [groups.followup]);
+  const dDemo = useMemo(() => windowDelta(groups.demo, 'demoScheduledAt'), [groups.demo]);
+  const dConverted = useMemo(() => windowDelta(groups.converted, 'demoOutcomeAt'), [groups.converted]);
+
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+  const firstName = (employee.name || employee.email || '').split(' ')[0];
+  const today = new Date().toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+
+  function setTabAndReset(key) { setTab(key); setPage(1); }
+
   return (
-    <div className="dash">
-      <div className="dash-topbar">
-        <div className="dash-topbar-inner">
-          <div className="dash-brand" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Image src="/brand/lockup-navy.png" alt="Heseos" width={282} height={64} style={{ height: 24, width: 'auto' }} />
-            <span style={{ fontWeight: 500, color: 'var(--ink-soft)', fontSize: 13 }}>Pre-sales</span>
-          </div>
-          <div className="dash-user">
-            {syncMsg && <span className="dash-user-role" style={{ background: 'none', textTransform: 'none', letterSpacing: 0, fontWeight: 600 }}>{syncMsg}</span>}
-            <button className={`dash-icon-btn${syncing ? ' dash-spinning' : ''}`} title="Sync leads from Meta" onClick={syncFromMeta} disabled={syncing}><IconRefresh /></button>
-            <span className="dash-user-name">{employee.name || employee.email}</span>
-            <span className="dash-user-role">{employee.location || 'pre-sales'}</span>
-            <button className="dash-logout" onClick={logout}>Log out</button>
-          </div>
-        </div>
-      </div>
-
-      <div className="dash-body">
-        <div className="kpi-row">
-            <div className="kpi-card"><div className="kpi-label">New Leads</div><div className="kpi-val">{groups.new.length}</div></div>
-            <div className="kpi-card"><div className="kpi-label">Follow-ups</div><div className="kpi-val">{groups.followup.length}</div></div>
-            <div className="kpi-card"><div className="kpi-label">Demo Scheduled</div><div className="kpi-val">{groups.demo.length}</div></div>
-            <div className="kpi-card"><div className="kpi-label">Converted</div><div className="kpi-val">{groups.converted.length}</div></div>
-          </div>
-
-          <div className="dash-tabs">
-            {TABS.map((t) => (
-              <button key={t.key} className={`dash-tab${tab === t.key ? ' active' : ''}`} onClick={() => setTab(t.key)}>
-                {t.label} <span className="dash-tab-count">{t.list.length}</span>
-              </button>
-            ))}
-          </div>
-
-          {loading ? (
-            <div className="empty-state">Loading your leads…</div>
-          ) : active.list.length === 0 ? (
-            <div className="empty-state">
-              <div className="empty-state-icon">📭</div>
-              {mine.length === 0 ? 'No leads assigned to you yet.' : `Nothing in ${active.label.toLowerCase()} right now.`}
+    <EmployeeShell employee={employee} section={activeNavKey} onSection={goSection}>
+      {section === 'leads' && (
+        <>
+          <div className="adm-page-head">
+            <div>
+              <h1 className="adm-greeting">{greeting}, {firstName}</h1>
+              <p className="adm-page-sub">Here&rsquo;s your pre-sales overview</p>
             </div>
-          ) : (
-            <div style={{ overflowX: 'auto' }}>
-              <table className="lead-table">
-                <thead>
-                  <tr><th>Lead</th><th>Interest</th><th>Source</th><th>Status</th><th>Submitted</th><th>Actions</th></tr>
-                </thead>
-                <tbody>
-                  {active.list.map((l) => {
-                    const status = displayStatus(l);
-                    const sub = subUpdateOf(l);
-                    return (
-                      <tr key={l.id}>
-                        <td>
-                          <div className="lead-name">{l.name}</div>
-                          <div className="lead-meta">{l.phone} · {l.city}</div>
-                        </td>
-                        <td>
-                          <div>{(l.productInterest || []).map((p) => PI_LABEL[p] || p).join(', ') || '—'}</div>
-                          <div className="lead-meta">{PT_LABEL[l.propertyType] || ''}</div>
-                        </td>
-                        <td>{LEAD_SOURCES[l.source] || l.source}</td>
-                        <td>
-                          <span className="badge" style={{ color: status.c, background: status.bg }}>
-                            <span className="badge-dot" />{status.label}
-                          </span>
-                          {sub && <div className="lead-meta" style={{ color: '#B7791F', marginTop: 4 }}>{sub.label}</div>}
-                          {l.rescheduleRequestedAt && (
-                            <div className="lead-meta" style={{ color: '#C0392B', marginTop: 4, fontWeight: 600 }}>🔔 Customer asked to reschedule</div>
-                          )}
-                          {l.demoScheduledAt && stageOf(l) === 'Demo Scheduled' && (
-                            <div className="lead-meta">{fmtDate(l.demoDate)} · {l.demoTime}</div>
-                          )}
-                        </td>
-                        <td>{fmtDateTime(l.createdAt)}</td>
-                        <td>
-                          <div className="row-actions">
-                            {canWork && (
-                              <>
-                                <button className="chip-btn" onClick={() => quickContact(l, 'call_not_picked')}>Not Picked</button>
-                                <button className="chip-btn danger" onClick={() => setModal({ type: 'contact', lead: l, initialStage: 'not_interested' })}>Not Interested</button>
-                                <button className="chip-btn" onClick={() => setModal({ type: 'contact', lead: l })}>Follow-up</button>
-                                <button className="chip-btn primary" onClick={() => setModal({ type: 'schedule', lead: l })}>Schedule Demo</button>
-                              </>
-                            )}
-                            {tab === 'demo' && !l.salesEngineerId && !l.demoOutcome && (
-                              <button className="chip-btn" onClick={() => setModal({ type: 'reschedule', lead: l })}>Reschedule Demo</button>
-                            )}
-                            <button className="chip-btn" onClick={() => setModal({ type: 'timeline', lead: l })}>Timeline</button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+            <div className="adm-date-chip">{today}</div>
+          </div>
+
+          {syncMsg && <div className="adm-notice">{syncMsg}</div>}
+
+          <div className="adm-stat-row">
+            <TrendKpiCard label="New Leads" value={groups.new.length} deltaValue={dNew.value} Icon={IconLeads} />
+            <TrendKpiCard label="Follow-ups" value={groups.followup.length} deltaValue={dFollowup.value} Icon={IconPhone} />
+            <TrendKpiCard label="Demo Scheduled" value={groups.demo.length} deltaValue={dDemo.value} Icon={IconDemo} />
+            <TrendKpiCard label="Converted" value={groups.converted.length} deltaValue={dConverted.value} Icon={IconConversions} />
+          </div>
+
+          <div className="adm-card">
+            <div className="adm-toolbar">
+              <div className="adm-search adm-search--inline"><IconSearch size={16} /><input placeholder="Search by name, phone or interest…" value={q} onChange={(e) => { setQ(e.target.value); setPage(1); }} /></div>
+              <button className={`adm-icon-btn${syncing ? ' adm-spinning' : ''}`} title="Sync leads from Meta" onClick={syncFromMeta} disabled={syncing}><IconRefresh size={17} /></button>
             </div>
-          )}
-      </div>
+
+            <div className="dash-tabs">
+              {TABS.map((t) => (
+                <button key={t.key} className={`dash-tab${tab === t.key ? ' active' : ''}`} onClick={() => setTabAndReset(t.key)}>
+                  {t.label} <span className="dash-tab-count">{t.list.length}</span>
+                </button>
+              ))}
+            </div>
+
+            {loading ? (
+              <div className="adm-empty">Loading your leads…</div>
+            ) : pageRows.length === 0 ? (
+              <div className="adm-empty">
+                {mine.length === 0 ? 'No leads assigned to you yet.' : `Nothing in ${active.label.toLowerCase()} right now.`}
+              </div>
+            ) : (
+              <div className="adm-table-scroll">
+                <table className="adm-table">
+                  <thead>
+                    <tr><th>Lead</th><th>Interest</th><th>Source</th><th>Status</th><th>Submitted</th><th></th></tr>
+                  </thead>
+                  <tbody>
+                    {pageRows.map((l) => {
+                      const status = displayStatus(l);
+                      const sub = subUpdateOf(l);
+                      const SourceIcon = sourceIconFor(l);
+                      const attr = attributionFor(l, { partners, employees, links, leads });
+                      return (
+                        <tr key={l.id}>
+                          <td>
+                            <div className="adm-lead-name">{l.name}</div>
+                            <div className="adm-lead-sub">{l.phone} · {l.city}</div>
+                          </td>
+                          <td>
+                            <div>{(l.productInterest || []).map((p) => PI_LABEL[p] || p).join(', ') || '—'}</div>
+                            <div className="adm-lead-sub">{PT_LABEL[l.propertyType] || ''}</div>
+                          </td>
+                          <td>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <SourceIcon size={14} />
+                              <span className="adm-lead-name" style={{ fontSize: 12.5 }}>{sourceLabelFor(l)}</span>
+                            </div>
+                            {attr && <div className="adm-lead-sub">{attr}</div>}
+                          </td>
+                          <td>
+                            <span className="badge" style={{ color: status.c, background: status.bg }}>
+                              <span className="badge-dot" />{status.label}
+                            </span>
+                            {sub && <div className="adm-lead-sub" style={{ color: '#B7791F', marginTop: 4 }}>{sub.label}</div>}
+                            {l.rescheduleRequestedAt && (
+                              <div className="adm-lead-sub" style={{ color: '#C0392B', marginTop: 4, fontWeight: 600 }}>🔔 Customer asked to reschedule</div>
+                            )}
+                            {l.demoScheduledAt && stageOf(l) === 'Demo Scheduled' && (
+                              <div className="adm-lead-sub">{fmtDate(l.demoDate)} · {l.demoTime}</div>
+                            )}
+                          </td>
+                          <td>{fmtDateTime(l.createdAt)}</td>
+                          <td className="adm-row-actions">
+                            <div className="row-actions" style={{ justifyContent: 'flex-end' }}>
+                              {canWork && (
+                                <>
+                                  <button className="chip-btn" onClick={() => quickContact(l, 'call_not_picked')}>Not Picked</button>
+                                  <button className="chip-btn danger" onClick={() => setModal({ type: 'contact', lead: l, initialStage: 'not_interested' })}>Not Interested</button>
+                                  <button className="chip-btn" onClick={() => setModal({ type: 'contact', lead: l })}>Follow-up</button>
+                                  <button className="chip-btn primary" onClick={() => setModal({ type: 'schedule', lead: l })}>Schedule Demo</button>
+                                </>
+                              )}
+                              {tab === 'demo' && !l.salesEngineerId && !l.demoOutcome && (
+                                <button className="chip-btn" onClick={() => setModal({ type: 'reschedule', lead: l })}>Reschedule Demo</button>
+                              )}
+                              <button className="chip-btn" onClick={() => setModal({ type: 'timeline', lead: l })}>Timeline</button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            <Pagination page={page} pageCount={pageCount} total={filtered.length} pageSize={PAGE_SIZE} onPage={setPage} />
+          </div>
+        </>
+      )}
+
+      {section === 'analytics' && <AnalyticsSection mine={mine} groups={groups} />}
+      {section === 'settings' && <SettingsSection employee={employee} />}
 
       {modal && <PresalesModal modal={modal} onClose={() => setModal(null)} onDone={() => { setModal(null); fetchLeads(); }} />}
-    </div>
+    </EmployeeShell>
   );
 
   async function quickContact(lead, contactStage) {
     await fetch(`/api/leads/${lead.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'contact', contactStage }) });
     fetchLeads();
   }
+}
+
+// A light "how am I doing" recap — the same four numbers as the KPI row above, just given
+// their own page since the sidebar has a dedicated slot for it. Built entirely from leads
+// already assigned to me (no extra endpoint), same as the rest of this panel.
+function AnalyticsSection({ mine, groups }) {
+  const bySource = useMemo(() => {
+    const counts = {};
+    for (const l of mine) {
+      const key = LEAD_SOURCES[l.source] || l.source || 'Unknown';
+      counts[key] = (counts[key] || 0) + 1;
+    }
+    return Object.entries(counts).sort((a, b) => b[1] - a[1]);
+  }, [mine]);
+  const total = mine.length;
+  const convRate = total ? Math.round((groups.converted.length / total) * 1000) / 10 : 0;
+
+  return (
+    <>
+      <div className="adm-page-head">
+        <div><h1 className="adm-h1">Analytics</h1><p className="adm-page-sub">How your own leads are moving, at a glance</p></div>
+      </div>
+      <div className="adm-stat-row">
+        <div className="adm-stat-card"><div className="adm-stat-label">Total Assigned</div><div className="adm-stat-value">{total}</div></div>
+        <div className="adm-stat-card"><div className="adm-stat-label">Demo Scheduled</div><div className="adm-stat-value">{groups.demo.length}</div></div>
+        <div className="adm-stat-card"><div className="adm-stat-label">Converted</div><div className="adm-stat-value">{groups.converted.length}</div></div>
+        <div className="adm-stat-card"><div className="adm-stat-label">Conversion Rate</div><div className="adm-stat-value">{convRate}%</div></div>
+      </div>
+      <div className="adm-card">
+        <div className="adm-card-title">Leads by Source</div>
+        <div className="adm-card-sub">Where your assigned leads are coming from</div>
+        {bySource.length === 0 ? <div className="adm-empty">No leads yet.</div> : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {bySource.map(([label, count]) => (
+              <div key={label} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13.5 }}>
+                <span>{label}</span>
+                <span style={{ fontWeight: 700 }}>{count}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </>
+  );
+}
+
+function SettingsSection({ employee }) {
+  return (
+    <>
+      <div className="adm-page-head">
+        <div><h1 className="adm-h1">Settings</h1><p className="adm-page-sub">Your account details</p></div>
+      </div>
+      <div className="adm-card" style={{ maxWidth: 480 }}>
+        <div className="adm-card-title">Profile</div>
+        <div className="adm-card-sub">Contact an admin to change any of this, including your password.</div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div><div className="adm-stat-label">Name</div><div style={{ fontSize: 14, fontWeight: 600 }}>{employee.name || '—'}</div></div>
+          <div><div className="adm-stat-label">Email</div><div style={{ fontSize: 14, fontWeight: 600 }}>{employee.email || '—'}</div></div>
+          {employee.phone && <div><div className="adm-stat-label">Phone</div><div style={{ fontSize: 14, fontWeight: 600 }}>{employee.phone}</div></div>}
+          <div><div className="adm-stat-label">Role</div><div style={{ fontSize: 14, fontWeight: 600 }}>Pre-Sales</div></div>
+          <div><div className="adm-stat-label">City</div><div style={{ fontSize: 14, fontWeight: 600 }}>{employee.location || '—'}</div></div>
+        </div>
+      </div>
+    </>
+  );
 }
 
 function PresalesModal({ modal, onClose, onDone }) {

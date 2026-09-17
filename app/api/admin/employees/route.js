@@ -9,9 +9,13 @@ async function requireAdmin() {
   return employee;
 }
 
+// GET is any authenticated employee, not just admin — Pre-sales and Sales Engineers need
+// to resolve a colleague's name for the "Employee App" source attribution on their own leads
+// (see components/employee/ui.jsx's attributionFor) — same reasoning as the partners route's
+// GET relaxation just above it. POST (creating an employee account/password) stays admin-only.
 export async function GET() {
-  const admin = await requireAdmin();
-  if (!admin) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+  const employee = await getEmployee();
+  if (!employee) return Response.json({ error: 'Unauthorized' }, { status: 401 });
   const employees = await dbList('employees');
   // Never ship password hashes to the client.
   return Response.json(employees.map(({ password, ...rest }) => rest));

@@ -9,9 +9,13 @@ async function requireAdmin() {
   return employee;
 }
 
+// GET is any authenticated employee, not just admin — Pre-sales and Sales Engineers need
+// partner names to show WHO referred one of their own leads (Source column, "Partner App" /
+// "QR Code" / "Referral Link" rows — see components/employee/ui.jsx's attributionFor). POST
+// (creating a partner account, which includes setting its password) stays admin-only below.
 export async function GET() {
-  const admin = await requireAdmin();
-  if (!admin) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+  const employee = await getEmployee();
+  if (!employee) return Response.json({ error: 'Unauthorized' }, { status: 401 });
   const partners = await dbList('partners');
   return Response.json(partners.map(({ password, ...rest }) => rest));
 }

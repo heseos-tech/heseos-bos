@@ -46,3 +46,11 @@ export const IconEmployees = (p) => S(<><rect x="4" y="3.5" width="16" height="1
 // A filled star — used for the per-employee average customer rating (Sales Engineers /
 // Pre-sales tabs), so it reads as a rating at a glance rather than another outlined icon.
 export const IconStar = (p) => S(<path d="M12 2.5l2.9 6.1 6.6.7-4.9 4.5 1.3 6.6L12 17l-5.9 3.4 1.3-6.6-4.9-4.5 6.6-.7z" fill="currentColor" stroke="none" />, p?.size);
+
+// Employee (Pre-sales / Sales Engineer) "mine only" dashboards — components/employee/ui.jsx —
+// need a few more source icons for the Leads table's Source column that the admin sidebar/
+// stat-card set above never needed one for.
+export const IconPhone = (p) => S(<path d="M6.6 3.5c.6 0 1.1.4 1.3 1l1 2.6c.2.5.1 1-.2 1.4L7.4 10c1 2.3 2.7 4 5 5l1.5-1.3c.4-.3.9-.4 1.4-.2l2.6 1c.6.2 1 .7 1 1.3v2.4c0 .9-.8 1.6-1.7 1.5C9.9 19 5 14.1 4.2 7.2 4.1 6.3 4.8 5.5 5.7 5.5h.9z" />, p?.size);
+export const IconMeta = (p) => S(<path d="M7 8.5C4.8 8.5 3 11 3 13.8S4.5 18 6.2 18c1.5 0 2.6-1.2 3.7-3l2.1-3.4c1.1 1.8 2.2 3 3.7 3 1.7 0 3.2-1.7 3.2-4.2S17.7 8.5 15.5 8.5c-1.5 0-2.7 1.2-3.7 2.9l-.3.5-.3-.5c-1-1.7-2.2-2.9-3.7-2.9z" fill="none" stroke="currentColor" />, p?.size);
+export const IconHandshake = (p) => S(<><path d="M2.5 12.5l3.6-3.6a1.7 1.7 0 012.4 0l1 1" /><path d="M21.5 12.5l-3.6-3.6a1.7 1.7 0 00-2.4 0l-3.4 3.4a1.4 1.4 0 000 2l.2.2a1.4 1.4 0 002 0l1.9-1.9" /><path d="M9.5 10l3.3 3.3a1.4 1.4 0 010 2l-.1.1a1.4 1.4 0 01-2 0" /><path d="M7.5 12l2.7 2.7a1.4 1.4 0 010 2l-.1.1a1.4 1.4 0 01-2 0L6.5 15" /><path d="M2.5 12.5L6 16l1.5 1.5M21.5 12.5L18 16l-2 2" /></>, p?.size);
+
