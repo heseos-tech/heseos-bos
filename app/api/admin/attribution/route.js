@@ -32,7 +32,11 @@ export async function GET() {
   const [allLinks, partners, tenant] = await Promise.all([dbList('attribution_links'), dbList('partners'), getHeseosBotTenant()]);
   const links = allLinks.filter((l) => l.kind !== 'referral_customer');
   const funnels = await funnelForAll(links.map((l) => l.id));
-  const partnerName = Object.fromEntries(partners.map((p) => [p.id, p.businessName || p.name || p.id]));
+  // shopName ("Partner Business Name" in the partner-facing UI — see components/partner/MyProfileScreen.jsx)
+  // is the actual shop/company name and takes priority; businessName (confusingly labelled
+  // "Partner Name" there) falls back to the partner's own personal name — same fallback order
+  // used everywhere else a partner is shown to an admin (PartnersPage.jsx, PayoutsPage.jsx, etc).
+  const partnerName = Object.fromEntries(partners.map((p) => [p.id, p.shopName || p.businessName || p.name || p.id]));
 
   const out = links.map((l) => ({
     ...l,
