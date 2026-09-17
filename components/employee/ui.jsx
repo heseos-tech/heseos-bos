@@ -14,7 +14,7 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import {
   IconLeads, IconDemo, IconReports, IconSettings, IconPhone, IconChevronDown, IconArrowUp,
-  IconMeta, IconHandshake, IconEmployees, IconWhatsApp, IconQrCode, IconLink, IconProducts,
+  IconQrCode, IconLink, IconProducts,
   IconMore,
 } from '@/components/admin/icons';
 import { LEAD_SOURCES } from '@/lib/formOptions';
@@ -114,11 +114,31 @@ export function sourceLabelFor(l) {
   return LEAD_SOURCES[l.source] || l.source;
 }
 
+// Real brand/source artwork (provided by the team, /public/icons/sources) rather than
+// hand-drawn approximations — Meta/WhatsApp/Google keep their real brand colors so they stay
+// instantly recognizable, while Website/Partner App/Employee App (no brand of their own) are
+// recolored to the app's own ink+orange palette (see admin.css's --adm-ink/--adm-orange) so
+// they read as part of this UI rather than a random stock icon. Each is a small (p) => <img>
+// component with the same {size} prop shape as the SVG icons in components/admin/icons.jsx,
+// so call sites like `<SourceIcon size={14} />` don't need to know which kind they got.
+const srcIcon = (file) => (p) => (
+  // eslint-disable-next-line @next/next/no-img-element -- tiny fixed-size decorative icon, not worth next/image's overhead here
+  <img src={`/icons/sources/${file}`} alt="" width={p?.size || 16} height={p?.size || 16} style={{ display: 'block', objectFit: 'contain' }} />
+);
+const IconSrcWebsite = srcIcon('website.png');
+const IconSrcMeta = srcIcon('meta.png');
+const IconSrcWhatsApp = srcIcon('whatsapp.png');
+const IconSrcGoogle = srcIcon('google.png');
+const IconSrcPartner = srcIcon('partner.png');
+const IconSrcEmployee = srcIcon('employee.png');
+
 const SOURCE_ICON = {
-  meta_lead_form: IconMeta,
-  partner_app: IconHandshake,
-  employee_app: IconEmployees,
-  whatsapp_bot: IconWhatsApp,
+  website_api: IconSrcWebsite,
+  meta_lead_form: IconSrcMeta,
+  google_ads_lead_form: IconSrcGoogle,
+  partner_app: IconSrcPartner,
+  employee_app: IconSrcEmployee,
+  whatsapp_bot: IconSrcWhatsApp,
 };
 export function sourceIconFor(l) {
   if (isQrKind(l.source)) return IconQrCode;
