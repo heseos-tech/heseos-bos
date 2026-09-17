@@ -13,7 +13,10 @@ import { windowDelta } from '@/lib/adminMetrics';
 import { useApiResource } from '@/lib/useApiResource';
 import { IconLeads, IconDemo, IconQuotation, IconConversions, IconSearch } from '@/components/admin/icons';
 import { Pagination } from '@/components/admin/ui';
-import { EmployeeShell, TrendKpiCard, sourceLabelFor, sourceIconFor, attributionFor } from '@/components/employee/ui';
+import {
+  EmployeeShell, TrendKpiCard, sourceLabelFor, sourceIconFor, attributionFor, partnerDisplayName,
+  SOURCE_FILTER_OPTIONS, matchesSourceFilter, RowActionsMenu,
+} from '@/components/employee/ui';
 import QuotationBuilderModal from '@/components/shared/QuotationBuilder';
 
 const PI_LABEL = Object.fromEntries(PRODUCT_INTEREST.map((p) => [p.v, p.l]));
@@ -36,10 +39,13 @@ export default function SalesEngineerPanel({ employee }) {
   const [section, setSection] = useState('leads'); // 'leads' | 'analytics' | 'settings'
   const [tab, setTab] = useState('available');
   const [q, setQ] = useState('');
+  const [sourceFilter, setSourceFilter] = useState('all');
+  const [partnerFilter, setPartnerFilter] = useState('all');
   const [page, setPage] = useState(1);
   const [modal, setModal] = useState(null); // { type: 'quotation'|'outcome'|'timeline', lead }
   const [claimingId, setClaimingId] = useState(null);
   const [notice, setNotice] = useState('');
+  const [openMenuId, setOpenMenuId] = useState(null);
 
   // Sidebar "Follow-ups" maps to this role's closest equivalent working queue — leads whose
   // demo needs rescheduling — and "Demos" maps to Scheduled Demos, same shortcut-into-the-
@@ -90,11 +96,27 @@ export default function SalesEngineerPanel({ employee }) {
   ];
   const active = TABS.find((t) => t.key === tab) || TABS[0];
 
+  // Same "only partners who actually show up in my leads" reasoning as PresalesPanel.jsx's
+  // partnerOptions.
+  const partnerOptions = useMemo(() => {
+    const ids = new Set(mine.map((l) => l.partnerId).filter(Boolean));
+    return (partners || [])
+      .filter((p) => ids.has(p.id))
+      .map((p) => ({ id: p.id, name: partnerDisplayName(p) || p.id }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [mine, partners]);
+
   const filtered = useMemo(() => {
-    if (!q.trim()) return active.list;
-    const s = q.trim().toLowerCase();
-    return active.list.filter((l) => `${l.name} ${l.phone} ${l.city}`.toLowerCase().includes(s));
-  }, [active.list, q]);
+    return active.list.filter((l) => {
+      if (!matchesSourceFilter(l, sourceFilter)) return false;
+      if (partnerFilter !== 'all' && l.partnerId !== partnerFilter) return false;
+      if (q.trim()) {
+        const s = q.trim().toLowerCase();
+        if (!(`${l.name} ${l.phone} ${l.city}`.toLowerCase().includes(s))) return false;
+      }
+      return true;
+    });
+  }, [active.list, q, sourceFilter, partnerFilter]);
   const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const pageRows = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
@@ -154,6 +176,16 @@ export default function SalesEngineerPanel({ employee }) {
           <div className="adm-card">
             <div className="adm-toolbar">
               <div className="adm-search adm-search--inline"><IconSearch size={16} /><input placeholder="Search by name, phone or city…" value={q} onChange={(e) => { setQ(e.target.value); setPage(1); }} /></div>
+              <select value={sourceFilter} onChange={(e) => { setSourceFilter(e.target.value); setPage(1); }}>
+                <option value="all">All Sources</option>
+                {SOURCE_FILTER_OPTIONS.map(({ v, l }) => <option key={v} value={v}>{l}</option>)}
+              </select>
+              {partnerOptions.length > 0 && (
+                <select value={partnerFilter} onChange={(e) => { setPartnerFilter(e.target.value); setPage(1); }}>
+                  <option value="all">All Partners</option>
+                  {partnerOptions.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                </select>
+              )}
             </div>
 
             <div className="dash-tabs">
@@ -224,21 +256,20 @@ export default function SalesEngineerPanel({ employee }) {
                             )}
                           </td>
                           <td className="adm-row-actions">
-                            <div className="row-actions" style={{ justifyContent: 'flex-end' }}>
-                              {tab === 'available' && (
-                                <button className="chip-btn primary" onClick={() => acceptLead(l)} disabled={claimingId === l.id}>{claimingId === l.id ? 'Claiming…' : 'Accept Lead'}</button>
-                              )}
-                              {tab === 'upcoming' && (
-                                <button className="chip-btn" onClick={() => setModal({ type: 'reschedule', lead: l })}>Reschedule Demo</button>
-                              )}
-                              {canAct && (
-                                <>
-                                  <button className="chip-btn" onClick={() => setModal({ type: 'quotation', lead: l })}>{l.quotationSentAt ? 'Revise Quotation' : 'Send Quotation'}</button>
-                                  <button className="chip-btn primary" onClick={() => setModal({ type: 'outcome', lead: l })}>{tab === 'reschedule' ? 'Reschedule' : 'Mark Outcome'}</button>
-                                </>
-                              )}
-                              <button className="chip-btn" onClick={() => setModal({ type: 'timeline', lead: l })}>Timeline</button>
-                            </div>
+                            <RowActionsMenu
+                              rowId={l.id}
+                              openId={openMenuId}
+                              onToggle={setOpenMenuId}
+                              primary={tab === 'available'
+                                ? { label: claimingId === l.id ? 'Claiming…' : 'Accept Lead', onClick: () => acceptLead(l), disabled: claimingId === l.id }
+                                : canAct ? { label: tab === 'reschedule' ? 'Reschedule' : 'Mark Outcome', onClick: () => setModal({ type: 'outcome', lead: l }) }
+                                : null}
+                              items={[
+                                ...(tab === 'upcoming' ? [{ label: 'Reschedule Demo', onClick: () => setModal({ type: 'reschedule', lead: l }) }] : []),
+                                ...(canAct ? [{ label: l.quotationSentAt ? 'Revise Quotation' : 'Send Quotation', onClick: () => setModal({ type: 'quotation', lead: l }) }] : []),
+                                { label: 'Timeline', onClick: () => setModal({ type: 'timeline', lead: l }) },
+                              ]}
+                            />
                           </td>
                         </tr>
                       );

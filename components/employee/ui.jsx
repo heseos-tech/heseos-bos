@@ -9,11 +9,13 @@
 // from underneath the channel name — mirroring components/admin/LeadsPage.jsx's own
 // attributionInfo(), just folded into the Source cell instead of a separate column (there's
 // no room for one at this table's width).
+import { useEffect, useRef } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import {
   IconLeads, IconDemo, IconReports, IconSettings, IconPhone, IconChevronDown, IconArrowUp,
   IconMeta, IconHandshake, IconEmployees, IconWhatsApp, IconQrCode, IconLink, IconProducts,
+  IconMore,
 } from '@/components/admin/icons';
 import { LEAD_SOURCES } from '@/lib/formOptions';
 import { isQrKind } from '@/lib/attributionConstants';
@@ -153,4 +155,64 @@ export function attributionFor(l, { partners, employees, links, leads }) {
     return ref ? ref.name : null;
   }
   return null;
+}
+
+
+// Source filter dropdown (toolbar) — same collapse as sourceLabelFor above, so the filter
+// options match what the Source column actually shows: a QR code is filterable as "WhatsApp
+// QR" regardless of whether it's qr_partner or qr_location underneath, same idea for referral
+// links. 'all', 'qr' and 'referral' are the only synthetic (non-real-source) values.
+export const SOURCE_FILTER_OPTIONS = Object.entries(LEAD_SOURCES)
+  .filter(([k]) => !['qr_partner', 'qr_location', 'referral_partner', 'referral_customer'].includes(k))
+  .map(([v, l]) => ({ v, l }))
+  .concat([{ v: 'qr', l: 'WhatsApp QR' }, { v: 'referral', l: 'WhatsApp Referral' }]);
+
+export function matchesSourceFilter(l, filterValue) {
+  if (!filterValue || filterValue === 'all') return true;
+  const s = l.source || 'manual_entry';
+  if (filterValue === 'qr') return isQrKind(s);
+  if (filterValue === 'referral') return s === 'referral_partner' || s === 'referral_customer';
+  return s === filterValue;
+}
+
+// Row actions collapsed into a single "⋯" trigger + dropdown — a row that showed 4-5 chip
+// buttons at once (Not Picked / Not Interested / Follow-up / Schedule Demo / Timeline) ate a
+// third of the table's width per row. `primary` (if given) stays a normal visible button next
+// to the trigger — the one action worth one click, not two — and everything else, `items`,
+// lives in the dropdown. Reuses .adm-user-menu (already built for AdminShell's own user
+// dropdown in components/admin/ui.jsx) rather than introducing new CSS. Only one row's menu
+// is ever open at a time — `openId`/`rowId`/`onToggle` are lifted to the table's own state so
+// opening one row's menu closes whichever other row had one open.
+export function RowActionsMenu({ rowId, openId, onToggle, primary, items }) {
+  const open = openId === rowId;
+  const ref = useRef(null);
+
+  // Close on an outside click (but not on the trigger itself, which toggles) — without this,
+  // several rows' menus could end up visually stacking as you click around the table.
+  useEffect(() => {
+    if (!open) return;
+    function onDocClick(e) {
+      if (ref.current && !ref.current.contains(e.target)) onToggle(null);
+    }
+    document.addEventListener('mousedown', onDocClick);
+    return () => document.removeEventListener('mousedown', onDocClick);
+  }, [open, onToggle]);
+
+  return (
+    <div className="row-actions" style={{ justifyContent: 'flex-end' }}>
+      {primary && <button className="chip-btn primary" onClick={primary.onClick} disabled={primary.disabled}>{primary.label}</button>}
+      {items && items.length > 0 && (
+        <div ref={ref} style={{ position: 'relative', display: 'inline-block' }}>
+          <button className="adm-icon-btn" style={{ width: 30, height: 30 }} onClick={() => onToggle(open ? null : rowId)}><IconMore size={16} /></button>
+          {open && (
+            <div className="adm-user-menu" style={{ minWidth: 170 }}>
+              {items.map((it, i) => (
+                <button key={i} onClick={() => { it.onClick(); onToggle(null); }} style={it.danger ? { color: '#C0392B' } : undefined}>{it.label}</button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
 }

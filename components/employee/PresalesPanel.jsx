@@ -16,7 +16,10 @@ import { windowDelta } from '@/lib/adminMetrics';
 import { useApiResource } from '@/lib/useApiResource';
 import { IconLeads, IconPhone, IconDemo, IconConversions, IconSearch, IconRefresh } from '@/components/admin/icons';
 import { Pagination } from '@/components/admin/ui';
-import { EmployeeShell, TrendKpiCard, sourceLabelFor, sourceIconFor, attributionFor } from '@/components/employee/ui';
+import {
+  EmployeeShell, TrendKpiCard, sourceLabelFor, sourceIconFor, attributionFor, partnerDisplayName,
+  SOURCE_FILTER_OPTIONS, matchesSourceFilter, RowActionsMenu,
+} from '@/components/employee/ui';
 
 const PI_LABEL = Object.fromEntries(PRODUCT_INTEREST.map((p) => [p.v, p.l]));
 const PT_LABEL = Object.fromEntries(PROPERTY_TYPE.map((p) => [p.v, p.l]));
@@ -37,10 +40,13 @@ export default function PresalesPanel({ employee }) {
   const [section, setSection] = useState('leads'); // 'leads' | 'analytics' | 'settings'
   const [tab, setTab] = useState('new');
   const [q, setQ] = useState('');
+  const [sourceFilter, setSourceFilter] = useState('all');
+  const [partnerFilter, setPartnerFilter] = useState('all');
   const [page, setPage] = useState(1);
   const [syncing, setSyncing] = useState(false);
   const [syncMsg, setSyncMsg] = useState('');
   const [modal, setModal] = useState(null); // { type: 'contact'|'schedule'|'timeline', lead }
+  const [openMenuId, setOpenMenuId] = useState(null);
 
   // Sidebar "Follow-ups"/"Demos" are shortcuts into this same Leads table with a tab preset —
   // there's no separate data behind them — while "Analytics"/"Settings" are their own small
@@ -98,11 +104,29 @@ export default function PresalesPanel({ employee }) {
   const active = TABS.find((t) => t.key === tab) || TABS[0];
   const canWork = tab === 'new' || tab === 'followup';
 
+  // Partner filter's options are built from partners who actually show up in MY leads, not
+  // the company's whole partner list — this view is already scoped to "mine", so a dropdown
+  // of every partner in the business (most of whom I've never gotten a lead from) would just
+  // be noise.
+  const partnerOptions = useMemo(() => {
+    const ids = new Set(mine.map((l) => l.partnerId).filter(Boolean));
+    return (partners || [])
+      .filter((p) => ids.has(p.id))
+      .map((p) => ({ id: p.id, name: partnerDisplayName(p) || p.id }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [mine, partners]);
+
   const filtered = useMemo(() => {
-    if (!q.trim()) return active.list;
-    const s = q.trim().toLowerCase();
-    return active.list.filter((l) => `${l.name} ${l.phone} ${l.city}`.toLowerCase().includes(s));
-  }, [active.list, q]);
+    return active.list.filter((l) => {
+      if (!matchesSourceFilter(l, sourceFilter)) return false;
+      if (partnerFilter !== 'all' && l.partnerId !== partnerFilter) return false;
+      if (q.trim()) {
+        const s = q.trim().toLowerCase();
+        if (!(`${l.name} ${l.phone} ${l.city}`.toLowerCase().includes(s))) return false;
+      }
+      return true;
+    });
+  }, [active.list, q, sourceFilter, partnerFilter]);
   const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const pageRows = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
@@ -142,6 +166,16 @@ export default function PresalesPanel({ employee }) {
           <div className="adm-card">
             <div className="adm-toolbar">
               <div className="adm-search adm-search--inline"><IconSearch size={16} /><input placeholder="Search by name, phone or interest…" value={q} onChange={(e) => { setQ(e.target.value); setPage(1); }} /></div>
+              <select value={sourceFilter} onChange={(e) => { setSourceFilter(e.target.value); setPage(1); }}>
+                <option value="all">All Sources</option>
+                {SOURCE_FILTER_OPTIONS.map(({ v, l }) => <option key={v} value={v}>{l}</option>)}
+              </select>
+              {partnerOptions.length > 0 && (
+                <select value={partnerFilter} onChange={(e) => { setPartnerFilter(e.target.value); setPage(1); }}>
+                  <option value="all">All Partners</option>
+                  {partnerOptions.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                </select>
+              )}
               <button className={`adm-icon-btn${syncing ? ' adm-spinning' : ''}`} title="Sync leads from Meta" onClick={syncFromMeta} disabled={syncing}><IconRefresh size={17} /></button>
             </div>
 
@@ -202,20 +236,22 @@ export default function PresalesPanel({ employee }) {
                           </td>
                           <td>{fmtDateTime(l.createdAt)}</td>
                           <td className="adm-row-actions">
-                            <div className="row-actions" style={{ justifyContent: 'flex-end' }}>
-                              {canWork && (
-                                <>
-                                  <button className="chip-btn" onClick={() => quickContact(l, 'call_not_picked')}>Not Picked</button>
-                                  <button className="chip-btn danger" onClick={() => setModal({ type: 'contact', lead: l, initialStage: 'not_interested' })}>Not Interested</button>
-                                  <button className="chip-btn" onClick={() => setModal({ type: 'contact', lead: l })}>Follow-up</button>
-                                  <button className="chip-btn primary" onClick={() => setModal({ type: 'schedule', lead: l })}>Schedule Demo</button>
-                                </>
-                              )}
-                              {tab === 'demo' && !l.salesEngineerId && !l.demoOutcome && (
-                                <button className="chip-btn" onClick={() => setModal({ type: 'reschedule', lead: l })}>Reschedule Demo</button>
-                              )}
-                              <button className="chip-btn" onClick={() => setModal({ type: 'timeline', lead: l })}>Timeline</button>
-                            </div>
+                            <RowActionsMenu
+                              rowId={l.id}
+                              openId={openMenuId}
+                              onToggle={setOpenMenuId}
+                              primary={canWork ? { label: 'Schedule Demo', onClick: () => setModal({ type: 'schedule', lead: l }) }
+                                : (tab === 'demo' && !l.salesEngineerId && !l.demoOutcome) ? { label: 'Reschedule Demo', onClick: () => setModal({ type: 'reschedule', lead: l }) }
+                                : null}
+                              items={[
+                                ...(canWork ? [
+                                  { label: 'Not Picked', onClick: () => quickContact(l, 'call_not_picked') },
+                                  { label: 'Not Interested', onClick: () => setModal({ type: 'contact', lead: l, initialStage: 'not_interested' }), danger: true },
+                                  { label: 'Follow-up', onClick: () => setModal({ type: 'contact', lead: l }) },
+                                ] : []),
+                                { label: 'Timeline', onClick: () => setModal({ type: 'timeline', lead: l }) },
+                              ]}
+                            />
                           </td>
                         </tr>
                       );
