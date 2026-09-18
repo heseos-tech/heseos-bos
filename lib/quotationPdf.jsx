@@ -553,6 +553,10 @@ export default function QuotationPdfDocument({
   const hero = heroImageDataUri();
   const items = Array.isArray(revision?.items) ? revision.items : [];
   const hasItems = items.length > 0;
+  // Present on every revision saved after the pricing-breakdown feature shipped (both itemized
+  // and manual quotations); absent on older revisions saved before it, which fall back to the
+  // original plain Subtotal/Discount/Total display below.
+  const hasPricingBreakdown = revision?.netProductCost != null;
   const quotationNo = `${lead.id}-V${revision?.revision || 1}`;
 
   const issueAt = revision?.at ? new Date(revision.at) : new Date();
@@ -687,17 +691,68 @@ export default function QuotationPdfDocument({
         <View style={styles.summarySplitRow} wrap={false}>
           <View style={styles.billingSummaryBox}>
             <Text style={styles.billingSummaryTitle}>Billing Summary</Text>
-            {hasItems && (
+            {hasPricingBreakdown ? (
               <>
                 <View style={styles.billingRow}>
-                  <Text style={styles.billingLabel}>Subtotal</Text>
-                  <CurrencyText value={revision.subtotal} style={styles.billingValue} />
+                  <Text style={styles.billingLabel}>{hasItems ? 'Items Subtotal' : 'Amount'}</Text>
+                  <CurrencyText value={hasItems ? revision.subtotal : revision.baseAmount} style={styles.billingValue} />
                 </View>
-                <View style={styles.billingRow}>
-                  <Text style={styles.billingLabel}>Discount</Text>
-                  <CurrencyText value={revision.discountTotal} style={styles.billingDiscountValue} negative />
-                </View>
+                {hasItems && revision.discountTotal > 0 ? (
+                  <View style={styles.billingRow}>
+                    <Text style={styles.billingLabel}>Discount</Text>
+                    <CurrencyText value={revision.discountTotal} style={styles.billingDiscountValue} negative />
+                  </View>
+                ) : null}
+                {!hasItems && revision.pctDiscountAmount > 0 ? (
+                  <View style={styles.billingRow}>
+                    <Text style={styles.billingLabel}>Discount ({numFmt(revision.pctDiscount)}%)</Text>
+                    <CurrencyText value={revision.pctDiscountAmount} style={styles.billingDiscountValue} negative />
+                  </View>
+                ) : null}
+                {(revision.installationCost > 0 || revision.freightCost > 0) ? (
+                  <View style={styles.billingRow}>
+                    <Text style={styles.billingLabel}>Net Product Cost</Text>
+                    <CurrencyText value={revision.netProductCost} style={styles.billingValue} />
+                  </View>
+                ) : null}
+                {revision.installationCost > 0 ? (
+                  <View style={styles.billingRow}>
+                    <Text style={styles.billingLabel}>Installation ({numFmt(revision.installationRate)}%)</Text>
+                    <CurrencyText value={revision.installationCost} style={styles.billingValue} />
+                  </View>
+                ) : null}
+                {revision.freightCost > 0 ? (
+                  <View style={styles.billingRow}>
+                    <Text style={styles.billingLabel}>Freight</Text>
+                    <CurrencyText value={revision.freightCost} style={styles.billingValue} />
+                  </View>
+                ) : null}
+                {revision.gstAmount > 0 ? (
+                  <>
+                    <View style={styles.billingRow}>
+                      <Text style={styles.billingLabel}>Subtotal (before GST)</Text>
+                      <CurrencyText value={revision.preGstSubtotal} style={styles.billingValue} />
+                    </View>
+                    <View style={styles.billingRow}>
+                      <Text style={styles.billingLabel}>GST ({numFmt(revision.gstRate)}%)</Text>
+                      <CurrencyText value={revision.gstAmount} style={styles.billingValue} />
+                    </View>
+                  </>
+                ) : null}
               </>
+            ) : (
+              hasItems && (
+                <>
+                  <View style={styles.billingRow}>
+                    <Text style={styles.billingLabel}>Subtotal</Text>
+                    <CurrencyText value={revision.subtotal} style={styles.billingValue} />
+                  </View>
+                  <View style={styles.billingRow}>
+                    <Text style={styles.billingLabel}>Discount</Text>
+                    <CurrencyText value={revision.discountTotal} style={styles.billingDiscountValue} negative />
+                  </View>
+                </>
+              )
             )}
             <View style={styles.billingGrandRow}>
               <Text style={styles.billingGrandLabel}>Total Amount</Text>

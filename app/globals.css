@@ -636,6 +636,10 @@ footer { background: #011F2E; padding: 64px 0 28px; color: rgba(255, 255, 255, 0
 .qb-line-remove:hover { color: #c0392b; }
 .qb-empty-lines { padding: 22px 0 16px; text-align: center; color: #8a97a6; font-size: 12.5px; }
 
+.qb-pricing-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 14px; margin-top: 10px; }
+.qb-pricing-grid .lf-field { margin-bottom: 12px; }
+@media (max-width: 560px) { .qb-pricing-grid { grid-template-columns: 1fr; } }
+
 .qb-totals { margin-top: 14px; padding-top: 14px; border-top: 1.5px solid #e8eaee; }
 .qb-totals-row { display: flex; justify-content: space-between; font-size: 13px; color: #5c6b7c; padding: 3px 0; }
 .qb-totals-row.qb-total-final { font-size: 16px; font-weight: 800; color: #0b1b2e; padding-top: 8px; }

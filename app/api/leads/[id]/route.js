@@ -19,6 +19,41 @@ import {
 
 export const dynamic = 'force-dynamic';
 
+function round2(n) {
+  return Math.round((Number(n) || 0) * 100) / 100;
+}
+
+// The one pricing chain every quotation revision goes through, itemized or manual, computed
+// here (never trusted from the client) and mirrored — deliberately kept in lockstep, not
+// imported, matching how this file and QuotationBuilder.jsx already relate — by
+// computeQuoteTotals in components/shared/QuotationBuilder.jsx for the live preview shown while
+// building. Order matches how the business actually prices a job: take the product cost (after
+// any per-line discounts for an itemized quote), take an overall %age discount off THAT to get
+// the net product cost, add installation (a %age of that net cost) and a flat freight charge to
+// get the pre-GST subtotal, then apply GST on the subtotal to land on the final amount. Every
+// rate defaults to 0 when omitted, so a plain quotation with no installation/freight/GST entered
+// collapses back to exactly the old behaviour (final amount == net product cost).
+function computeFinalTotals({ grossBeforeDiscount, pctDiscount, installationRate, freightCost, gstRate }) {
+  const gross = Math.max(0, Number(grossBeforeDiscount) || 0);
+  const pct = Math.min(100, Math.max(0, Number(pctDiscount) || 0));
+  const pctDiscountAmount = round2(gross * pct / 100);
+  const netProductCost = round2(Math.max(0, gross - pctDiscountAmount));
+  const instRate = Math.max(0, Number(installationRate) || 0);
+  const installationCost = round2(netProductCost * instRate / 100);
+  const freight = round2(Math.max(0, Number(freightCost) || 0));
+  const preGstSubtotal = round2(netProductCost + installationCost + freight);
+  const gRate = Math.max(0, Number(gstRate) || 0);
+  const gstAmount = round2(preGstSubtotal * gRate / 100);
+  const amount = round2(preGstSubtotal + gstAmount);
+  return {
+    pctDiscount: pct, pctDiscountAmount, netProductCost,
+    installationRate: instRate, installationCost,
+    freightCost: freight, preGstSubtotal,
+    gstRate: gRate, gstAmount,
+    amount,
+  };
+}
+
 export async function GET(request, { params }) {
   const { id } = await params;
   const lead = await dbGetById('leads', id);
@@ -282,15 +317,30 @@ export async function PATCH(request, { params }) {
     // `items` is optional — the Team App and the old simple Sales-Engineer modal still send
     // just { amount, note } and keep working exactly as before. When the quotation builder
     // sends structured line items instead, the server (never the client) computes subtotal/
-    // discountTotal/amount from them, so a tampered client-sent total can't slip through.
+    // discountTotal/amount from them, so a tampered client-sent total can't slip through. Same
+    // goes for the optional pctDiscount/installationRate/freightCost/gstRate — always recomputed
+    // here via computeFinalTotals, never taken as given.
     const now = new Date().toISOString();
     const prevRevisions = Array.isArray(lead.quotationRevisions) ? lead.quotationRevisions : [];
     const revisionNum = prevRevisions.length + 1;
+
+    // Every quotation carries the same pricing chain now (%age discount -> installation ->
+    // freight -> GST — see computeFinalTotals above), whether it's built from catalogue line
+    // items or just a manually typed figure. Omitting all four rates from the request reproduces
+    // the exact old behaviour, so a plain { amount, note } call from an older client still works.
+    const pricingInputs = {
+      pctDiscount: body.pctDiscount,
+      installationRate: body.installationRate,
+      freightCost: body.freightCost,
+      gstRate: body.gstRate,
+    };
 
     let amount;
     let items = null;
     let subtotal = null;
     let discountTotal = null;
+    let baseAmount = null;
+    let pricing;
     if (Array.isArray(body.items) && body.items.length > 0) {
       items = body.items.map((it) => {
         const price = Number(it.price) || 0;
@@ -305,16 +355,37 @@ export async function PATCH(request, { params }) {
         };
       });
       subtotal = items.reduce((s, it) => s + it.price * it.qty, 0);
-      const lineDiscounts = items.reduce((s, it) => s + it.discount, 0);
-      const extraDiscount = body.extraDiscount != null && body.extraDiscount !== '' ? Math.max(0, Number(body.extraDiscount) || 0) : 0;
-      discountTotal = lineDiscounts + extraDiscount;
-      amount = Math.max(0, subtotal - discountTotal);
+      const lineDiscountTotal = items.reduce((s, it) => s + it.discount, 0);
+      pricing = computeFinalTotals({ grossBeforeDiscount: subtotal - lineDiscountTotal, ...pricingInputs });
+      discountTotal = round2(lineDiscountTotal + pricing.pctDiscountAmount);
+      amount = pricing.amount;
     } else {
-      amount = body.amount != null && body.amount !== '' ? Number(body.amount) || null : (lead.quotationAmount || null);
+      const rawAmount = body.amount != null && body.amount !== '' ? Number(body.amount) || null : (lead.quotationAmount || null);
+      if (rawAmount == null) {
+        // No amount anywhere to price from (a brand-new lead with no prior quotationAmount and
+        // nothing entered this call) — keep the exact old behaviour rather than manufacturing a
+        // ₹0 quotation with the new rates silently applied to nothing.
+        amount = null;
+      } else {
+        baseAmount = rawAmount;
+        pricing = computeFinalTotals({ grossBeforeDiscount: baseAmount, ...pricingInputs });
+        amount = pricing.amount;
+      }
     }
 
     const revisionEntry = { revision: revisionNum, amount, at: now, by: actorLabel, note: body.note || '' };
+    if (pricing) {
+      Object.assign(revisionEntry, {
+        pctDiscount: pricing.pctDiscount, pctDiscountAmount: pricing.pctDiscountAmount,
+        netProductCost: pricing.netProductCost,
+        installationRate: pricing.installationRate, installationCost: pricing.installationCost,
+        freightCost: pricing.freightCost,
+        preGstSubtotal: pricing.preGstSubtotal,
+        gstRate: pricing.gstRate, gstAmount: pricing.gstAmount,
+      });
+    }
     if (items) { revisionEntry.items = items; revisionEntry.subtotal = subtotal; revisionEntry.discountTotal = discountTotal; }
+    if (baseAmount !== null) { revisionEntry.baseAmount = baseAmount; }
     patch = {
       quotationSentAt: now,
       quotationSentBy: employee.id,

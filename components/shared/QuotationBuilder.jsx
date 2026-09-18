@@ -28,15 +28,33 @@ export function currency(n) {
   return `₹${Number(n || 0).toLocaleString('en-IN')}`;
 }
 
-// Mirrors the server-side computation in app/api/leads/[id]/route.js exactly, so the preview
-// shown while building never disagrees with what actually gets saved.
-export function computeQuoteTotals(lines, extraDiscount) {
-  const subtotal = lines.reduce((s, l) => s + (Number(l.price) || 0) * (Number(l.qty) || 0), 0);
-  const lineDiscounts = lines.reduce((s, l) => s + Math.max(0, Number(l.discount) || 0), 0);
-  const extra = Math.max(0, Number(extraDiscount) || 0);
-  const discountTotal = lineDiscounts + extra;
-  const total = Math.max(0, subtotal - discountTotal);
-  return { subtotal, discountTotal, total };
+function round2(n) {
+  return Math.round((Number(n) || 0) * 100) / 100;
+}
+
+// Mirrors computeFinalTotals in app/api/leads/[id]/route.js exactly — same order (item-level
+// discounts already baked into grossBeforeDiscount, then an overall %age discount, then
+// installation as a %age of what's left, then flat freight, then GST on that pre-GST subtotal) —
+// so the live preview shown while building never disagrees with what the server actually saves.
+export function computeFinalTotals(grossBeforeDiscount, { pctDiscount, installationRate, freightCost, gstRate }) {
+  const gross = Math.max(0, Number(grossBeforeDiscount) || 0);
+  const pct = Math.min(100, Math.max(0, Number(pctDiscount) || 0));
+  const pctDiscountAmount = round2(gross * pct / 100);
+  const netProductCost = round2(Math.max(0, gross - pctDiscountAmount));
+  const instRate = Math.max(0, Number(installationRate) || 0);
+  const installationCost = round2(netProductCost * instRate / 100);
+  const freight = round2(Math.max(0, Number(freightCost) || 0));
+  const preGstSubtotal = round2(netProductCost + installationCost + freight);
+  const gRate = Math.max(0, Number(gstRate) || 0);
+  const gstAmount = round2(preGstSubtotal * gRate / 100);
+  const amount = round2(preGstSubtotal + gstAmount);
+  return {
+    pctDiscount: pct, pctDiscountAmount, netProductCost,
+    installationRate: instRate, installationCost,
+    freightCost: freight, preGstSubtotal,
+    gstRate: gRate, gstAmount,
+    amount,
+  };
 }
 
 function latestRevision(lead) {
@@ -51,8 +69,11 @@ export default function QuotationBuilderModal({ lead, onClose, onDone }) {
   const [lines, setLines] = useState(() => (last?.items?.length
     ? last.items.map((it, i) => ({ ...it, _key: `${it.productId || it.sku || 'line'}_${i}` }))
     : []));
-  const [manualAmount, setManualAmount] = useState(() => (last && !last.items?.length ? (last.amount ?? '') : ''));
-  const [extraDiscount, setExtraDiscount] = useState('');
+  const [manualAmount, setManualAmount] = useState(() => (last && !last.items?.length ? (last.baseAmount ?? last.amount ?? '') : ''));
+  const [pctDiscount, setPctDiscount] = useState(() => (last?.pctDiscount ? String(last.pctDiscount) : ''));
+  const [installationRate, setInstallationRate] = useState(() => (last?.installationRate ? String(last.installationRate) : ''));
+  const [freightCost, setFreightCost] = useState(() => (last?.freightCost ? String(last.freightCost) : ''));
+  const [gstRate, setGstRate] = useState(() => (last?.gstRate ? String(last.gstRate) : ''));
   const [note, setNote] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -79,7 +100,13 @@ export default function QuotationBuilderModal({ lead, onClose, onDone }) {
   );
   useEffect(() => { setProductsPage(1); }, [pq]);
 
-  const totals = useMemo(() => computeQuoteTotals(lines, extraDiscount), [lines, extraDiscount]);
+  const itemsSubtotal = useMemo(() => lines.reduce((s, l) => s + (Number(l.price) || 0) * (Number(l.qty) || 0), 0), [lines]);
+  const itemsLineDiscountTotal = useMemo(() => lines.reduce((s, l) => s + Math.max(0, Number(l.discount) || 0), 0), [lines]);
+  const grossBeforeDiscount = lines.length > 0 ? (itemsSubtotal - itemsLineDiscountTotal) : (Number(manualAmount) || 0);
+  const pricing = useMemo(
+    () => computeFinalTotals(grossBeforeDiscount, { pctDiscount, installationRate, freightCost, gstRate }),
+    [grossBeforeDiscount, pctDiscount, installationRate, freightCost, gstRate],
+  );
 
   function addProduct(p) {
     setLines((prev) => {
@@ -99,16 +126,22 @@ export default function QuotationBuilderModal({ lead, onClose, onDone }) {
     setError('');
     setSaving(true);
     try {
+      const pricingBody = {
+        pctDiscount: pctDiscount === '' ? 0 : Math.max(0, Number(pctDiscount) || 0),
+        installationRate: installationRate === '' ? 0 : Math.max(0, Number(installationRate) || 0),
+        freightCost: freightCost === '' ? 0 : Math.max(0, Number(freightCost) || 0),
+        gstRate: gstRate === '' ? 0 : Math.max(0, Number(gstRate) || 0),
+      };
       let body;
       if (lines.length > 0) {
         body = {
           type: 'quotation',
           items: lines.map((l) => ({ productId: l.productId || null, sku: l.sku || '', name: l.name || '', price: Number(l.price) || 0, qty: Number(l.qty) || 0, discount: Math.max(0, Number(l.discount) || 0) })),
-          extraDiscount: extraDiscount === '' ? 0 : Math.max(0, Number(extraDiscount) || 0),
+          ...pricingBody,
           note,
         };
       } else {
-        body = { type: 'quotation', amount: manualAmount !== '' ? Number(manualAmount) : null, note };
+        body = { type: 'quotation', amount: manualAmount !== '' ? Number(manualAmount) : null, ...pricingBody, note };
       }
       const res = await fetch(`/api/leads/${lead.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
       const data = await res.json().catch(() => ({}));
@@ -210,20 +243,48 @@ export default function QuotationBuilderModal({ lead, onClose, onDone }) {
                       <button type="button" className="qb-line-remove" onClick={() => removeLine(l._key)}><IconX size={14} /></button>
                     </div>
                   ))}
-                  <div className="lf-field" style={{ marginTop: 12 }}>
-                    <label className="lf-label">Extra discount (₹, optional)</label>
-                    <input className="lf-input" type="number" min="0" value={extraDiscount} onChange={(e) => setExtraDiscount(e.target.value)} placeholder="Flat amount off the whole quotation" />
-                  </div>
                 </>
               )}
 
+              {/* Same 4 rates apply whether it's an itemized or a one-off manual quotation — the
+                  server (app/api/leads/[id]/route.js's computeFinalTotals) runs the identical
+                  chain either way and never trusts these numbers from here. */}
+              <div className="qb-pricing-grid">
+                <div className="lf-field">
+                  <label className="lf-label">Discount (%, optional)</label>
+                  <input className="lf-input" type="number" min="0" max="100" step="0.01" value={pctDiscount} onChange={(e) => setPctDiscount(e.target.value)} placeholder="e.g. 5" />
+                </div>
+                <div className="lf-field">
+                  <label className="lf-label">Installation (% of net product cost)</label>
+                  <input className="lf-input" type="number" min="0" step="0.01" value={installationRate} onChange={(e) => setInstallationRate(e.target.value)} placeholder="e.g. 10" />
+                </div>
+                <div className="lf-field">
+                  <label className="lf-label">Freight (₹, optional)</label>
+                  <input className="lf-input" type="number" min="0" value={freightCost} onChange={(e) => setFreightCost(e.target.value)} placeholder="e.g. 1500" />
+                </div>
+                <div className="lf-field">
+                  <label className="lf-label">GST (% on subtotal)</label>
+                  <input className="lf-input" type="number" min="0" step="0.01" value={gstRate} onChange={(e) => setGstRate(e.target.value)} placeholder="e.g. 18" />
+                </div>
+              </div>
+
               <div className="lf-field"><label className="lf-label">Note (optional)</label><input className="lf-input" value={note} onChange={(e) => setNote(e.target.value)} placeholder="e.g. Valid for 15 days" /></div>
 
-              {lines.length > 0 && (
+              {(lines.length > 0 || manualAmount !== '') && (
                 <div className="qb-totals">
-                  <div className="qb-totals-row"><span>Subtotal</span><span>{currency(totals.subtotal)}</span></div>
-                  <div className="qb-totals-row"><span>Discount</span><span>-{currency(totals.discountTotal)}</span></div>
-                  <div className="qb-totals-row qb-total-final"><span>Total</span><span>{currency(totals.total)}</span></div>
+                  {lines.length > 0 && (
+                    <>
+                      <div className="qb-totals-row"><span>Items subtotal</span><span>{currency(itemsSubtotal)}</span></div>
+                      {itemsLineDiscountTotal > 0 && <div className="qb-totals-row"><span>Line discounts</span><span>-{currency(itemsLineDiscountTotal)}</span></div>}
+                    </>
+                  )}
+                  {pricing.pctDiscountAmount > 0 && <div className="qb-totals-row"><span>Discount ({pricing.pctDiscount}%)</span><span>-{currency(pricing.pctDiscountAmount)}</span></div>}
+                  <div className="qb-totals-row"><span>Net product cost</span><span>{currency(pricing.netProductCost)}</span></div>
+                  {pricing.installationCost > 0 && <div className="qb-totals-row"><span>Installation ({pricing.installationRate}%)</span><span>+{currency(pricing.installationCost)}</span></div>}
+                  {pricing.freightCost > 0 && <div className="qb-totals-row"><span>Freight</span><span>+{currency(pricing.freightCost)}</span></div>}
+                  <div className="qb-totals-row"><span>Subtotal (before GST)</span><span>{currency(pricing.preGstSubtotal)}</span></div>
+                  {pricing.gstAmount > 0 && <div className="qb-totals-row"><span>GST ({pricing.gstRate}%)</span><span>+{currency(pricing.gstAmount)}</span></div>}
+                  <div className="qb-totals-row qb-total-final"><span>Total</span><span>{currency(pricing.amount)}</span></div>
                 </div>
               )}
 
