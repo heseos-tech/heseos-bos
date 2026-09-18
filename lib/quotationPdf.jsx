@@ -219,6 +219,12 @@ const styles = StyleSheet.create({
 
   calloutBox: { flexDirection: 'row', backgroundColor: PEACH, borderWidth: 1, borderColor: PEACH_BORDER, borderRadius: 10, padding: 12, marginTop: 4 },
   calloutIconWrap: { width: 24, height: 24, borderRadius: 12, backgroundColor: WHITE, alignItems: 'center', justifyContent: 'center', marginRight: 10, flexShrink: 0 },
+  // Explicit width, not just flexShrink: 1 — per the YOGA LAYOUT NOTES at the top of this file,
+  // a flex item sized only by flexShrink with no width/flexBasis can still measure itself by its
+  // unwrapped text content first, which let the second line of this callout's paragraph run past
+  // the box's right edge instead of wrapping inside it. Sized to what's left of the row after the
+  // 24px icon + 10px gap, with a little slack.
+  calloutTextCol: { flexDirection: 'column', flexShrink: 1, width: '90%' },
   calloutTitle: { fontSize: 9.5, fontFamily: 'Helvetica-Bold', color: INK, marginBottom: 3 },
   calloutText: { fontSize: 8.5, color: SOFT, lineHeight: 1.4, flexShrink: 1 },
 
@@ -788,7 +794,7 @@ export default function QuotationPdfDocument({
 
         <View style={styles.calloutBox} wrap={false}>
           <View style={styles.calloutIconWrap}><Icon name="alert" size={13} color={ORANGE} /></View>
-          <View style={{ flexDirection: 'column', flexShrink: 1 }}>
+          <View style={styles.calloutTextCol}>
             <Text style={styles.calloutTitle}>Check Before Installation</Text>
             <Text style={styles.calloutText}>Electrical points, neutral wiring, curtain wiring, network coverage, CAT6 backhaul and 2.4 GHz compatibility — a well-prepared site means a faster, smoother, hassle-free installation.</Text>
           </View>
