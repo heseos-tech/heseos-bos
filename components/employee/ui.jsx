@@ -9,7 +9,8 @@
 // from underneath the channel name — mirroring components/admin/LeadsPage.jsx's own
 // attributionInfo(), just folded into the Source cell instead of a separate column (there's
 // no room for one at this table's width).
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import {
@@ -290,33 +291,79 @@ export function matchesSourceFilter(l, filterValue) {
 // opening one row's menu closes whichever other row had one open.
 export function RowActionsMenu({ rowId, openId, onToggle, primary, items }) {
   const open = openId === rowId;
-  const ref = useRef(null);
+  const btnRef = useRef(null);
+  const menuRef = useRef(null);
+  const [coords, setCoords] = useState(null);
 
-  // Close on an outside click (but not on the trigger itself, which toggles) — without this,
-  // several rows' menus could end up visually stacking as you click around the table.
+  // The dropdown used to be `position: absolute` inside the row, but the table sits in
+  // .adm-table-scroll (overflow-x: auto — which per the CSS spec also computes overflow-y to
+  // auto once one axis isn't `visible`), so any row near the bottom of that scroll box had its
+  // menu silently clipped there, forcing a scroll to see it. Rendering it in a portal with
+  // `position: fixed` coordinates taken from the trigger button escapes that (and any other)
+  // clipping ancestor entirely, and flips the menu upward when there isn't room below.
+  function measure() {
+    const btn = btnRef.current;
+    if (!btn) return;
+    const r = btn.getBoundingClientRect();
+    const menuH = menuRef.current?.offsetHeight || (40 * (items?.length || 0) + 12);
+    const spaceBelow = window.innerHeight - r.bottom;
+    const openUp = spaceBelow < menuH + 10 && r.top > menuH + 10;
+    setCoords({
+      right: Math.max(8, window.innerWidth - r.right),
+      top: openUp ? undefined : r.bottom + 6,
+      bottom: openUp ? window.innerHeight - r.top + 6 : undefined,
+    });
+  }
+
+  function handleTriggerClick() {
+    if (open) { onToggle(null); return; }
+    measure();
+    onToggle(rowId);
+  }
+
+  // Close on an outside click (but not on the trigger itself, which toggles), and keep the
+  // menu anchored to the trigger button while the page or the table scrolls or resizes —
+  // without this, several rows' menus could end up visually stacking as you click around the
+  // table, or the menu could drift away from its trigger.
   useEffect(() => {
     if (!open) return;
+    measure(); // re-measure now that the menu is actually in the DOM and has a real height
+    function onScrollOrResize() { measure(); }
     function onDocClick(e) {
-      if (ref.current && !ref.current.contains(e.target)) onToggle(null);
+      if (btnRef.current?.contains(e.target)) return;
+      if (menuRef.current?.contains(e.target)) return;
+      onToggle(null);
     }
+    window.addEventListener('scroll', onScrollOrResize, true);
+    window.addEventListener('resize', onScrollOrResize);
     document.addEventListener('mousedown', onDocClick);
-    return () => document.removeEventListener('mousedown', onDocClick);
-  }, [open, onToggle]);
+    return () => {
+      window.removeEventListener('scroll', onScrollOrResize, true);
+      window.removeEventListener('resize', onScrollOrResize);
+      document.removeEventListener('mousedown', onDocClick);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   return (
     <div className="row-actions" style={{ justifyContent: 'flex-end' }}>
       {primary && <button className="chip-btn primary" onClick={primary.onClick} disabled={primary.disabled}>{primary.label}</button>}
       {items && items.length > 0 && (
-        <div ref={ref} style={{ position: 'relative', display: 'inline-block' }}>
-          <button className="adm-icon-btn" style={{ width: 30, height: 30 }} onClick={() => onToggle(open ? null : rowId)}><IconMore size={16} /></button>
-          {open && (
-            <div className="adm-user-menu" style={{ minWidth: 170 }}>
+        <>
+          <button ref={btnRef} className="adm-icon-btn" style={{ width: 30, height: 30 }} onClick={handleTriggerClick}><IconMore size={16} /></button>
+          {open && coords && createPortal(
+            <div
+              ref={menuRef}
+              className="adm-user-menu"
+              style={{ position: 'fixed', minWidth: 170, top: coords.top, bottom: coords.bottom, right: coords.right }}
+            >
               {items.map((it, i) => (
                 <button key={i} onClick={() => { it.onClick(); onToggle(null); }} style={it.danger ? { color: '#C0392B' } : undefined}>{it.label}</button>
               ))}
-            </div>
+            </div>,
+            document.body
           )}
-        </div>
+        </>
       )}
     </div>
   );
