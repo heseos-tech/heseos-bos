@@ -121,8 +121,8 @@ const styles = StyleSheet.create({
   quotationLabelRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
   quotationDash: { width: 16, height: 2, backgroundColor: ORANGE, marginRight: 7 },
   quotationLabelText: { fontSize: 8, fontFamily: 'Helvetica-Bold', color: 'rgba(255,255,255,0.85)', textTransform: 'uppercase', letterSpacing: 2 },
-  headingLine: { fontSize: 22, fontFamily: 'Helvetica-Bold', color: WHITE, flexShrink: 1 },
-  headingLineOrange: { fontSize: 22, fontFamily: 'Helvetica-Bold', color: ORANGE, marginTop: 2, flexShrink: 1 },
+  headingLine: { fontSize: 22, fontFamily: 'Helvetica-Bold', color: WHITE, lineHeight: 1.25, marginBottom: 4, flexShrink: 1 },
+  headingLineOrange: { fontSize: 22, fontFamily: 'Helvetica-Bold', color: ORANGE, lineHeight: 1.25, marginTop: 2, flexShrink: 1 },
   introBlock: { marginTop: 12 },
   intro: { fontSize: 9, color: 'rgba(255,255,255,0.82)', lineHeight: 1.6, flexShrink: 1 },
 
