@@ -111,20 +111,20 @@ const styles = StyleSheet.create({
   slimLogo: { width: 76 },
   slimHeaderRight: { fontSize: 8.5, fontFamily: 'Helvetica-Bold', color: SOFT, textTransform: 'uppercase', letterSpacing: 0.5 },
 
-  // ---------- Hero row (page 1) ----------
-  heroRow: { flexDirection: 'row', alignItems: 'stretch', marginTop: 14, marginBottom: 26 },
-  heroLeft: { flexDirection: 'column', width: '55%', marginRight: 18, justifyContent: 'center' },
-  heroRight: { flexDirection: 'column', width: '41%', minHeight: 168 },
+  // ---------- Hero banner (page 1) — a full-width photo with the headline overlaid directly on
+  // it (a dark scrim behind the text guarantees contrast regardless of which part of the photo
+  // sits underneath), matching the reference layout rather than the earlier side-by-side split.
+  heroBanner: { flexDirection: 'column', width: '100%', height: 230, borderRadius: 16, overflow: 'hidden', position: 'relative', backgroundColor: INK, marginTop: 14, marginBottom: 22 },
+  heroBannerImage: { width: '100%', height: '100%', objectFit: 'cover' },
+  heroBannerOverlay: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, backgroundColor: 'rgba(11,27,46,0.45)' },
+  heroBannerContent: { position: 'absolute', left: 22, right: 90, top: 22, bottom: 22, flexDirection: 'column', justifyContent: 'flex-start' },
   quotationLabelRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
   quotationDash: { width: 16, height: 2, backgroundColor: ORANGE, marginRight: 7 },
-  quotationLabelText: { fontSize: 8, fontFamily: 'Helvetica-Bold', color: SOFT, textTransform: 'uppercase', letterSpacing: 2 },
-  headingLine: { fontSize: 24, fontFamily: 'Helvetica-Bold', color: INK, flexShrink: 1 },
-  headingLineOrange: { fontSize: 24, fontFamily: 'Helvetica-Bold', color: ORANGE, marginTop: 2, flexShrink: 1 },
+  quotationLabelText: { fontSize: 8, fontFamily: 'Helvetica-Bold', color: 'rgba(255,255,255,0.85)', textTransform: 'uppercase', letterSpacing: 2 },
+  headingLine: { fontSize: 22, fontFamily: 'Helvetica-Bold', color: WHITE, flexShrink: 1 },
+  headingLineOrange: { fontSize: 22, fontFamily: 'Helvetica-Bold', color: ORANGE, marginTop: 2, flexShrink: 1 },
   introBlock: { marginTop: 12 },
-  intro: { fontSize: 9.5, color: SOFT, lineHeight: 1.6, flexShrink: 1 },
-
-  heroImageWrap: { flexDirection: 'column', width: '100%', height: '100%', minHeight: 168, borderBottomLeftRadius: 96, overflow: 'hidden', position: 'relative', backgroundColor: CARD_BG },
-  heroImage: { width: '100%', height: '100%', objectFit: 'cover' },
+  intro: { fontSize: 9, color: 'rgba(255,255,255,0.82)', lineHeight: 1.6, flexShrink: 1 },
 
   // ---------- Quotation number + validity (page 1) ----------
   metaRow: { flexDirection: 'row', marginBottom: 20 },
@@ -576,8 +576,10 @@ export default function QuotationPdfDocument({
           </View>
         </View>
 
-        <View style={styles.heroRow}>
-          <View style={styles.heroLeft}>
+        <View style={styles.heroBanner}>
+          {hero ? <Image src={hero} style={styles.heroBannerImage} /> : null}
+          <View style={styles.heroBannerOverlay} />
+          <View style={styles.heroBannerContent}>
             <View style={styles.quotationLabelRow}>
               <View style={styles.quotationDash} />
               <Text style={styles.quotationLabelText}>Quotation</Text>
@@ -587,13 +589,6 @@ export default function QuotationPdfDocument({
             <View style={styles.introBlock}>
               <Text style={styles.intro}>Thoughtfully designed solutions for a more comfortable, connected and secure home. Thank you for considering {safeText(brandName).toUpperCase()} for your smart home journey.</Text>
             </View>
-          </View>
-          <View style={styles.heroRight}>
-            {hero ? (
-              <View style={styles.heroImageWrap}>
-                <Image src={hero} style={styles.heroImage} />
-              </View>
-            ) : null}
           </View>
         </View>
 
