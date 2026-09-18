@@ -19,10 +19,15 @@ const nextConfig = {
   // since it's cheap insurance against getting Next's glob-matching syntax slightly wrong for
   // any one of them — a few extra harmless KB of font files bundled into nearby functions either
   // way, versus a repeat of this exact production outage if a pattern silently doesn't match.
+  // The public, share-token quotation PDF route (/api/quotation/[token]/pdf — the link sent to
+  // customers over WhatsApp) renders the exact same file and was missing from this list; added
+  // it and a matching /api/quotation/** catch-all for the same reason as the /api/leads/** one.
   outputFileTracingIncludes: {
     '/api/leads/[id]/quotation-pdf': ['./node_modules/pdfkit/js/**/*'],
     '/api/leads/[id]/quotation-pdf/send': ['./node_modules/pdfkit/js/**/*'],
     '/api/leads/**': ['./node_modules/pdfkit/js/**/*'],
+    '/api/quotation/[token]/pdf': ['./node_modules/pdfkit/js/**/*'],
+    '/api/quotation/**': ['./node_modules/pdfkit/js/**/*'],
   },
 };
 
