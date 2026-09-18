@@ -89,7 +89,14 @@ const RUPEE_FONT_AVAILABLE = registerRupeeFont();
 const CUR = RUPEE_FONT_AVAILABLE ? '₹' : 'Rs.';
 
 const styles = StyleSheet.create({
-  page: { flexDirection: 'column', padding: 40, paddingBottom: 60, fontSize: 10, color: INK, fontFamily: 'Helvetica' },
+  // lineHeight is set here (not per-Text) so it's inherited everywhere by default — without an
+  // explicit multiplier, a Text's line box falls back to the active font's own reported
+  // ascent/descent metrics, and two stacked lines (a label above a value, a title above a
+  // caption) can end up rendered closer together than intended, or overlapping outright, if
+  // those metrics ever come back unreliable for the font actually in use at render time. An
+  // explicit value removes that dependency for every Text below that doesn't already set its
+  // own (several already do, for multi-line paragraphs, and keep it).
+  page: { flexDirection: 'column', padding: 40, paddingBottom: 60, fontSize: 10, color: INK, fontFamily: 'Helvetica', lineHeight: 1.35 },
 
   // ---------- Page 1 letterhead ----------
   letterhead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
@@ -125,7 +132,7 @@ const styles = StyleSheet.create({
   metaBigLabel: { fontSize: 8, fontFamily: 'Helvetica-Bold', color: FAINT, textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 4 },
   metaBigValue: { fontSize: 18, fontFamily: 'Helvetica-Bold', color: INK },
   metaDatesBox: { flexDirection: 'column', width: '41%', borderWidth: 1, borderColor: BORDER, borderRadius: 10, padding: 12 },
-  metaDateRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 3 },
+  metaDateRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4 },
   metaDateLabel: { fontSize: 8.5, color: SOFT },
   metaDateValue: { fontSize: 9, fontFamily: 'Helvetica-Bold', color: INK },
 
@@ -141,7 +148,7 @@ const styles = StyleSheet.create({
   featureRow: { flexDirection: 'row' },
   featureCol: { flexDirection: 'column', alignItems: 'center', width: '33.33%', paddingHorizontal: 8 },
   featureBadge: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', width: 30, height: 30, borderRadius: 15, backgroundColor: PEACH, borderWidth: 1, borderColor: PEACH_BORDER, marginBottom: 8 },
-  featureLabel: { fontSize: 9, fontFamily: 'Helvetica-Bold', color: INK, textAlign: 'center' },
+  featureLabel: { fontSize: 9, fontFamily: 'Helvetica-Bold', color: INK, textAlign: 'center', marginBottom: 2 },
   featureSub: { fontSize: 7.5, color: FAINT, textAlign: 'center', marginTop: 3, flexShrink: 1 },
 
   closingBlock: { flexDirection: 'column', alignItems: 'center', marginTop: 4 },
