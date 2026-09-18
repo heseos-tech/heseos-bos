@@ -17,7 +17,8 @@ import { useApiResource } from '@/lib/useApiResource';
 import { IconLeads, IconPhone, IconDemo, IconConversions, IconSearch, IconRefresh, IconEye } from '@/components/admin/icons';
 import { Pagination } from '@/components/admin/ui';
 import {
-  EmployeeShell, TrendKpiCard, sourceLabelFor, sourceIconFor, attributionFor, partnerDisplayName,
+  EmployeeShell, TrendKpiCard, sourceLabelFor, sourceIconFor, attributionFor, attributionDetailFor,
+  AttributionDetail, partnerDisplayName, timelineLabelFor, budgetLabelFor,
   SOURCE_FILTER_OPTIONS, matchesSourceFilter, RowActionsMenu,
 } from '@/components/employee/ui';
 
@@ -197,7 +198,7 @@ export default function PresalesPanel({ employee }) {
               <div className="adm-table-scroll">
                 <table className="adm-table">
                   <thead>
-                    <tr><th>Lead</th><th>Interest</th><th>Source</th><th>Status</th><th>Submitted</th><th></th></tr>
+                    <tr><th>Lead</th><th>Lead Detail</th><th>Source</th><th>Status</th><th>Submitted</th><th></th></tr>
                   </thead>
                   <tbody>
                     {pageRows.map((l) => {
@@ -212,7 +213,7 @@ export default function PresalesPanel({ employee }) {
                             <div className="adm-lead-sub">{l.phone} · {l.city}</div>
                           </td>
                           <td>
-                            <button className="adm-icon-btn" title="View interest & property type" onClick={() => setModal({ type: 'interest', lead: l })}><IconEye size={17} /></button>
+                            <button className="adm-icon-btn" title="View lead details" onClick={() => setModal({ type: 'detail', lead: l })}><IconEye size={17} /></button>
                           </td>
                           <td>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -268,7 +269,7 @@ export default function PresalesPanel({ employee }) {
       {section === 'analytics' && <AnalyticsSection mine={mine} groups={groups} />}
       {section === 'settings' && <SettingsSection employee={employee} />}
 
-      {modal && <PresalesModal modal={modal} onClose={() => setModal(null)} onDone={() => { setModal(null); fetchLeads(); }} />}
+      {modal && <PresalesModal modal={modal} partners={partners} employees={employees} links={links} leads={leads} onClose={() => setModal(null)} onDone={() => { setModal(null); fetchLeads(); }} />}
     </EmployeeShell>
   );
 
@@ -343,7 +344,7 @@ function SettingsSection({ employee }) {
   );
 }
 
-function PresalesModal({ modal, onClose, onDone }) {
+function PresalesModal({ modal, partners, employees, links, leads, onClose, onDone }) {
   const { type, lead } = modal;
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -444,10 +445,14 @@ function PresalesModal({ modal, onClose, onDone }) {
           </>
         )}
 
-        {type === 'interest' && (
+        {type === 'detail' && (
           <>
-            <div className="modal-title">Interest &amp; property type</div>
-            <div className="modal-sub">{lead.name} · {lead.phone}</div>
+            <div className="modal-title">Lead detail</div>
+            <div className="modal-sub">{lead.name} · {lead.phone}{lead.city ? ` · ${lead.city}` : ''}</div>
+            <div className="lf-field">
+              <label className="lf-label">Email</label>
+              <div style={{ fontSize: 13.5, color: 'var(--adm-ink)' }}>{lead.email || '—'}</div>
+            </div>
             <div className="lf-field">
               <label className="lf-label">Product interest</label>
               <div style={{ fontSize: 13.5, color: 'var(--adm-ink)' }}>
@@ -457,6 +462,28 @@ function PresalesModal({ modal, onClose, onDone }) {
             <div className="lf-field">
               <label className="lf-label">Property type</label>
               <div style={{ fontSize: 13.5, color: 'var(--adm-ink)' }}>{PT_LABEL[lead.propertyType] || lead.propertyType || '—'}</div>
+            </div>
+            <div className="lf-field">
+              <label className="lf-label">Budget</label>
+              <div style={{ fontSize: 13.5, color: 'var(--adm-ink)' }}>{budgetLabelFor(lead)}</div>
+            </div>
+            <div className="lf-field">
+              <label className="lf-label">Timeline</label>
+              <div style={{ fontSize: 13.5, color: 'var(--adm-ink)' }}>{timelineLabelFor(lead)}</div>
+            </div>
+            {lead.notes && (
+              <div className="lf-field">
+                <label className="lf-label">Notes</label>
+                <div style={{ fontSize: 13.5, color: 'var(--adm-ink)' }}>{lead.notes}</div>
+              </div>
+            )}
+            <div className="lf-field">
+              <label className="lf-label">Source</label>
+              <div style={{ fontSize: 13.5, color: 'var(--adm-ink)' }}>{sourceLabelFor(lead)}</div>
+            </div>
+            <div className="lf-field">
+              <label className="lf-label">Referred / sourced by</label>
+              <AttributionDetail detail={attributionDetailFor(lead, { partners, employees, links, leads })} />
             </div>
           </>
         )}
@@ -484,8 +511,8 @@ function PresalesModal({ modal, onClose, onDone }) {
         {error && <div className="lf-error">{error}</div>}
 
         <div className="lf-actions">
-          <button className="lf-btn-back" onClick={onClose} disabled={submitting}>{(type === 'timeline' || type === 'interest') ? 'Close' : 'Cancel'}</button>
-          {type !== 'timeline' && type !== 'interest' && <button className="lf-btn-next" onClick={submit} disabled={submitting}>{submitting ? 'Saving…' : 'Save'}</button>}
+          <button className="lf-btn-back" onClick={onClose} disabled={submitting}>{(type === 'timeline' || type === 'detail') ? 'Close' : 'Cancel'}</button>
+          {type !== 'timeline' && type !== 'detail' && <button className="lf-btn-next" onClick={submit} disabled={submitting}>{submitting ? 'Saving…' : 'Save'}</button>}
         </div>
       </div>
     </div>

@@ -17,10 +17,25 @@ import {
   IconQrCode, IconLink, IconProducts,
   IconMore,
 } from '@/components/admin/icons';
-import { LEAD_SOURCES } from '@/lib/formOptions';
+import { LEAD_SOURCES, TIMELINE, BUDGET_BY_PROPERTY } from '@/lib/formOptions';
 import { isQrKind } from '@/lib/attributionConstants';
 
 export const ROLE_LABEL = { presales: 'Pre-Sales', sales_engineer: 'Sales Engineer' };
+
+// Lead Detail modal needs human labels for `timeline` and `budget` too (Interest/Property
+// Type already have PI_LABEL/PT_LABEL built locally in each panel from PRODUCT_INTEREST/
+// PROPERTY_TYPE) — budget is the odd one out since its options are conditional on propertyType
+// (see lib/formOptions.js's BUDGET_BY_PROPERTY), so the lookup has to check the right tier
+// rather than a single flat map.
+const TIMELINE_LABEL = Object.fromEntries(TIMELINE.map((t) => [t.v, t.l]));
+export function timelineLabelFor(lead) {
+  return TIMELINE_LABEL[lead?.timeline] || lead?.timeline || '—';
+}
+export function budgetLabelFor(lead) {
+  const tier = BUDGET_BY_PROPERTY[lead?.propertyType] || [];
+  const match = tier.find((b) => b.v === lead?.budget);
+  return (match && match.l) || lead?.budget || '—';
+}
 
 // Same 5 destinations for both roles. "Follow-ups" and "Demos" aren't separate data views —
 // each panel maps them to a preset tab within its own Leads table (see PresalesPanel's
@@ -150,6 +165,47 @@ export function partnerDisplayName(p) {
   return (p && (p.shopName || p.businessName || p.name)) || null;
 }
 
+// Renders attributionDetailFor()'s result as the "who sourced this lead" block in the Lead
+// Detail modal (PresalesPanel/SalesEngineerPanel) — partner leads get BOTH the partner's own
+// name and their shop/business name as separate lines (not collapsed into one string like the
+// Source column does), since that's the whole point of looking a lead up here.
+export function AttributionDetail({ detail }) {
+  if (!detail) {
+    return <div style={{ fontSize: 13.5, color: 'var(--adm-text-faint)' }}>Direct — no partner, employee or referrer on file.</div>;
+  }
+  if (detail.kind === 'partner') {
+    const p = detail.partner;
+    if (!p) return <div style={{ fontSize: 13.5, color: 'var(--adm-text-faint)' }}>Partner record not found.</div>;
+    return (
+      <div style={{ display: 'grid', gap: 6 }}>
+        <div><span className="adm-lead-sub">Partner Name: </span><span style={{ fontSize: 13.5, color: 'var(--adm-ink)', fontWeight: 600 }}>{p.businessName || p.name || '—'}</span></div>
+        <div><span className="adm-lead-sub">Partner Business Name: </span><span style={{ fontSize: 13.5, color: 'var(--adm-ink)', fontWeight: 600 }}>{p.shopName || '—'}</span></div>
+        {p.phone && <div><span className="adm-lead-sub">Partner Phone: </span><span style={{ fontSize: 13.5, color: 'var(--adm-ink)' }}>{p.phone}</span></div>}
+      </div>
+    );
+  }
+  if (detail.kind === 'employee') {
+    const e = detail.employee;
+    if (!e) return <div style={{ fontSize: 13.5, color: 'var(--adm-text-faint)' }}>Employee record not found.</div>;
+    return (
+      <div><span className="adm-lead-sub">Added by employee: </span><span style={{ fontSize: 13.5, color: 'var(--adm-ink)', fontWeight: 600 }}>{e.name}</span>{e.role && <span className="adm-lead-sub"> · {ROLE_LABEL[e.role] || e.role}</span>}</div>
+    );
+  }
+  if (detail.kind === 'qr_location') {
+    const link = detail.link;
+    return (
+      <div><span className="adm-lead-sub">QR location: </span><span style={{ fontSize: 13.5, color: 'var(--adm-ink)', fontWeight: 600 }}>{link.label || link.id}</span>{link.city && <span className="adm-lead-sub"> · {[link.locality, link.city].filter(Boolean).join(', ')}</span>}</div>
+    );
+  }
+  if (detail.kind === 'referral_customer') {
+    const ref = detail.referredLead;
+    return (
+      <div><span className="adm-lead-sub">Referred by: </span><span style={{ fontSize: 13.5, color: 'var(--adm-ink)', fontWeight: 600 }}>{ref.name}</span>{ref.phone && <span className="adm-lead-sub"> · {ref.phone}</span>}</div>
+    );
+  }
+  return null;
+}
+
 // Who a lead actually came from, underneath the Source cell's channel name — a Partner App /
 // QR (Partner) / Referral (Partner) lead resolves to that partner's own shop/business name
 // (shopName first, same priority as GrowthPage.jsx's ownerLabel and every other admin-facing
@@ -173,6 +229,35 @@ export function attributionFor(l, { partners, employees, links, leads }) {
   if (l.attributionKind === 'referral_customer' && l.referredByLeadId) {
     const ref = (leads || []).find((x) => x.id === l.referredByLeadId);
     return ref ? ref.name : null;
+  }
+  return null;
+}
+
+// Full attribution record (not just the one-line display string above) for the Lead Detail
+// modal — a Pre-sales/Sales Engineer exec asking "who referred this lead" wants the partner's
+// OWN name and their shop/business name as two separate facts (see components/partner/
+// MyProfileScreen.jsx's businessName="Partner Name"/shopName="Partner Business Name" split),
+// not one collapsed string. Same priority chain as attributionFor (partnerId wins regardless of
+// whether the channel was Partner App, a QR scan, or a shared referral link — see
+// lib/attribution.js's header comment on qr_partner/referral_partner both setting partnerId),
+// falling through to the employee who punched the lead in, the physical QR location, or the
+// customer who referred them.
+export function attributionDetailFor(l, { partners, employees, links, leads }) {
+  if (l.partnerId) {
+    const p = (partners || []).find((x) => x.id === l.partnerId);
+    return p ? { kind: 'partner', partner: p } : { kind: 'partner', partner: null };
+  }
+  if (l.addedByEmployeeId) {
+    const e = (employees || []).find((x) => x.id === l.addedByEmployeeId);
+    return e ? { kind: 'employee', employee: e } : { kind: 'employee', employee: null };
+  }
+  if (l.attributionKind === 'qr_location' && l.attributionLinkId) {
+    const link = (links || []).find((x) => x.id === l.attributionLinkId);
+    return link ? { kind: 'qr_location', link } : null;
+  }
+  if (l.attributionKind === 'referral_customer' && l.referredByLeadId) {
+    const ref = (leads || []).find((x) => x.id === l.referredByLeadId);
+    return ref ? { kind: 'referral_customer', referredLead: ref } : null;
   }
   return null;
 }
