@@ -132,8 +132,9 @@ export default function LeadsPage() {
   function flash(msg) { setNotice(msg); setTimeout(() => setNotice(''), 3000); }
 
   // Small sync icon next to the page title — pulls in anything Meta's webhook missed, without
-  // sending anyone to Settings. Same underlying sync as the "Sync Leads Now" button there
-  // (and the one on the Pre-sales panel) — see app/api/leads/sync/route.js.
+  // sending anyone to Settings. Same underlying sync as the "Sync Leads Now" button there.
+  // Admin-only (see app/api/leads/sync/route.js) — this used to also show on the Pre-sales
+  // panel, but that was removed to keep this an admin-only action.
   async function syncFromMeta() {
     setSyncing(true);
     try {

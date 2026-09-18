@@ -14,7 +14,7 @@ import { stageOf, displayStatus, subUpdateOf, isFollowUpLead, CONTACT_STAGES, CO
 import { PRODUCT_INTEREST, PROPERTY_TYPE, LEAD_SOURCES } from '@/lib/formOptions';
 import { windowDelta } from '@/lib/adminMetrics';
 import { useApiResource } from '@/lib/useApiResource';
-import { IconLeads, IconPhone, IconDemo, IconConversions, IconSearch, IconRefresh, IconEye } from '@/components/admin/icons';
+import { IconLeads, IconPhone, IconDemo, IconConversions, IconSearch, IconEye } from '@/components/admin/icons';
 import { Pagination } from '@/components/admin/ui';
 import {
   EmployeeShell, TrendKpiCard, sourceLabelFor, sourceIconFor, attributionFor, attributionDetailFor,
@@ -44,8 +44,6 @@ export default function PresalesPanel({ employee }) {
   const [sourceFilter, setSourceFilter] = useState('all');
   const [partnerFilter, setPartnerFilter] = useState('all');
   const [page, setPage] = useState(1);
-  const [syncing, setSyncing] = useState(false);
-  const [syncMsg, setSyncMsg] = useState('');
   const [modal, setModal] = useState(null); // { type: 'contact'|'schedule'|'timeline', lead }
   const [openMenuId, setOpenMenuId] = useState(null);
 
@@ -63,20 +61,6 @@ export default function PresalesPanel({ employee }) {
     else setTab('new');
   }
   const activeNavKey = section !== 'leads' ? section : (tab === 'followup' ? 'followups' : tab === 'demo' ? 'demos' : 'leads');
-
-  async function syncFromMeta() {
-    setSyncing(true); setSyncMsg('');
-    try {
-      const res = await fetch('/api/leads/sync', { method: 'POST' });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) { setSyncMsg(data.error || 'Could not sync leads.'); return; }
-      setSyncMsg(data.inserted > 0 ? `Synced — ${data.inserted} new lead${data.inserted === 1 ? '' : 's'}` : 'Synced — already up to date');
-      fetchLeads();
-    } finally {
-      setSyncing(false);
-      setTimeout(() => setSyncMsg(''), 3500);
-    }
-  }
 
   // Only what's assigned to me — never the whole pipeline.
   const mine = useMemo(() => leads.filter((l) => l.assignedTo === employee.id), [leads, employee.id]);
@@ -155,8 +139,6 @@ export default function PresalesPanel({ employee }) {
             <div className="adm-date-chip">{today}</div>
           </div>
 
-          {syncMsg && <div className="adm-notice">{syncMsg}</div>}
-
           <div className="adm-stat-row">
             <TrendKpiCard label="New Leads" value={groups.new.length} deltaValue={dNew.value} Icon={IconLeads} />
             <TrendKpiCard label="Follow-ups" value={groups.followup.length} deltaValue={dFollowup.value} Icon={IconPhone} />
@@ -177,7 +159,6 @@ export default function PresalesPanel({ employee }) {
                   {partnerOptions.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
                 </select>
               )}
-              <button className={`adm-icon-btn${syncing ? ' adm-spinning' : ''}`} title="Sync leads from Meta" onClick={syncFromMeta} disabled={syncing}><IconRefresh size={17} /></button>
             </div>
 
             <div className="dash-tabs">
