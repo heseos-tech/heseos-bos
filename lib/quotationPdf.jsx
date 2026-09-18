@@ -190,12 +190,11 @@ const styles = StyleSheet.create({
   billingGrandRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.18)', marginTop: 9, paddingTop: 10 },
   billingGrandLabel: { fontSize: 11, fontFamily: 'Helvetica-Bold', color: WHITE },
   billingGrandValue: { fontSize: 15, fontFamily: 'Helvetica-Bold', color: ORANGE },
-  wordsCol: { flexDirection: 'column', width: '44%', borderWidth: 1, borderColor: BORDER, borderRadius: 12, padding: 14 },
-  wordsText: { fontSize: 9, color: SOFT, lineHeight: 1.5, flexShrink: 1 },
+  summarySideBox: { flexDirection: 'column', width: '44%', borderWidth: 1, borderColor: BORDER, borderRadius: 12, padding: 14 },
+  summarySideText: { fontSize: 9, color: SOFT, lineHeight: 1.5, flexShrink: 1 },
 
   // ---------- Terms & Notes (page 2) ----------
-  twoColRow: { flexDirection: 'row' },
-  twoCol: { flexDirection: 'column', width: '48%', marginRight: '4%' },
+  notesSection: { flexDirection: 'column', marginBottom: 20 },
   numberedRow: { flexDirection: 'row', marginBottom: 7 },
   numberedIndex: { width: 14, fontSize: 8.5, fontFamily: 'Helvetica-Bold', color: ORANGE },
   numberedText: { fontSize: 8.5, color: SOFT, lineHeight: 1.4, flexShrink: 1, width: '88%' },
@@ -256,39 +255,6 @@ function heroImageDataUri() {
 // Plain number formatting, no currency symbol.
 function numFmt(n) {
   return Number(n || 0).toLocaleString('en-IN');
-}
-
-const ONES = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten',
-  'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
-const TENS = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
-function twoDigitWords(n) {
-  if (n < 20) return ONES[n];
-  return TENS[Math.floor(n / 10)] + (n % 10 ? ' ' + ONES[n % 10] : '');
-}
-function threeDigitWords(n) {
-  const h = Math.floor(n / 100);
-  const rest = n % 100;
-  let out = '';
-  if (h) out += ONES[h] + ' Hundred';
-  if (rest) out += (out ? ' ' : '') + twoDigitWords(rest);
-  return out;
-}
-// Indian numbering (crore/lakh/thousand) amount-in-words — rounds to the nearest whole rupee,
-// same convention Heseos's own quotations already use (paise are dropped from the words line
-// even when the numeric total carries them).
-function numberToWordsINR(amount) {
-  let n = Math.round(Math.abs(Number(amount) || 0));
-  if (n === 0) return 'Rupees Zero Only';
-  const crore = Math.floor(n / 10000000); n %= 10000000;
-  const lakh = Math.floor(n / 100000); n %= 100000;
-  const thousand = Math.floor(n / 1000); n %= 1000;
-  const hundred = n;
-  const parts = [];
-  if (crore) parts.push(threeDigitWords(crore) + ' Crore');
-  if (lakh) parts.push(threeDigitWords(lakh) + ' Lakh');
-  if (thousand) parts.push(threeDigitWords(thousand) + ' Thousand');
-  if (hundred) parts.push(threeDigitWords(hundred));
-  return 'Rupees ' + parts.join(' ') + ' Only';
 }
 
 // The standard 14 PDF fonts (Helvetica included) only carry the WinAnsi/CP1252 character set —
@@ -759,20 +725,7 @@ export default function QuotationPdfDocument({
               <CurrencyText value={revision?.amount} style={styles.billingGrandValue} bold />
             </View>
           </View>
-          <View style={styles.wordsCol}>
-            <Text style={styles.panelLabel}>Amount In Words</Text>
-            <Text style={styles.wordsText}>{numberToWordsINR(revision?.amount)}</Text>
-            {revision?.note ? (
-              <>
-                <Text style={[styles.panelLabel, { marginTop: 12 }]}>Note</Text>
-                <Text style={styles.wordsText}>{safeText(revision.note)}</Text>
-              </>
-            ) : null}
-          </View>
-        </View>
-
-        <View style={styles.twoColRow}>
-          <View style={styles.twoCol}>
+          <View style={styles.summarySideBox}>
             <Text style={styles.sectionSubheading}>Terms &amp; Conditions</Text>
             {TERMS.map((t, i) => (
               <View style={styles.numberedRow} key={i}>
@@ -781,15 +734,23 @@ export default function QuotationPdfDocument({
               </View>
             ))}
           </View>
-          <View style={styles.twoCol}>
-            <Text style={styles.sectionSubheading}>Notes</Text>
-            {NOTES.map((t, i) => (
-              <View style={styles.numberedRow} key={i}>
-                <Text style={styles.numberedIndex}>{i + 1}.</Text>
-                <Text style={styles.numberedText}>{t}</Text>
-              </View>
-            ))}
+        </View>
+
+        {revision?.note ? (
+          <View style={styles.notesSection}>
+            <Text style={styles.panelLabel}>Note</Text>
+            <Text style={[styles.summarySideText, { marginBottom: 10 }]}>{safeText(revision.note)}</Text>
           </View>
+        ) : null}
+
+        <View style={styles.notesSection}>
+          <Text style={styles.sectionSubheading}>Notes</Text>
+          {NOTES.map((t, i) => (
+            <View style={styles.numberedRow} key={i}>
+              <Text style={styles.numberedIndex}>{i + 1}.</Text>
+              <Text style={styles.numberedText}>{t}</Text>
+            </View>
+          ))}
         </View>
 
         <Footer brandName={brandName} />
