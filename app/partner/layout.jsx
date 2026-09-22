@@ -1,5 +1,6 @@
 import './partner-app.css';
 import RegisterSW from '@/components/RegisterSW';
+import HideNativeSplash from '@/components/partner/HideNativeSplash';
 
 export const metadata = {
   title: 'Heseos Partner — Lighting Ahead',
@@ -21,6 +22,7 @@ export default function PartnerLayout({ children }) {
   return (
     <>
       <RegisterSW />
+      <HideNativeSplash />
       {children}
     </>
   );

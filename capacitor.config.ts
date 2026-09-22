@@ -17,11 +17,18 @@ const config: CapacitorConfig = {
   backgroundColor: '#060f1c',
   plugins: {
     SplashScreen: {
-      // Was 800ms — too short to reliably cover a cold fetch of the app shell over an average
-      // (let alone poor) mobile connection, so the branded splash was hiding well before the
-      // page had anything to show, revealing blank white underneath until (or unless) the load
-      // actually finished. Longer, plus errorPath above for when it genuinely never does.
-      launchShowDuration: 3000,
+      // launchAutoHide stays true (a plain timer) ONLY as a safety net for when our own JS
+      // never gets to run at all — a genuinely failed load, or a WebView too old to run it.
+      // The real hide is components/partner/HideNativeSplash.jsx: it calls SplashScreen.hide()
+      // manually the moment the app has actually mounted, which — being tied to a real event
+      // instead of a guessed duration — hides it immediately on a fast connection and keeps
+      // covering the wait for as long as a slow-but-working one actually takes, with no fixed
+      // delay either way. So this number only matters for the failure case: long enough that it
+      // never fires before a normal load (successful or slow) would have hidden it manually
+      // anyway, short enough that a truly broken load doesn't sit on the splash forever before
+      // falling through to errorPath above.
+      launchShowDuration: 6000,
+      launchAutoHide: true,
       backgroundColor: '#060f1c',
       androidScaleType: 'CENTER_CROP',
       showSpinner: false,
