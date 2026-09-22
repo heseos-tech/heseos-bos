@@ -33,12 +33,26 @@ function QrCodeCard({ code }) {
       </div>
 
       {code.url && (
-        <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
-          <div className="hp-input-wrap" style={{ flex: 1 }}>
-            <input className="hp-input" readOnly value={code.url} onFocus={(e) => e.target.select()} style={{ fontSize: 12, paddingLeft: 14 }} />
+        <>
+          {/* The actual scannable code — show this to a customer's phone camera. Same
+              api.qrserver.com pattern components/admin/GrowthPage.jsx already uses to render
+              partner QR codes for printing, so both sides of the app produce the same image. */}
+          <div className="hp-qr-box">
+            <img
+              src={`https://api.qrserver.com/v1/create-qr-code/?size=380x380&data=${encodeURIComponent(code.url)}`}
+              alt="Scan to open"
+              width={190}
+              height={190}
+            />
           </div>
-          <button className="hp-btn hp-btn-ghost" onClick={copy} style={{ padding: '10px 14px' }}><IconCopy size={16} /></button>
-        </div>
+          <div className="hp-qr-caption">Show this to your customer to scan</div>
+          <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+            <div className="hp-input-wrap" style={{ flex: 1 }}>
+              <input className="hp-input" readOnly value={code.url} onFocus={(e) => e.target.select()} style={{ fontSize: 12, paddingLeft: 14 }} />
+            </div>
+            <button className="hp-btn hp-btn-ghost" onClick={copy} style={{ padding: '10px 14px' }}><IconCopy size={16} /></button>
+          </div>
+        </>
       )}
       {copied && <div style={{ fontSize: 12, color: 'var(--hp-text-soft)', marginTop: -4, marginBottom: 10 }}>Copied!</div>}
 

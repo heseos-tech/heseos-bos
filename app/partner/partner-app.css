@@ -334,6 +334,12 @@ html:has(.hp-root), body:has(.hp-root) {
 .hp-card { background: var(--hp-surface); border: 1px solid var(--hp-border); border-radius: var(--hp-r-lg); padding: 20px; margin: 0 20px 16px; }
 .hp-card-title { font-size: 16.5px; font-weight: 800; color: #fff; margin-bottom: 16px; }
 
+/* A QR code needs a light, high-contrast background to scan reliably — the app itself is dark
+   themed, so the code gets its own white plate instead of sitting straight on the dark card. */
+.hp-qr-box { display: flex; align-items: center; justify-content: center; background: #fff; border-radius: 14px; padding: 16px; margin-bottom: 14px; }
+.hp-qr-box img { width: 190px; height: 190px; display: block; }
+.hp-qr-caption { text-align: center; font-size: 12px; color: var(--hp-text-soft); margin: -6px 0 14px; }
+
 .hp-review-block { margin-bottom: 4px; }
 .hp-review-item { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
 .hp-review-item:last-child { margin-bottom: 0; }
