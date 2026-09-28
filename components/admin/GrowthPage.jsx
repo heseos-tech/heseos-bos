@@ -19,7 +19,6 @@ import { IconQrCode, IconLink, IconLeads, IconConversions, IconSearch, IconPlus,
 // status buckets, rather than a dropdown, so QR Codes and Referral Links read as separate
 // lists rather than one combined table with a filter buried in a <select>.
 const KIND_TABS = [
-  { key: 'all', label: 'All' },
   { key: 'qr', label: 'QR Codes' },
   { key: 'referral', label: 'Referral Links' },
 ];
@@ -55,7 +54,7 @@ export default function GrowthPage() {
   // analyse later which employee's QR codes are driving which partners/leads/conversions.
   const { data: allEmployees } = useApiResource('/api/admin/employees', { pollMs: 20000 });
   const employeeName = (id) => (id ? (allEmployees.find((e) => e.id === id)?.name || 'Unassigned') : '—');
-  const [kind, setKind] = useState('all');
+  const [kind, setKind] = useState('qr');
   const [q, setQ] = useState('');
   const [modal, setModal] = useState(null);
   const [notice, setNotice] = useState('');
@@ -67,7 +66,6 @@ export default function GrowthPage() {
   const counts = useMemo(() => {
     const visible = links.filter((l) => !isUnclaimedPartnerQr(l));
     return {
-      all: visible.length,
       qr: visible.filter((l) => isQr(l.kind)).length,
       referral: visible.filter((l) => !isQr(l.kind)).length,
     };
@@ -75,7 +73,7 @@ export default function GrowthPage() {
 
   const filtered = useMemo(() => links.filter((l) => {
     if (isUnclaimedPartnerQr(l)) return false;
-    if (kind !== 'all' && isQr(l.kind) !== (kind === 'qr')) return false;
+    if (isQr(l.kind) !== (kind === 'qr')) return false;
     if (q.trim()) {
       const s = q.trim().toLowerCase();
       if (!(`${l.id} ${ownerLabel(l)} ${l.customerPhone || ''}`.toLowerCase().includes(s))) return false;
