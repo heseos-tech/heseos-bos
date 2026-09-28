@@ -8,7 +8,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useApiResource } from '@/lib/useApiResource';
 import { buildZip } from '@/lib/zipBuilder';
 import { ATTR_KIND_LABEL } from '@/lib/attributionConstants';
-import { StatCard, Modal } from './ui';
+import { StatCard, Modal, Pagination } from './ui';
 import { IconQrCode, IconLink, IconLeads, IconConversions, IconSearch, IconPlus, IconDownload, IconTrash } from './icons';
 
 // Kind (the table's own column) only ever shows "QR Code" or "Referral Link" — which of the
@@ -22,6 +22,8 @@ const KIND_TABS = [
   { key: 'qr', label: 'QR Codes' },
   { key: 'referral', label: 'Referral Links' },
 ];
+
+const PAGE_SIZE = 10;
 
 function isQr(kind) { return kind === 'qr_partner' || kind === 'qr_location'; }
 
@@ -56,6 +58,7 @@ export default function GrowthPage() {
   const employeeName = (id) => (id ? (allEmployees.find((e) => e.id === id)?.name || 'Unassigned') : '—');
   const [kind, setKind] = useState('qr');
   const [q, setQ] = useState('');
+  const [page, setPage] = useState(1);
   const [modal, setModal] = useState(null);
   const [notice, setNotice] = useState('');
 
@@ -80,6 +83,9 @@ export default function GrowthPage() {
     }
     return true;
   }), [links, kind, q]);
+
+  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const pageRows = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   const totals = useMemo(() => links.reduce((a, l) => ({
     visits: a.visits + (l.funnel?.visits || 0),
@@ -114,12 +120,12 @@ export default function GrowthPage() {
 
       <div className="adm-card">
         <div className="adm-toolbar">
-          <div className="adm-search adm-search--inline"><IconSearch size={16} /><input placeholder="Search by code, partner, location or customer…" value={q} onChange={(e) => setQ(e.target.value)} /></div>
+          <div className="adm-search adm-search--inline"><IconSearch size={16} /><input placeholder="Search by code, partner, location or customer…" value={q} onChange={(e) => { setQ(e.target.value); setPage(1); }} /></div>
         </div>
 
         <div className="adm-tabs">
           {KIND_TABS.map((t) => (
-            <button key={t.key} type="button" className={`adm-tab${kind === t.key ? ' active' : ''}`} onClick={() => setKind(t.key)}>
+            <button key={t.key} type="button" className={`adm-tab${kind === t.key ? ' active' : ''}`} onClick={() => { setKind(t.key); setPage(1); }}>
               {t.label} <span className="adm-tab-count">{counts[t.key] || 0}</span>
             </button>
           ))}
@@ -129,7 +135,7 @@ export default function GrowthPage() {
           <table className="adm-table">
             <thead><tr><th>Code</th><th>Kind</th><th>Partner / Location</th><th>Employee</th><th>Scans / Clicks</th><th>Leads</th><th>Converted</th><th>Conv. Rate</th><th>Status</th><th></th></tr></thead>
             <tbody>
-              {loading ? <tr><td colSpan={10} className="adm-empty">Loading…</td></tr> : filtered.length === 0 ? <tr><td colSpan={10} className="adm-empty">No links match these filters.</td></tr> : filtered.map((l) => {
+              {loading ? <tr><td colSpan={10} className="adm-empty">Loading…</td></tr> : filtered.length === 0 ? <tr><td colSpan={10} className="adm-empty">No links match these filters.</td></tr> : pageRows.map((l) => {
                 const f = l.funnel || { visits: 0, leads: 0, converted: 0 };
                 const rate = f.visits ? Math.round((f.converted / f.visits) * 1000) / 10 : 0;
                 return (
@@ -158,6 +164,8 @@ export default function GrowthPage() {
             </tbody>
           </table>
         </div>
+
+        <Pagination page={page} pageCount={pageCount} total={filtered.length} pageSize={PAGE_SIZE} onPage={setPage} />
       </div>
 
       {modal?.type === 'create' && (
