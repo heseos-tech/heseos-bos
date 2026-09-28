@@ -15,10 +15,13 @@ import { IconQrCode, IconLink, IconLeads, IconConversions, IconSearch, IconPlus,
 // four underlying kinds it is (qr_partner, qr_location, referral_partner, referral_customer)
 // shows instead as a Partner/Location/Customer tag next to the owner's name in the next
 // column, since that's the distinction admins actually care about at a glance.
-const KIND_FILTERS = [
-  { v: 'all', l: 'All' },
-  { v: 'qr', l: 'QR Code' },
-  { v: 'referral', l: 'Referral Link' },
+// Shown as tabs (see the .adm-tabs row below the search bar), same pattern as LeadsPage's
+// status buckets, rather than a dropdown, so QR Codes and Referral Links read as separate
+// lists rather than one combined table with a filter buried in a <select>.
+const KIND_TABS = [
+  { key: 'all', label: 'All' },
+  { key: 'qr', label: 'QR Codes' },
+  { key: 'referral', label: 'Referral Links' },
 ];
 
 function isQr(kind) { return kind === 'qr_partner' || kind === 'qr_location'; }
@@ -58,6 +61,17 @@ export default function GrowthPage() {
   const [notice, setNotice] = useState('');
 
   function flash(msg) { setNotice(msg); setTimeout(() => setNotice(''), 2500); }
+
+  // Independent of the active tab and the search box — same as LeadsPage's bucket counts —
+  // so every tab always shows how many links live there, not just the selected one.
+  const counts = useMemo(() => {
+    const visible = links.filter((l) => !isUnclaimedPartnerQr(l));
+    return {
+      all: visible.length,
+      qr: visible.filter((l) => isQr(l.kind)).length,
+      referral: visible.filter((l) => !isQr(l.kind)).length,
+    };
+  }, [links]);
 
   const filtered = useMemo(() => links.filter((l) => {
     if (isUnclaimedPartnerQr(l)) return false;
@@ -103,9 +117,14 @@ export default function GrowthPage() {
       <div className="adm-card">
         <div className="adm-toolbar">
           <div className="adm-search adm-search--inline"><IconSearch size={16} /><input placeholder="Search by code, partner, location or customer…" value={q} onChange={(e) => setQ(e.target.value)} /></div>
-          <select value={kind} onChange={(e) => setKind(e.target.value)}>
-            {KIND_FILTERS.map((k) => <option key={k.v} value={k.v}>{k.l}</option>)}
-          </select>
+        </div>
+
+        <div className="adm-tabs">
+          {KIND_TABS.map((t) => (
+            <button key={t.key} type="button" className={`adm-tab${kind === t.key ? ' active' : ''}`} onClick={() => setKind(t.key)}>
+              {t.label} <span className="adm-tab-count">{counts[t.key] || 0}</span>
+            </button>
+          ))}
         </div>
 
         <div className="adm-table-scroll">
