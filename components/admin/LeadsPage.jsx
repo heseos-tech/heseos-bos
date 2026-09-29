@@ -48,7 +48,18 @@ export default function LeadsPage() {
   // Dashboard, Pre-sales, Sales Engineers) picks up the change too, not just this tab.
   const load = () => { refreshLeads(); refreshPartners(); refreshEmployees(); };
 
-  const partnerName = (id) => partners.find((p) => p.id === id)?.businessName || '—';
+  // shopName is the partner-facing "Partner Business Name" field (see
+  // components/partner/MyProfileScreen.jsx), businessName/name is what's left after that — same
+  // priority order used everywhere else a partner gets a single display name (GrowthPage's own
+  // Partner/Location column via app/api/admin/attribution's server-side partnerName map,
+  // PartnersPage, components/employee/ui.jsx). This was the one place still falling straight to
+  // businessName with no shopName-first or name-fallback, so a partner who'd only filled in
+  // their business name (not the separate "Partner Business Name" field) or vice versa showed
+  // as '—' here even though every other admin screen resolved a name for them.
+  const partnerName = (id) => {
+    const p = partners.find((x) => x.id === id);
+    return (p && (p.shopName || p.businessName || p.name)) || '—';
+  };
 
   // Source column: QR Code (Partner)/(Location) collapse to "WhatsApp QR", Referral Link
   // (Partner)/(Customer) collapse to "WhatsApp Referral" — the Partner/Location/Customer
