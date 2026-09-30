@@ -18,6 +18,7 @@ import { HESEOS_RETURNING_FLOW_ID, ensureHeseosReturningFlow } from '@/lib/heseo
 import { ensureHeseosOrganicFlow } from '@/lib/heseosOrganicFlow';
 import { ensureHeseosRatingFlow } from '@/lib/heseosRatingFlow';
 import { ensureHeseosNoAnswerFlow } from '@/lib/heseosNoAnswerFlow';
+import { ensureHeseosShoppingFlow } from '@/lib/heseosShoppingFlow';
 
 export const dynamic = 'force-dynamic';
 
@@ -103,6 +104,7 @@ export async function POST(req) {
         tenantFlows = await ensureHeseosOrganicFlow(tenant, tenantFlows);
         tenantFlows = await ensureHeseosRatingFlow(tenant, tenantFlows);
         tenantFlows = await ensureHeseosNoAnswerFlow(tenant, tenantFlows);
+        tenantFlows = await ensureHeseosShoppingFlow(tenant, tenantFlows);
       }
 
       for (const m of g.messages) {
