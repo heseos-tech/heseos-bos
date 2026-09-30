@@ -49,6 +49,7 @@ export async function PATCH(request, { params }) {
   if (body.description !== undefined) patch.description = body.description || '';
   if (body.unit !== undefined) patch.unit = body.unit || 'piece';
   if (body.active !== undefined) patch.active = !!body.active;
+  if (body.showOnWhatsapp !== undefined) patch.showOnWhatsapp = !!body.showOnWhatsapp;
   if (body.photos !== undefined) patch.photos = Array.isArray(body.photos) ? body.photos.slice(0, 8) : [];
   if (body.price !== undefined) {
     const price = body.price === null || body.price === '' ? null : Number(body.price);

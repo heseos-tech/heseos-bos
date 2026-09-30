@@ -108,6 +108,7 @@ export default function ProductsPage() {
   function load() { invalidate(PRODUCTS_URL); refresh(); }
 
   const activeCount = products.filter((p) => p.active !== false).length;
+  const onWhatsappCount = products.filter((p) => p.showOnWhatsapp === true).length;
   const categoriesUsed = new Set(products.map((p) => p.category).filter(Boolean)).size;
 
   const filtered = useMemo(() => products.filter((p) => {
@@ -126,6 +127,11 @@ export default function ProductsPage() {
 
   async function toggleActive(p) {
     await fetch(`${PRODUCTS_URL}/${p.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ active: !(p.active !== false) }) });
+    load();
+  }
+
+  async function toggleWhatsapp(p) {
+    await fetch(`${PRODUCTS_URL}/${p.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ showOnWhatsapp: !(p.showOnWhatsapp === true) }) });
     load();
   }
 
@@ -188,6 +194,7 @@ export default function ProductsPage() {
         <StatCard label="Total Products" value={products.length} Icon={IconProducts} tone="orange" />
         <StatCard label="Active" value={activeCount} Icon={IconProducts} tone="green" />
         <StatCard label="Categories in Use" value={categoriesUsed} Icon={IconProducts} tone="purple" />
+        <StatCard label="On WhatsApp Shopping" value={onWhatsappCount} Icon={IconProducts} tone="teal" />
       </div>
 
       <div className="adm-card">
@@ -214,6 +221,7 @@ export default function ProductsPage() {
                 <div className="prod-card-photo">
                   {cover ? <img src={cover} alt={p.name} /> : <div className="prod-card-photo-placeholder"><IconProducts size={28} /></div>}
                   {p.active === false && <span className="prod-card-badge">Inactive</span>}
+                  {p.showOnWhatsapp === true && <span className="prod-card-badge prod-card-badge--wa">WhatsApp</span>}
                 </div>
                 <div className="prod-card-body">
                   <div className="prod-card-name">{p.name}</div>
@@ -237,6 +245,7 @@ export default function ProductsPage() {
           onEdit={() => setModal({ type: 'edit', product: modal.product })}
           onDelete={() => remove(modal.product)}
           onToggleActive={() => toggleActive(modal.product).then(() => setModal(null))}
+          onToggleWhatsapp={() => toggleWhatsapp(modal.product)}
         />
       )}
       {modal?.type === 'import' && (
@@ -252,7 +261,7 @@ export default function ProductsPage() {
   );
 }
 
-function ViewProductModal({ product, categoryLabel, onClose, onEdit, onDelete, onToggleActive }) {
+function ViewProductModal({ product, categoryLabel, onClose, onEdit, onDelete, onToggleActive, onToggleWhatsapp }) {
   const photos = product.photos || [];
   return (
     <Modal title={product.name} sub={`${product.sku}${product.category ? ' · ' + (categoryLabel[product.category] || product.category) : ''}`} onClose={onClose}>
@@ -267,6 +276,16 @@ function ViewProductModal({ product, categoryLabel, onClose, onEdit, onDelete, o
         <div><span className="adm-detail-label">Status</span>{product.active !== false ? 'Active' : 'Inactive'}</div>
       </div>
       {product.description && <p className="prod-view-desc">{product.description}</p>}
+      <div className="adm-meta-webhook-row">
+        <div>
+          <div className="adm-lead-name">Show on WhatsApp Shopping</div>
+          <div className="adm-lead-sub">{product.price != null ? 'Customers can browse and order this on WhatsApp once it\'s on.' : 'Needs a price set before it can actually be ordered — it\'ll stay hidden from the WhatsApp catalogue until then.'}</div>
+        </div>
+        <label className={`adm-switch${product.showOnWhatsapp === true ? ' on' : ''}`}>
+          <input type="checkbox" checked={product.showOnWhatsapp === true} onChange={onToggleWhatsapp} />
+          <span className="adm-switch-track"><span className="adm-switch-thumb" /></span>
+        </label>
+      </div>
       <div className="lf-actions">
         <button className="lf-btn-back" onClick={onDelete}><IconTrash size={14} /> Delete</button>
         <button className="adm-chip-btn" onClick={onToggleActive}>{product.active !== false ? 'Deactivate' : 'Activate'}</button>
@@ -292,6 +311,7 @@ function ProductModal({ product = null, categories, categoriesLoading, onClose, 
   const [unit, setUnit] = useState(product?.unit || 'piece');
   const [description, setDescription] = useState(product?.description || '');
   const [photos, setPhotos] = useState(product?.photos || []);
+  const [showOnWhatsapp, setShowOnWhatsapp] = useState(product?.showOnWhatsapp === true);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
@@ -322,7 +342,7 @@ function ProductModal({ product = null, categories, categoriesLoading, onClose, 
   async function submit() {
     setError(''); setSaving(true);
     try {
-      const body = { sku, name, category, price: price === '' ? null : Number(price), unit, description, photos };
+      const body = { sku, name, category, price: price === '' ? null : Number(price), unit, description, photos, showOnWhatsapp };
       const url = editing ? `${'/api/products'}/${product.id}` : '/api/products';
       const res = await fetch(url, { method: editing ? 'PATCH' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
       const data = await res.json();
@@ -352,6 +372,17 @@ function ProductModal({ product = null, categories, categoriesLoading, onClose, 
         <div className="lf-field"><label className="lf-label">Unit</label><input className="lf-input" value={unit} onChange={(e) => setUnit(e.target.value)} placeholder="piece, set, point…" /></div>
       </div>
       <div className="lf-field"><label className="lf-label">Description</label><textarea className="lf-input" rows={3} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="A line or two a customer would read on a quotation" /></div>
+
+      <div className="adm-meta-webhook-row">
+        <div>
+          <div className="adm-lead-name">Show on WhatsApp Shopping</div>
+          <div className="adm-lead-sub">Needs a price set to actually be orderable — see the toggle's own note if you leave price blank.</div>
+        </div>
+        <label className={`adm-switch${showOnWhatsapp ? ' on' : ''}`}>
+          <input type="checkbox" checked={showOnWhatsapp} onChange={(e) => setShowOnWhatsapp(e.target.checked)} />
+          <span className="adm-switch-track"><span className="adm-switch-thumb" /></span>
+        </label>
+      </div>
 
       <div className="lf-field">
         <label className="lf-label">Photos ({photos.length}/{MAX_PHOTOS}) — first photo is the cover image</label>

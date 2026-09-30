@@ -343,6 +343,7 @@ button.adm-nav-link { background: none; border: none; cursor: pointer; text-alig
 .prod-card-photo img { width: 100%; height: 100%; object-fit: cover; }
 .prod-card-photo-placeholder { color: var(--adm-text-faint); }
 .prod-card-badge { position: absolute; top: 8px; right: 8px; font-size: 10.5px; font-weight: 700; background: rgba(11,27,46,0.75); color: #fff; padding: 3px 8px; border-radius: 999px; }
+.prod-card-badge--wa { top: auto; right: auto; left: 8px; bottom: 8px; background: #16a34a; }
 .prod-card-body { padding: 12px 14px 14px; }
 .prod-card-name { font-size: 13.5px; font-weight: 700; color: var(--adm-ink); line-height: 1.3; margin-bottom: 3px; }
 .prod-card-sub { font-size: 11.5px; color: var(--adm-text-faint); margin-bottom: 8px; }

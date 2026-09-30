@@ -99,6 +99,12 @@ export async function POST(request) {
     // photo in the array is always the cover/primary image.
     photos: Array.isArray(body.photos) ? body.photos.slice(0, 8) : [],
     active: body.active !== false,
+    // Opt-in flag for the WhatsApp shopping catalogue (lib/heseosShoppingFlow.js) — the full
+    // catalogue here is also used for quotations, so a product only shows up in the customer-
+    // facing WhatsApp list once admin explicitly turns this on for it (see ProductsPage.jsx's
+    // "Show on WhatsApp Shopping" toggle). Defaults off, same reasoning as a fresh product
+    // defaulting `active` on but everything else opt-in.
+    showOnWhatsapp: body.showOnWhatsapp === true,
     createdAt: now,
     updatedAt: now,
     createdBy: admin.id,
