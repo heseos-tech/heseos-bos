@@ -11,7 +11,7 @@ import {
   IconDashboard, IconLeads, IconPartners, IconEmployees, IconSalesEngineer, IconPresales, IconDemo,
   IconProducts, IconQuotation, IconConversions, IconReports, IconPayouts, IconSettings,
   IconSearch, IconBell, IconChevronDown, IconChevronLeft, IconChevronRight, IconArrowUp,
-  IconArrowDown, IconX, IconLogout, IconQrCode, IconStar,
+  IconArrowDown, IconX, IconLogout, IconQrCode, IconStar, IconOrders,
 } from './icons';
 
 // Every item points at the SAME route (/admin) with a different ?tab= — see
@@ -25,6 +25,7 @@ export const NAV_ITEMS = [
   { tab: 'presales', href: '/admin?tab=presales', label: 'Pre-sales', Icon: IconPresales },
   { tab: 'demo-schedule', href: '/admin?tab=demo-schedule', label: 'Demo Schedule', Icon: IconDemo },
   { tab: 'products', href: '/admin?tab=products', label: 'Products', Icon: IconProducts },
+  { tab: 'orders', href: '/admin?tab=orders', label: 'Orders', Icon: IconOrders },
   { tab: 'quotations', href: '/admin?tab=quotations', label: 'Quotations', Icon: IconQuotation },
   { tab: 'conversions', href: '/admin?tab=conversions', label: 'Conversions', Icon: IconConversions },
   { tab: 'reports', href: '/admin?tab=reports', label: 'Reports', Icon: IconReports },

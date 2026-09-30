@@ -11,6 +11,7 @@ export const IconSalesEngineer = (p) => S(<><rect x="3" y="7.5" width="18" heigh
 export const IconPresales = (p) => S(<><circle cx="12" cy="8" r="3.4" /><path d="M4.5 20a7.5 7.5 0 0115 0" /></>, p?.size);
 export const IconDemo = (p) => S(<><rect x="3.5" y="4.5" width="17" height="16" rx="2.5" /><path d="M3.5 9.5h17M8 2.5v4M16 2.5v4M8 14h2M8 17h2M14 14h2M14 17h2" /></>, p?.size);
 export const IconQuotation = (p) => S(<><path d="M6.5 3h8l4 4v14h-12z" /><path d="M14.5 3v4h4" /><path d="M9 12h6M9 15.5h6M9 8.5h2" /></>, p?.size);
+export const IconOrders = (p) => S(<><path d="M3.5 7.5L12 3l8.5 4.5v9L12 21l-8.5-4.5z" /><path d="M3.5 7.5L12 12l8.5-4.5M12 12v9" /></>, p?.size);
 export const IconConversions = (p) => S(<><circle cx="12" cy="12" r="9" /><path d="M8 12.5l2.6 2.6L16.5 9" /></>, p?.size);
 export const IconReports = (p) => S(<><path d="M4 20V10M11 20V4M18 20v-7" /><path d="M2.5 20h19" strokeWidth={2} /></>, p?.size);
 export const IconPayouts = (p) => S(<><rect x="2.5" y="6" width="19" height="13" rx="2.2" /><path d="M2.5 10h19" /><circle cx="17" cy="14" r="1.3" fill="currentColor" stroke="none" /></>, p?.size);
