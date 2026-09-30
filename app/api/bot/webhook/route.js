@@ -18,7 +18,7 @@ import { HESEOS_RETURNING_FLOW_ID, ensureHeseosReturningFlow } from '@/lib/heseo
 import { ensureHeseosOrganicFlow } from '@/lib/heseosOrganicFlow';
 import { ensureHeseosRatingFlow } from '@/lib/heseosRatingFlow';
 import { ensureHeseosNoAnswerFlow } from '@/lib/heseosNoAnswerFlow';
-import { ensureHeseosShoppingFlow } from '@/lib/heseosShoppingFlow';
+import { HESEOS_SHOPPING_FLOW_ID, ensureHeseosShoppingFlow } from '@/lib/heseosShoppingFlow';
 
 export const dynamic = 'force-dynamic';
 
@@ -305,6 +305,31 @@ export async function POST(req) {
                 patch.leadId = firstLead.id;
                 patch.leadSummary = heseosLeadSummary(firstLead);
                 patch.leadOriginNote = await heseosLeadOriginNote(firstLead);
+              }
+            }
+          }
+
+          // Explicit shopping intent — "buy"/"shopping"/"catalogue"/"catalog" — always wins,
+          // even mid-conversation on another flow (the lead-capture questionnaire, the
+          // returning-flow welcome-back message, whatever this chat already was on) and even
+          // over the returning-flow re-engagement just above: a customer typing this is telling
+          // us right now what they want, which outranks whatever flow happened to already be
+          // active. Reads the shopping flow's OWN triggers.keywords (not a separate hardcoded
+          // list) so this stays in sync with whatever an admin edits them to in Flow Builder —
+          // same substring match pickFlow uses for a brand-new chat. Heseos-brand only, same
+          // scope as the 'catalog' node type itself (see lib/botFlowEngine.js's own header
+          // comment). Skipped once the chat is already ON the shopping flow, so a message typed
+          // mid-browse/mid-checkout ('let's buy 2 more') doesn't reset flowNodeId and restart
+          // the catalogue — same "don't re-fire once already in that flow" rule the
+          // returning-flow re-engagement above follows.
+          if (tenant.botKind === 'heseos') {
+            const shoppingFlow = tenantFlows.find((f) => f.id === HESEOS_SHOPPING_FLOW_ID && f.enabled && (f.nodes || []).some((n) => n.type === 'start'));
+            if (shoppingFlow && chat.activeFlowId !== HESEOS_SHOPPING_FLOW_ID) {
+              const lower = String(m.text || '').trim().toLowerCase();
+              const matched = lower && (shoppingFlow.triggers?.keywords || []).some((k) => k && lower.includes(String(k).toLowerCase()));
+              if (matched) {
+                patch.activeFlowId = shoppingFlow.id;
+                patch.flowNodeId = null;
               }
             }
           }
