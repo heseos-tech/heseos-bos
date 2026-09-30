@@ -7,7 +7,7 @@
 // everywhere else on this admin, not a bespoke layout.
 import { useMemo, useState } from 'react';
 import { StatCard, Modal, Pagination } from './ui';
-import { IconSearch, IconOrders, IconLeads, IconConversions } from './icons';
+import { IconSearch, IconOrders, IconLeads, IconConversions, IconDownload } from './icons';
 import { useApiResource, invalidate } from '@/lib/useApiResource';
 
 const ORDERS_URL = '/api/admin/orders';
@@ -199,6 +199,8 @@ function OrderDetailModal({ order, onClose, onAdvance, onCancel, onMarkPaid }) {
       </div>
 
       <div className="lf-actions" style={{ marginTop: 18 }}>
+        <a className="adm-btn-outline" href={`/api/admin/orders/${order.id}/pdf?type=slip`}><IconDownload size={15} /> Generate Slip</a>
+        <a className="adm-btn-outline" href={`/api/admin/orders/${order.id}/pdf?type=invoice`}><IconDownload size={15} /> Generate Invoice</a>
         {order.paymentStatus !== 'paid' && order.status !== 'cancelled' && (
           <button className="adm-chip-btn" onClick={onMarkPaid}>Mark Paid</button>
         )}
