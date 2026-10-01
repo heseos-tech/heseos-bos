@@ -12,8 +12,12 @@
 name: Lead reminders (no-answer nudges + demo reminders)
 
 on:
-  schedule:
-    - cron: '0 * * * *' # every hour, on the hour (UTC) — GitHub may run this a few minutes late
+  # Scheduled hourly run is PAUSED — every run was failing (both the no-answer nudges and the
+  # demo reminders), so this was just generating an hourly failure-email instead of doing
+  # anything useful. Re-enable by uncommenting the `schedule:` block below once
+  # app/api/cron/lead-reminders/route.js's actual failure is diagnosed and fixed.
+  # schedule:
+  #   - cron: '0 * * * *' # every hour, on the hour (UTC) — GitHub may run this a few minutes late
   workflow_dispatch: {} # lets anyone trigger a run by hand from the Actions tab, for testing
 
 jobs:
