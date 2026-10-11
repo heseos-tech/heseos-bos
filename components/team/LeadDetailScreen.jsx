@@ -22,7 +22,7 @@ function budgetLabel(propertyType, budget) {
 }
 function norm(s) { return String(s || "").trim().toLowerCase(); }
 
-export default function TeamLeadDetailScreen({ employee, lead: initialLead }) {
+export default function TeamLeadDetailScreen({ employee, lead: initialLead, backHref: backHrefOverride }) {
   const [lead, setLead] = useState(initialLead);
   const [sheet, setSheet] = useState(null); // 'contact' | 'schedule' | 'quotation' | 'outcome'
   const [claiming, setClaiming] = useState(false);
@@ -32,7 +32,8 @@ export default function TeamLeadDetailScreen({ employee, lead: initialLead }) {
   const isSE = employee.role === "sales_engineer";
   // Operations/Marketing/Management have no Leads/Demo tab (see navItemsFor in
   // components/team/ui.jsx) — send them back to Home, not a tab they can't reach.
-  const backHref = GENERIC_ROLES.includes(employee.role) ? "/team/home" : "/team/home?tab=leads";
+  // backHrefOverride: set when opened from the partner dashboard (components/team/LeadDetailClient.jsx).
+  const backHref = backHrefOverride || (GENERIC_ROLES.includes(employee.role) ? "/team/home" : "/team/home?tab=leads");
 
   const refresh = useCallback(async () => {
     try {

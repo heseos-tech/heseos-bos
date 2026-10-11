@@ -5,7 +5,10 @@ import LeadDetailClient from '@/components/team/LeadDetailClient';
 // round trips before any HTML shipped). LeadDetailClient fetches from the existing
 // /api/leads/[id] route instead and re-applies the same visibility rule client-side — see
 // components/team/LeadDetailClient.jsx.
-export default async function TeamLeadDetailPage({ params }) {
+export default async function TeamLeadDetailPage({ params, searchParams }) {
   const { id } = await params;
-  return <LeadDetailClient id={id} />;
+  // ?fromPartner=<partnerId> is set by the Team-app partner dashboard (components/team/
+  // PartnerDashboardClient.jsx) so Back returns there and the onboarding employee may view the lead.
+  const { fromPartner } = (await searchParams) || {};
+  return <LeadDetailClient id={id} fromPartner={typeof fromPartner === 'string' ? fromPartner : null} />;
 }

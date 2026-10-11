@@ -5,9 +5,11 @@
 // reasoning as Catalogue (the nav is already full at five slots — see
 // app/team/(app)/catalogue/page.jsx).
 //
-// Read-only: reassigning who onboarded a partner is an Admin -> Partners action
+// Tapping a partner opens that partner's dashboard (/team/partners/[id] — details, lead/conversion
+// KPIs and their leads). Otherwise read-only: reassigning who onboarded a partner is an Admin -> Partners action
 // (components/admin/PartnersPage.jsx), not something an employee does to their own list here.
 import { useMemo, useState } from 'react';
+import Link from 'next/link';
 import { ScreenHeader, Avatar } from '@/components/partner/ui';
 import { IconMapPin, IconPhone } from '@/components/partner/icons';
 import { IconSearch, IconPartners } from '@/components/admin/icons';
@@ -69,7 +71,7 @@ export default function PartnersScreen({ backHref = '/team/home' }) {
           {sorted.map((p) => {
             const status = p.active !== false ? { ...ACTIVE_COLOR, label: 'Active' } : { ...INACTIVE_COLOR, label: 'Inactive' };
             return (
-              <div key={p.id} className="hp-lead-card">
+              <Link key={p.id} href={`/team/partners/${p.id}`} className="hp-lead-card">
                 <Avatar name={p.businessName || p.name} />
                 <div className="hp-lead-info">
                   <div className="hp-lead-name">{p.businessName || p.name}</div>
@@ -83,7 +85,7 @@ export default function PartnersScreen({ backHref = '/team/home' }) {
                   <span className="hp-badge" style={{ color: status.c, background: status.bg }}><span className="hp-badge-dot" />{status.label}</span>
                   <span className="hp-lead-time">{p.leadsCount} lead{p.leadsCount === 1 ? '' : 's'} · {p.converted} won</span>
                 </div>
-              </div>
+              </Link>
             );
           })}
         </div>
