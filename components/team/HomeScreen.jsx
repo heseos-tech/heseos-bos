@@ -11,6 +11,8 @@ import { IconBell, IconLeads, IconGift, IconCheck, IconMapPin, IconWallet } from
 import { IconProducts, IconPartners, IconChevronRight } from "@/components/admin/icons";
 import { fmtDateTime } from "@/lib/date";
 import { stageOf, displayStatus } from "@/lib/leadStage";
+import { activeReferrals, referralKind } from "@/lib/teamReferrals";
+import ReferralCard from "@/components/team/ReferralCard";
 import { PROPERTY_TYPE } from "@/lib/formOptions";
 import { useApiResource } from "@/lib/useApiResource";
 import { payoutFor } from "@/lib/payout";
@@ -87,9 +89,16 @@ export default function TeamHomeScreen({ employee }) {
   // Operations/Marketing/Management ever see, since they have no assigned pipeline.
   const myReferrals = useMemo(() => leads.filter((l) => l.addedByEmployeeId === employee.id), [leads, employee.id]);
   const recent = useMemo(
-    () => (isGeneric ? myReferrals : mine).slice().sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0)).slice(0, 4),
-    [mine, myReferrals, isGeneric]
+    () => mine.slice().sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0)).slice(0, 4),
+    [mine]
   );
+  // "Recent Referrals" — every OPEN lead this employee added themselves OR that came in through a
+  // partner they onboarded, newest first (lib/teamReferrals.js). Home shows the latest few;
+  // View All -> /team/referrals has the full paginated list.
+  const partnerIds = useMemo(() => new Set(myPartners.map((p) => p.id)), [myPartners]);
+  const partnerName = useMemo(() => Object.fromEntries(myPartners.map((p) => [p.id, p.businessName || p.name])), [myPartners]);
+  const openReferrals = useMemo(() => activeReferrals(leads, employee.id, partnerIds), [leads, employee.id, partnerIds]);
+  const recentReferrals = useMemo(() => openReferrals.slice(0, 4), [openReferrals]);
   const payout = useMemo(() => payoutFor(myReferrals, payoutConfig, 'employee'), [myReferrals, payoutConfig]);
   const firstName = (employee.name || "there").split(" ")[0];
   const coverage = isPresales
@@ -187,41 +196,66 @@ export default function TeamHomeScreen({ employee }) {
         </div>
       )}
 
-      <div className="hp-section-head" style={{ marginTop: 0 }}>
-        <div className="hp-section-title">{isGeneric ? "Recent Referrals" : isPresales ? "Recent Leads" : "Recent Demos"}</div>
-        {isGeneric ? (
-          <Link className="hp-view-all" href="/team/home?tab=rewards">View All</Link>
-        ) : (
+      {!isGeneric && (
+        <>
+        <div className="hp-section-head" style={{ marginTop: 0 }}>
+          <div className="hp-section-title">{isPresales ? "Recent Leads" : "Recent Demos"}</div>
           <Link className="hp-view-all" href="/team/home?tab=leads">View All</Link>
+        </div>
+
+        {loading ? (
+          <div className="hp-empty"><div className="hp-empty-sub">Loading…</div></div>
+        ) : recent.length === 0 ? (
+          <div className="hp-empty">
+            <div className="hp-empty-icon"><IconLeads size={24} /></div>
+            <div className="hp-empty-title">{isPresales ? "No leads yet" : "No demos yet"}</div>
+            <div className="hp-empty-sub">{isPresales ? "New leads assigned to you will show up here." : "Claim an available demo to get started."}</div>
+          </div>
+        ) : (
+          <div className="hp-lead-list">
+            {recent.map((l) => {
+              const status = displayStatus(l);
+              return (
+                <Link key={l.id} href={`/team/leads/${l.id}`} className="hp-lead-card">
+                  <Avatar name={l.name} />
+                  <div className="hp-lead-info">
+                    <div className="hp-lead-name">{l.name}</div>
+                    <div className="hp-lead-meta">{PT_LABEL[l.propertyType] || "Enquiry"} · {l.city}</div>
+                  </div>
+                  <div className="hp-lead-right">
+                    <span className="hp-badge" style={{ color: status.c, background: status.bg }}><span className="hp-badge-dot" />{status.label}</span>
+                    <span className="hp-lead-time">{fmtDateTime(l.createdAt)}</span>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
         )}
+        </>
+      )}
+
+      <div className="hp-section-head" style={isGeneric ? { marginTop: 0 } : undefined}>
+        <div className="hp-section-title">Recent Referrals</div>
+        <Link className="hp-view-all" href="/team/referrals">View All</Link>
       </div>
 
       {loading ? (
         <div className="hp-empty"><div className="hp-empty-sub">Loading…</div></div>
-      ) : recent.length === 0 ? (
+      ) : recentReferrals.length === 0 ? (
         <div className="hp-empty">
           <div className="hp-empty-icon"><IconLeads size={24} /></div>
-          <div className="hp-empty-title">{isGeneric ? "No referrals yet" : isPresales ? "No leads yet" : "No demos yet"}</div>
-          <div className="hp-empty-sub">{isGeneric ? "Leads you add will show up here." : isPresales ? "New leads assigned to you will show up here." : "Claim an available demo to get started."}</div>
+          <div className="hp-empty-title">No open referrals</div>
+          <div className="hp-empty-sub">Open leads you add, or that your partners send, will show up here.</div>
         </div>
       ) : (
         <div className="hp-lead-list">
-          {recent.map((l) => {
-            const status = displayStatus(l);
-            return (
-              <Link key={l.id} href={`/team/leads/${l.id}`} className="hp-lead-card">
-                <Avatar name={l.name} />
-                <div className="hp-lead-info">
-                  <div className="hp-lead-name">{l.name}</div>
-                  <div className="hp-lead-meta">{PT_LABEL[l.propertyType] || "Enquiry"} · {l.city}</div>
-                </div>
-                <div className="hp-lead-right">
-                  <span className="hp-badge" style={{ color: status.c, background: status.bg }}><span className="hp-badge-dot" />{status.label}</span>
-                  <span className="hp-lead-time">{fmtDateTime(l.createdAt)}</span>
-                </div>
-              </Link>
-            );
-          })}
+          {recentReferrals.map((l) => (
+            <ReferralCard
+              key={l.id}
+              lead={l}
+              origin={referralKind(l, partnerIds) === "partner" ? `via ${partnerName[l.partnerId] || "partner"}` : "Added by you"}
+            />
+          ))}
         </div>
       )}
 
