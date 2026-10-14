@@ -13,9 +13,10 @@ import { parseRefFromText, referrerNoteFor, attributionCityFor } from '@/lib/att
 import { createHeseosLead, heseosLeadSummary, heseosLeadOriginNote } from '@/lib/heseosLeadSync';
 import { findFirstLeadByPhone } from '@/lib/leadOrigin';
 import { stageOf } from '@/lib/leadStage';
-import { HESEOS_DEFAULT_FLOW_ID, ensureHeseosDefaultFlow } from '@/lib/heseosDefaultFlow';
+import { ensureHeseosDefaultFlow } from '@/lib/heseosDefaultFlow';
+import { heseosCustomerContext } from '@/lib/heseosCustomerContext';
 import { HESEOS_RETURNING_FLOW_ID, ensureHeseosReturningFlow } from '@/lib/heseosReturningFlow';
-import { ensureHeseosOrganicFlow } from '@/lib/heseosOrganicFlow';
+import { HESEOS_ORGANIC_FLOW_ID, ensureHeseosOrganicFlow } from '@/lib/heseosOrganicFlow';
 import { ensureHeseosRatingFlow } from '@/lib/heseosRatingFlow';
 import { HESEOS_SHOPPING_FLOW_ID, ensureHeseosShoppingFlow } from '@/lib/heseosShoppingFlow';
 
@@ -129,6 +130,14 @@ export async function POST(req) {
 
         let chat = await dbGetById('bot_chats', m.from);
         let flow = null;
+        // Who is this customer to HESEOS — an open lead, an order, both or neither (see
+        // lib/heseosCustomerContext.js)? Decides between the first-message welcome menu
+        // (lib/heseosOrganicFlow.js) and the welcome-back flow (lib/heseosReturningFlow.js), and
+        // supplies that flow's greeting/menu fields. Heseos-brand only; best-effort — on any lookup
+        // failure the routing below simply behaves as it did before orders were considered.
+        const customerCtx = tenant.botKind === 'heseos'
+          ? await heseosCustomerContext(m.from).catch((err) => { console.error('heseosCustomerContext error:', err); return null; })
+          : null;
         // A proactive notification (see lib/heseosNotify.js's ensureBotChatForOutbound) can
         // create this row before the person has ever actually messaged in — it exists only so
         // the conversation is visible in the Bot Console Inbox right away, and deliberately
@@ -176,6 +185,12 @@ export async function POST(req) {
               // Explicit shopping intent (door lock / buy / catalogue — the keyword tier already
               // picked the shopping flow) outranks the welcome-back flow, same as it does for an
               // existing chat further below.
+              if (returningFlow && picked?.id !== HESEOS_SHOPPING_FLOW_ID) picked = returningFlow;
+            } else if (customerCtx?.hasOrder && !link) {
+              // No open enquiry but they HAVE ordered with us (and aren't scanning a QR/referral
+              // link right now — that deliberate scan still gets its own card) -> the welcome-back
+              // flow with their order, same shopping-keyword exception as above.
+              const returningFlow = tenantFlows.find((f) => f.id === HESEOS_RETURNING_FLOW_ID);
               if (returningFlow && picked?.id !== HESEOS_SHOPPING_FLOW_ID) picked = returningFlow;
             }
           }
@@ -227,6 +242,12 @@ export async function POST(req) {
               patch.leadId = lead.id;
               chat = { ...chat, leadId: lead.id };
             }
+            // Greeting + menu fields for the welcome-back flow (lead recap and/or order — see
+            // lib/heseosCustomerContext.js), so its first reply is already personalised.
+            if (picked?.id === HESEOS_RETURNING_FLOW_ID && customerCtx) {
+              Object.assign(patch, customerCtx.fields);
+              chat = { ...chat, ...customerCtx.fields };
+            }
             await dbPatch('bot_chats', m.from, patch);
           }
           flow = picked;
@@ -255,7 +276,7 @@ export async function POST(req) {
           // next message is a fresh enquiry, not a resumed one.
           if (tenant.botKind === 'heseos' && chat.botOn === false && chat.autoHandoff === true) {
             const lead = chat.leadId ? await dbGetById('leads', chat.leadId).catch(() => null) : null;
-            const inProcess = lead && stageOf(lead) !== 'Converted' && stageOf(lead) !== 'Rejected';
+            const inProcess = (lead && stageOf(lead) !== 'Converted' && stageOf(lead) !== 'Rejected') || !!customerCtx?.hasOrder;
             if (inProcess) {
               const returningFlow = tenantFlows.find((f) => f.id === HESEOS_RETURNING_FLOW_ID);
               if (returningFlow) {
@@ -272,12 +293,12 @@ export async function POST(req) {
               // number would get with no active existing lead. A fresh lead is created when
               // THIS flow reaches its own handoff (lib/heseosLeadSync.js's finalizeHeseosLead),
               // never touching the old, already-closed one.
-              const defaultFlow = tenantFlows.find((f) => f.id === HESEOS_DEFAULT_FLOW_ID);
-              if (defaultFlow) {
+              const welcomeFlow = tenantFlows.find((f) => f.id === HESEOS_ORGANIC_FLOW_ID);
+              if (welcomeFlow) {
                 patch.botOn = true;
                 patch.autoHandoff = false;
                 patch.flowNodeId = null;
-                patch.activeFlowId = defaultFlow.id;
+                patch.activeFlowId = welcomeFlow.id;
                 patch.leadId = null;
               }
             }
@@ -312,6 +333,15 @@ export async function POST(req) {
                 patch.leadId = firstLead.id;
                 patch.leadSummary = heseosLeadSummary(firstLead);
                 patch.leadOriginNote = await heseosLeadOriginNote(firstLead);
+              }
+            } else if (customerCtx?.hasOrder && !parseRefFromText(m.text)) {
+              // Ordered with us, no open enquiry: same welcome-back treatment (their order +
+              // order options) — unless this very message is a QR/referral deep link, which is a
+              // deliberate new enquiry and is handled by the re-attribution block just below.
+              const returningFlow = tenantFlows.find((f) => f.id === HESEOS_RETURNING_FLOW_ID);
+              if (returningFlow) {
+                patch.activeFlowId = returningFlow.id;
+                patch.flowNodeId = null;
               }
             }
           }
@@ -370,12 +400,25 @@ export async function POST(req) {
                 // next that ISN'T another door-lock/shopping keyword goes back to the normal
                 // lead-capture flow instead of getting the same link again. (A matching keyword
                 // simply replays the link — runFlowTurn restarts a flow whose flowNodeId is null.)
-                const defaultFlow = tenantFlows.find((f) => f.id === HESEOS_DEFAULT_FLOW_ID);
-                if (defaultFlow) {
-                  patch.activeFlowId = defaultFlow.id;
+                const welcomeFlow = tenantFlows.find((f) => f.id === HESEOS_ORGANIC_FLOW_ID);
+                if (welcomeFlow) {
+                  patch.activeFlowId = welcomeFlow.id;
                   patch.flowNodeId = null;
                 }
               }
+            }
+          }
+
+          // A chat on the welcome-back flow always carries CURRENT lead/order fields (an order
+          // dispatched an hour ago must read "Dispatched", not what it said when the chat started).
+          // And once there's nothing on file any more (the enquiry was closed and no order) that flow
+          // has nothing to say — send them to the first-message welcome instead.
+          if (customerCtx && (patch.activeFlowId || chat.activeFlowId) === HESEOS_RETURNING_FLOW_ID) {
+            if (!customerCtx.hasLead && !customerCtx.hasOrder) {
+              const welcomeFlow = tenantFlows.find((f) => f.id === HESEOS_ORGANIC_FLOW_ID);
+              if (welcomeFlow) { patch.activeFlowId = welcomeFlow.id; patch.flowNodeId = null; }
+            } else {
+              Object.assign(patch, customerCtx.fields);
             }
           }
 
