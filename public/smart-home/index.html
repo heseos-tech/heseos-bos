@@ -1,0 +1,356 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#08090c">
+<title>HESEOS Smart Home Automation | Get a Callback</title>
+<meta name="description" content="Make your home smart with HESEOS — touch panel switches, smart door locks, video door phones, curtain motors and security sensors, all in one app. Share your requirement and our team will call you.">
+<meta property="og:title" content="HESEOS — Home Automation Asaan Hai">
+<meta property="og:description" content="Smart switches, locks, curtains and security for your home or office. Tell us what you need and we'll call you.">
+<meta property="og:image" content="/smart-home/villa.jpg">
+<link rel="icon" href="/icon-192.png">
+<style>
+:root{--bg:#08090c;--panel:#101217;--panel2:#161920;--text:#f6f6f7;--muted:#a9afb8;--accent:#ff6a1a;--accent2:#ff8a3d;--accent-soft:rgba(255,106,26,.14);--line:rgba(255,255,255,.12);--max:1180px}
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;line-height:1.5;-webkit-font-smoothing:antialiased}a{color:inherit;text-decoration:none}button,input,select,textarea{font:inherit}img{max-width:100%;height:auto}
+.wrap{width:min(var(--max),calc(100% - 40px));margin:auto}
+.nav{height:78px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line)}
+.brand img{display:block;height:36px;width:auto}
+.navlinks{display:flex;align-items:center;gap:28px;color:#c4cad2;font-size:13px}.navlinks a:hover{color:#fff}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;background:linear-gradient(135deg,var(--accent2),var(--accent));color:#fff;padding:14px 22px;border-radius:6px;font-weight:750;font-size:13px;border:0;transition:.2s;cursor:pointer;box-shadow:0 10px 30px -10px rgba(255,106,26,.65)}
+.btn:hover{transform:translateY(-2px);box-shadow:0 14px 36px -10px rgba(255,106,26,.85)}
+.btn.ghost{background:transparent;color:#fff;border:1px solid rgba(255,255,255,.28);box-shadow:none}.btn.ghost:hover{background:#171b22}
+.btn[disabled]{opacity:.65;cursor:wait;transform:none}
+.hero{display:grid;grid-template-columns:1.05fr .95fr;gap:48px;align-items:center;padding:64px 0 76px;min-height:640px}
+.eyebrow{display:flex;align-items:center;gap:10px;color:#b7bfcb;font-size:11px;font-weight:750;letter-spacing:2.2px;text-transform:uppercase}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--accent);box-shadow:0 0 16px var(--accent)}
+.hero h1{font-size:clamp(44px,6vw,78px);line-height:.99;letter-spacing:-3.6px;margin:24px 0 22px;font-weight:650;max-width:620px}
+.hero h1 span{background:linear-gradient(120deg,var(--accent2),var(--accent) 60%,#ff4a1a);-webkit-background-clip:text;background-clip:text;color:transparent}
+.hero p{font-size:17px;color:#aeb4bf;max-width:470px;line-height:1.75;margin:0 0 30px}
+.actions{display:flex;gap:12px;flex-wrap:wrap}
+.micro{margin-top:24px;color:#848d9a;font-size:11px;letter-spacing:.4px}
+.hero-visual{position:relative;display:flex;align-items:center;justify-content:center}
+.hero-visual:before{content:"";position:absolute;width:78%;aspect-ratio:1;border-radius:50%;background:radial-gradient(circle,rgba(255,106,26,.28),rgba(255,106,26,0) 68%);filter:blur(24px)}
+.hero-img{position:relative;width:100%;max-width:470px;aspect-ratio:4/5;object-fit:cover;object-position:center 60%;border-radius:10px;box-shadow:0 30px 100px #000;border:1px solid var(--line)}
+.float-card{position:absolute;left:-6px;bottom:34px;background:rgba(16,18,23,.88);border:1px solid var(--line);backdrop-filter:blur(15px);padding:14px 17px;border-radius:8px;font-size:12px;color:#dbe0e8;display:flex;align-items:center;gap:12px}
+.float-card strong{display:block;color:#fff;font-size:14px}
+.float-card .ic{width:36px;height:36px;border-radius:50%;background:var(--accent-soft);display:grid;place-items:center;color:var(--accent2)}
+.float-chip{position:absolute;right:-4px;top:38px;background:rgba(16,18,23,.88);border:1px solid var(--line);backdrop-filter:blur(15px);padding:10px 14px;border-radius:30px;font-size:11px;color:#e7ebf1;font-weight:650;display:flex;align-items:center;gap:8px}
+.float-chip i{width:8px;height:8px;border-radius:50%;background:#3ddc84;box-shadow:0 0 10px #3ddc84}
+.trustbar{border-top:1px solid var(--line);border-bottom:1px solid var(--line);display:grid;grid-template-columns:repeat(4,1fr);padding:22px 0;gap:16px}
+.trust{display:flex;align-items:center;justify-content:center;gap:11px;color:#d6dbe2;font-size:12px}.trust svg{color:var(--accent2);flex:none}
+.section{padding:92px 0}
+.section-head{display:flex;align-items:end;justify-content:space-between;gap:30px;margin-bottom:36px}
+.kicker{color:var(--accent2);font-size:11px;font-weight:800;letter-spacing:2px;text-transform:uppercase}
+.section h2{font-size:clamp(32px,4vw,48px);line-height:1.08;letter-spacing:-1.7px;margin:12px 0 0;font-weight:620}
+.section-head p{max-width:390px;color:var(--muted);font-size:14px;line-height:1.8;margin:0}
+.split{display:grid;grid-template-columns:1fr 1fr;gap:44px;align-items:center;background:var(--panel);border:1px solid var(--line);padding:22px;border-radius:12px}
+.split img{display:block;width:100%;height:auto;border-radius:8px}
+.split-content{padding:24px 28px 24px 0}.split-content h2{margin-bottom:18px}
+.split-content>p{color:var(--muted);font-size:14px;line-height:1.85;margin:0}
+.split.flip{grid-template-columns:1fr .9fr}.split.flip .split-content{padding:24px 0 24px 28px}
+.checks{list-style:none;padding:0;margin:24px 0 30px;display:grid;gap:14px}.checks li{display:flex;gap:11px;color:#dbe0e8;font-size:13.5px}.check{color:var(--accent2);font-weight:800}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;overflow:hidden;min-width:0;display:flex;flex-direction:column;transition:border-color .25s,transform .25s}
+.card:hover{border-color:rgba(255,138,61,.5);transform:translateY(-3px)}
+.card .imgbox{overflow:hidden;background:#000}
+.card img{display:block;width:100%;aspect-ratio:4/3;object-fit:cover;transition:transform .5s}.card:hover img{transform:scale(1.04)}
+.card-copy{padding:20px 21px 22px;display:flex;flex-direction:column;flex:1}
+.card .num{color:var(--accent2);font-size:10px;letter-spacing:1.6px;font-weight:800}
+.card h3{font-size:19px;margin:8px 0 7px;letter-spacing:-.3px}
+.card p{color:#a2abb7;font-size:13px;line-height:1.7;margin:0}
+.card .more{margin-top:auto;padding-top:14px;color:var(--accent2);font-size:12px;font-weight:700}
+.cta-band{margin-top:30px;display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap;background:linear-gradient(120deg,rgba(255,106,26,.16),rgba(255,106,26,.04));border:1px solid rgba(255,138,61,.3);border-radius:12px;padding:24px 28px}
+.cta-band strong{font-size:20px;letter-spacing:-.4px;display:block}.cta-band span{color:var(--muted);font-size:13px}
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;counter-reset:s}
+.step{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:26px 24px;position:relative}
+.step .n{font-size:44px;font-weight:700;letter-spacing:-2px;background:linear-gradient(120deg,var(--accent2),var(--accent));-webkit-background-clip:text;background-clip:text;color:transparent;line-height:1}
+.step h3{font-size:18px;margin:14px 0 8px}.step p{color:#a2abb7;font-size:13px;line-height:1.7;margin:0}
+.enquire{display:grid;grid-template-columns:.9fr 1.1fr;gap:48px;align-items:start}
+.enquire-intro{position:sticky;top:30px}.enquire-intro h2{font-size:clamp(34px,4vw,50px)}
+.enquire-intro>p{color:var(--muted);line-height:1.8;font-size:14px;max-width:400px}
+.notes{display:grid;gap:18px;margin-top:30px}
+.note{display:flex;gap:14px;align-items:flex-start;color:#aab3c0;font-size:12.5px;line-height:1.6}
+.note .ic{width:38px;height:38px;border-radius:10px;background:var(--accent-soft);display:grid;place-items:center;color:var(--accent2);flex:none}
+.note strong{display:block;color:#e8ecf2;font-size:13.5px}
+.formbox{background:#111319;border:1px solid var(--line);padding:28px;border-radius:12px;box-shadow:0 30px 80px -40px rgba(255,106,26,.35)}
+.formbox h3{font-size:22px;margin:0 0 5px}.formbox .sub{color:#9ea8b5;font-size:12px;margin:0 0 24px}
+.formgrid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.field{display:flex;flex-direction:column;gap:7px;min-width:0}.field.full{grid-column:1/-1}
+.field label,.field .lbl{font-size:11px;color:#d7dce4;font-weight:650}
+.field input,.field select,.field textarea{width:100%;background:#0a0c10;border:1px solid #303743;color:#f6f6f7;padding:13px 12px;border-radius:6px;outline:none;transition:border-color .2s,box-shadow .2s}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--accent2);box-shadow:0 0 0 3px rgba(255,138,61,.16)}
+.field select:disabled{opacity:.5}
+.field textarea{resize:vertical;min-height:78px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{position:relative}.chip input{position:absolute;opacity:0;inset:0;width:100%;height:100%;cursor:pointer;margin:0}
+.chip span{display:inline-block;padding:9px 13px;border:1px solid #303743;border-radius:30px;font-size:12px;color:#c5ccd6;background:#0a0c10;transition:.18s}
+.chip input:checked+span{background:var(--accent-soft);border-color:var(--accent2);color:#ffd3b4}
+.chip input:focus-visible+span{box-shadow:0 0 0 3px rgba(255,138,61,.3)}
+.formbox button.btn{width:100%;margin-top:22px;padding:16px}
+.form-disclaimer{color:#7b8593;font-size:10.5px;line-height:1.6;margin-top:12px}
+.hp-field{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
+.err{display:none;margin-top:14px;padding:12px 14px;background:#2a1618;border:1px solid #6b2a2f;color:#ffd7da;font-size:13px;border-radius:6px}
+.done{display:none;background:#111319;border:1px solid #2b594b;padding:36px 28px;border-radius:12px}
+.done h3{font-size:26px;margin:0 0 8px;color:#d7f8e9}.done p{color:#b8c4c0;font-size:14px;line-height:1.75;margin:8px 0}
+.done .oid{display:inline-block;background:#172a25;border:1px solid #2b594b;border-radius:6px;padding:8px 12px;font-weight:750;letter-spacing:1px;color:#d7f8e9;margin:10px 0}
+.footer{border-top:1px solid var(--line);padding:28px 0;color:#7e8896;font-size:11px}
+.footer-inner{display:flex;align-items:center;justify-content:space-between;gap:20px}.footer img{height:26px;width:auto;display:block}
+.mobile-cta{display:none}
+.reveal{opacity:0;transform:translateY(22px);transition:opacity .7s ease,transform .7s ease}.reveal.in{opacity:1;transform:none}
+@media(prefers-reduced-motion:reduce){.reveal{opacity:1;transform:none;transition:none}html{scroll-behavior:auto}.card img,.btn{transition:none}}
+@media(max-width:900px){
+ .navlinks a:not(.btn){display:none}
+ .hero{grid-template-columns:1fr;padding:48px 0 44px;gap:26px;min-height:0}
+ .hero-visual{grid-row:1}.hero-img{max-width:440px;aspect-ratio:1/1;object-position:center 55%}
+ .hero h1{letter-spacing:-2.4px}
+ .trustbar{grid-template-columns:1fr 1fr}.section{padding:64px 0}
+ .section-head{display:block}.section-head p{margin-top:16px}
+ .split,.split.flip{grid-template-columns:1fr;gap:14px}.split-content,.split.flip .split-content{padding:18px 10px 12px}
+ .grid{grid-template-columns:repeat(2,1fr)}.steps{grid-template-columns:1fr}
+ .enquire{grid-template-columns:1fr;gap:26px}.enquire-intro{position:static}
+}
+@media(max-width:560px){
+ .wrap{width:min(100% - 28px,var(--max))}
+ .nav{height:68px}.brand img{height:30px}.nav .btn{padding:10px 13px;font-size:11px}
+ .hero{padding-top:30px}.hero h1{font-size:46px}.hero p{font-size:15px}
+ .float-card{left:6px;bottom:12px;padding:11px 13px}.float-chip{right:6px;top:12px}
+ .trustbar{gap:18px 8px}.trust{justify-content:flex-start;font-size:11px}
+ .grid{grid-template-columns:1fr}.section{padding:52px 0}
+ .formbox{padding:20px}.formgrid{grid-template-columns:1fr}.field.full{grid-column:auto}
+ .cta-band{padding:20px}.cta-band .btn{width:100%}
+ .footer-inner{align-items:flex-start;flex-direction:column}
+ .mobile-cta{display:block;position:fixed;z-index:10;bottom:0;left:0;right:0;padding:10px 14px;background:rgba(8,9,12,.93);backdrop-filter:blur(12px);border-top:1px solid var(--line)}
+ .mobile-cta .btn{width:100%}body{padding-bottom:68px}
+}
+</style>
+</head>
+<body>
+<header class="wrap nav">
+  <a class="brand" href="#top" aria-label="HESEOS home"><img src="/brand/lockup-white.png" alt="HESEOS — Lighting Ahead" width="282" height="64"></a>
+  <nav class="navlinks" aria-label="Main navigation"><a href="#products">Products</a><a href="#app">The app</a><a href="#how">How it works</a><a class="btn" href="#enquire">Get a callback <span>↗</span></a></nav>
+</header>
+
+<main id="top">
+<section class="wrap hero">
+  <div>
+    <div class="eyebrow"><span class="dot"></span> Smart home automation</div>
+    <h1>Make your home <span>smart.</span> Effortlessly.</h1>
+    <p>Lights, switches, locks, curtains and security — controlled from elegant touch panels and one simple app. Tell us about your space and our team will call you.</p>
+    <div class="actions"><a class="btn" href="#enquire">Get a callback <span>↗</span></a><a class="btn ghost" href="#products">Explore products <span>↓</span></a></div>
+    <div class="micro">LIGHTS · SWITCHES · LOCKS · CURTAINS · SECURITY · ENERGY</div>
+  </div>
+  <div class="hero-visual">
+    <img class="hero-img" src="/smart-home/villa.jpg" alt="A modern home glowing with warm, automated lighting at dusk" width="960" height="1440" fetchpriority="high">
+    <div class="float-chip"><i></i> Scenes · Schedules · Timers</div>
+    <div class="float-card"><span class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.3 1 2.1V17h6v-.2c0-.8.4-1.6 1-2.1A7 7 0 0 0 12 2z"/></svg></span><div><strong>One home. One app.</strong>Control everything, your way.</div></div>
+  </div>
+</section>
+
+<div class="wrap trustbar">
+  <div class="trust"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="3"/><circle cx="12" cy="9" r="1.4"/><circle cx="12" cy="15" r="1.4"/></svg> Touch panel switches</div>
+  <div class="trust"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg> Smart door locks</div>
+  <div class="trust"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M3 12s3.5-6 9-6 9 6 9 6-3.5 6-9 6-9-6-9-6z"/></svg> Video door phones</div>
+  <div class="trust"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6l8-3z"/><path d="M9 12l2 2 4-4"/></svg> Curtains &amp; security</div>
+</div>
+
+<section class="wrap section reveal" id="asaan">
+  <div class="split">
+    <img src="/smart-home/asaan-hai.jpg" alt="HESEOS mascot sitting on a sofa pointing at a glowing touch panel — Home Automation Asaan Hai" width="1196" height="1298" loading="lazy">
+    <div class="split-content">
+      <div class="kicker">Home automation, made simple</div>
+      <h2>Asaan hai.<br>Seriously.</h2>
+      <p>You don't need to rebuild your home to make it smart. Start with one room or go all the way — HESEOS fits the way you live.</p>
+      <ul class="checks">
+        <li><span class="check">✓</span> Automate a few rooms now, add more whenever you like</li>
+        <li><span class="check">✓</span> Retrofit modules that sit behind your existing switches</li>
+        <li><span class="check">✓</span> Glass touch panels in five finishes for a fresh look</li>
+        <li><span class="check">✓</span> Scenes, schedules and timers right from your phone</li>
+      </ul>
+      <a class="btn" href="#enquire">Get a callback <span>↗</span></a>
+    </div>
+  </div>
+</section>
+
+<section class="wrap section" id="products">
+  <div class="section-head reveal"><div><div class="kicker">The HESEOS range</div><h2>Everything your home<br>needs to be smart.</h2></div><p>From the switch on your wall to the lock on your door — one connected system, designed to look as good as it works.</p></div>
+  <div class="grid">
+    <article class="card reveal"><div class="imgbox"><img src="/smart-home/panels.jpg" alt="HESEOS glass touch panel switches with glowing blue touch points" width="1200" height="594" loading="lazy"></div><div class="card-copy"><div class="num">01 / SWITCHES</div><h3>Touch panel switches</h3><p>Sleek glass touch panels from 2 to 12 modules, built to match your interiors.</p></div></article>
+    <article class="card reveal"><div class="imgbox"><img src="/smart-home/bezel.jpg" alt="HESEOS bezel panels in gold, chrome and black finishes" width="1200" height="594" loading="lazy"></div><div class="card-copy"><div class="num">02 / DESIGNER PANELS</div><h3>Bezel panels</h3><p>Metal-framed panels in rose gold, grey, gold, chrome and black — a statement on any wall.</p></div></article>
+    <article class="card reveal"><div class="imgbox"><img src="/smart-home/retrofit.jpg" alt="HESEOS smart retrofit modules" width="1200" height="594" loading="lazy"></div><div class="card-copy"><div class="num">03 / RETROFIT</div><h3>Smart retrofit modules</h3><p>Compact modules that sit behind your switches and make them smart.</p></div></article>
+    <article class="card reveal"><div class="imgbox"><img src="/smart-home/locks.jpg" alt="HESEOS smart door locks with fingerprint reader, keypad and handle" width="1200" height="900" loading="lazy"></div><div class="card-copy"><div class="num">04 / ACCESS</div><h3>Smart door locks</h3><p>Fingerprint, passcode, RFID and key access — in wooden, glass, lever and sliding designs.</p><a class="more" href="/lock">Order the smart door lock online →</a></div></article>
+    <article class="card reveal"><div class="imgbox"><img src="/smart-home/vdp.jpg" alt="HESEOS video door phone with camera and a phone showing the visitor" width="876" height="842" loading="lazy"></div><div class="card-copy"><div class="num">05 / VISITORS</div><h3>Video door phones</h3><p>See and speak to whoever is at your door. IP and analog options, plus smart doorbells.</p></div></article>
+    <article class="card reveal"><div class="imgbox"><img src="/smart-home/curtain.jpg" alt="HESEOS curtain motor and roller blind motor" width="1200" height="1141" loading="lazy"></div><div class="card-copy"><div class="num">06 / COMFORT</div><h3>Smart curtains</h3><p>Curtain and roller-blind motors that open and close at a touch, on a schedule or from the app.</p></div></article>
+    <article class="card reveal"><div class="imgbox"><img src="/smart-home/sensors.jpg" alt="HESEOS security sensors: motion, gas leak, PIR, smoke and presence sensors" width="1200" height="900" loading="lazy"></div><div class="card-copy"><div class="num">07 / SECURITY</div><h3>Security sensors</h3><p>Motion, presence, gas-leak and smoke sensors to keep an eye on your space.</p></div></article>
+    <article class="card reveal"><div class="imgbox"><img src="/smart-home/plug.jpg" alt="HESEOS smart plug" width="1200" height="704" loading="lazy"></div><div class="card-copy"><div class="num">08 / APPLIANCES</div><h3>Smart plug</h3><p>Make everyday appliances smart — switch and schedule them from the app.</p></div></article>
+    <article class="card reveal"><div class="imgbox"><img src="/smart-home/meter.jpg" alt="HESEOS three-phase and DIN-rail energy meters" width="1200" height="857" loading="lazy"></div><div class="card-copy"><div class="num">09 / ENERGY</div><h3>Energy meters</h3><p>Track electricity usage in real time and get alerts when consumption crosses your limits.</p></div></article>
+  </div>
+  <div class="cta-band reveal"><div><strong>Not sure what you need?</strong><span>Tell us about your space — we'll help you pick the right setup.</span></div><a class="btn" href="#enquire">Get a callback <span>↗</span></a></div>
+</section>
+
+<section class="wrap section reveal" id="app">
+  <div class="split flip">
+    <div class="split-content">
+      <div class="kicker">One app. Whole home.</div>
+      <h2>Everything,<br>at your fingertips.</h2>
+      <p>Switch lights, run scenes and keep an eye on power use — from the sofa or from miles away. The HESEOS app brings every device into one simple place.</p>
+      <ul class="checks">
+        <li><span class="check">✓</span> One-tap scenes and shortcuts for every mood</li>
+        <li><span class="check">✓</span> Schedules, routines and auto turn-off timers</li>
+        <li><span class="check">✓</span> Sunrise and sunset automation</li>
+        <li><span class="check">✓</span> Share home access with family</li>
+        <li><span class="check">✓</span> Track power consumption at a glance</li>
+      </ul>
+      <a class="btn" href="#enquire">Get a callback <span>↗</span></a>
+    </div>
+    <img src="/smart-home/app.jpg" alt="The HESEOS app on a phone, surrounded by its features: scenes, schedules, timers, sunrise and sunset, geo-fencing and more" width="1200" height="1018" loading="lazy">
+  </div>
+</section>
+
+<section class="wrap section" id="how">
+  <div class="section-head reveal"><div><div class="kicker">Getting started</div><h2>Three simple steps.</h2></div><p>No jargon, no pressure — just a conversation about your home.</p></div>
+  <div class="steps">
+    <div class="step reveal"><div class="n">01</div><h3>Share your requirement</h3><p>Fill in the short form below — your city, type of property and what you're hoping to automate.</p></div>
+    <div class="step reveal"><div class="n">02</div><h3>Talk to our team</h3><p>A HESEOS expert calls you to understand your needs and suggest the right products for your space.</p></div>
+    <div class="step reveal"><div class="n">03</div><h3>Plan your smart home</h3><p>Get a tailored recommendation and quotation, and move ahead when you're ready.</p></div>
+  </div>
+</section>
+
+<section class="wrap section" id="enquire">
+  <div class="enquire">
+    <div class="enquire-intro reveal"><div class="kicker">Get started</div><h2>Let's make your home smart.</h2><p>Share a few details and a HESEOS expert will call you to discuss your requirements. It takes less than a minute.</p>
+      <div class="notes">
+        <div class="note"><span class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2z"/></svg></span><div><strong>A callback from our team</strong>A real person — not a bot — will get in touch.</div></div>
+        <div class="note"><span class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-12.4 7.4L3 20.5l1.7-5.4A8.4 8.4 0 1 1 21 11.5z"/></svg></span><div><strong>Confirmation on WhatsApp</strong>We'll message you as soon as your enquiry is in.</div></div>
+        <div class="note"><span class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6l8-3z"/><path d="M9 12l2 2 4-4"/></svg></span><div><strong>No obligation</strong>Just a conversation about what would suit your home.</div></div>
+      </div></div>
+    <div class="reveal">
+    <form class="formbox" id="enquiryForm" novalidate>
+      <h3>Tell us about your home</h3><p class="sub">Takes under a minute · Fields marked * are required</p>
+      <div class="formgrid">
+        <div class="field"><label for="name">Full name *</label><input id="name" name="name" placeholder="Your name" required autocomplete="name" maxlength="80"></div>
+        <div class="field"><label for="phone">Mobile number (WhatsApp) *</label><input id="phone" name="phone" type="tel" inputmode="numeric" placeholder="98765 43210" required autocomplete="tel" maxlength="16"></div>
+        <div class="field"><label for="city">City *</label><select id="city" name="city" required><option value="">Loading cities…</option></select></div>
+        <div class="field" id="cityOtherWrap" style="display:none"><label for="cityOther">Your city *</label><input id="cityOther" name="cityOther" placeholder="Type your city" maxlength="60" autocomplete="address-level2"></div>
+        <div class="field"><label for="propertyType">Property type</label><select id="propertyType" name="propertyType"><option value="">Select property type</option><option value="1bhk">1 BHK Apartment</option><option value="2bhk">2 BHK Apartment</option><option value="3bhk_plus">3 BHK &amp; Above / Villa</option><option value="commercial">Office / Commercial</option></select></div>
+        <div class="field"><label for="budget">Approximate budget</label><select id="budget" name="budget" disabled><option value="">Select property type first</option></select></div>
+        <div class="field"><label for="timeline">When do you plan to start?</label><select id="timeline" name="timeline"><option value="">Select timeline</option><option value="within_15d">Within 15 days</option><option value="within_30d">Within 30 days</option><option value="within_45d">Within 45 days</option><option value="beyond_45d">45 days &amp; beyond</option></select></div>
+        <div class="field full"><span class="lbl" id="intLbl">What are you looking for? <span style="color:#7b8593;font-weight:500">(optional)</span></span>
+          <div class="chips" role="group" aria-labelledby="intLbl" id="chips"></div></div>
+        <div class="field full"><label for="notes">Anything else we should know? <span style="color:#7b8593;font-weight:500">(optional)</span></label><textarea id="notes" name="notes" placeholder="e.g. number of rooms, new construction or renovation…" maxlength="400"></textarea></div>
+        <div class="hp-field" aria-hidden="true"><label>Website <input name="website" tabindex="-1" autocomplete="off"></label></div>
+      </div>
+      <button class="btn" type="submit" id="sendBtn">Request my callback <span>↗</span></button>
+      <div class="err" id="err" role="alert"></div>
+      <div class="form-disclaimer">By submitting this form you agree to be contacted on the number above, including on WhatsApp, about your smart home enquiry. Product specifications are subject to confirmation by HESEOS.</div>
+    </form>
+    <div class="done" id="done" role="status" aria-live="polite">
+      <h3>Thank you ✓</h3>
+      <p>Thanks, <strong id="doneName"></strong>! Your enquiry is in.</p>
+      <div class="oid" id="doneId"></div>
+      <p id="doneWa">You'll receive a confirmation on WhatsApp shortly.</p>
+      <p>A HESEOS expert will call you soon to understand your requirements.</p>
+    </div>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer class="footer"><div class="wrap footer-inner"><img src="/brand/lockup-white.png" alt="HESEOS — Lighting Ahead" width="282" height="64"><div>Smart homes. Happier lives.</div><div>Product pictures may differ from the actual product.</div></div></footer>
+<div class="mobile-cta"><a class="btn" href="#enquire">Get a callback <span>↗</span></a></div>
+
+<script>
+(function(){
+ function $(id){return document.getElementById(id);}
+ var BUDGETS={
+  '1bhk':[['20k_40k','₹20k – ₹40k'],['40k_60k','₹40k – ₹60k'],['60k_plus','₹60k & above']],
+  '2bhk':[['40k_60k','₹40k – ₹60k'],['60k_90k','₹60k – ₹90k'],['90k_plus','₹90k & above']],
+  '3bhk_plus':[['50k_70k','₹50k – ₹70k'],['70k_1L','₹70k – ₹1 lakh'],['1L_plus','₹1 lakh & above']],
+  'commercial':[['50k_90k','₹50k – ₹90k'],['90k_1_5L','₹90k – ₹1.5 lakh'],['2L_plus','₹2 lakh & above']]
+ };
+ var INTERESTS=[['touch_panel_switches','Touch panel switches'],['smart_door_locks','Smart door locks'],['smart_lights','Smart lights'],['smart_curtains','Smart curtains'],['video_door_phone','Video door phone'],['scene_controller','Scene controller panels'],['full_package','Complete home automation'],['not_sure','Not sure — need guidance']];
+
+ // Interest chips
+ var chips=$('chips');
+ INTERESTS.forEach(function(it){
+   var l=document.createElement('label'); l.className='chip';
+   l.innerHTML='<input type="checkbox" name="interest" value="'+it[0]+'"><span>'+it[1]+'</span>';
+   chips.appendChild(l);
+ });
+
+ // Budget depends on property type (same tiers as HESEOS's Meta form / partner app)
+ var pt=$('propertyType'),bd=$('budget');
+ pt.addEventListener('change',function(){
+   var list=BUDGETS[pt.value];
+   bd.innerHTML='';
+   if(!list){bd.disabled=true;bd.innerHTML='<option value="">Select property type first</option>';return;}
+   bd.disabled=false;
+   bd.innerHTML='<option value="">Select budget</option>'+list.map(function(b){return '<option value="'+b[0]+'">'+b[1]+'</option>';}).join('');
+ });
+
+ // Cities come from the admin-managed list (Admin -> Settings -> Cities), so leads route to the right
+ // pre-sales team. "Other" lets someone outside those cities still enquire.
+ var city=$('city'),cityOtherWrap=$('cityOtherWrap'),cityOther=$('cityOther');
+ function fillCities(list){
+   city.innerHTML='<option value="">Select your city</option>'+list.map(function(c){return '<option>'+String(c).replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</option>';}).join('')+'<option value="__other">Other city…</option>';
+ }
+ fillCities([]);
+ fetch('/api/cities',{cache:'no-store'}).then(function(r){return r.ok?r.json():null;}).then(function(d){
+   if(d&&Array.isArray(d.cities)&&d.cities.length){var cur=city.value;fillCities(d.cities);if(cur)city.value=cur;}
+ }).catch(function(){});
+ city.addEventListener('change',function(){
+   var o=city.value==='__other'; cityOtherWrap.style.display=o?'':'none'; if(o)cityOther.focus();
+ });
+
+ // ?p=<mobile> pre-fills the number; ?ref=<code> credits a partner / QR / referral link (kept for the visit)
+ var ref='';
+ try{
+   var q=new URLSearchParams(location.search);
+   var p=q.get('p'); if(p&&/^\d{10}$/.test(p)) $('phone').value=p;
+   var r=(q.get('ref')||'').trim();
+   if(/^[A-Za-z0-9]{4,24}$/.test(r)){ref=r; try{sessionStorage.setItem('hs_ref',r);}catch(e){}}
+   else{try{ref=sessionStorage.getItem('hs_ref')||'';}catch(e){}}
+ }catch(e){}
+
+ var clientRef='c'+Date.now().toString(36)+Math.random().toString(36).slice(2,10);
+ var form=$('enquiryForm'),btn=$('sendBtn'),err=$('err');
+ function fail(msg){err.textContent=msg;err.style.display='block';btn.disabled=false;btn.firstChild.textContent='Request my callback ';}
+ form.addEventListener('submit',function(e){
+   e.preventDefault(); err.style.display='none';
+   var d=new FormData(form);
+   var cityVal=(d.get('city')||'')==='__other'?(d.get('cityOther')||'').trim():(d.get('city')||'').trim();
+   var body={
+     name:(d.get('name')||'').trim(), phone:(d.get('phone')||'').trim(), city:cityVal,
+     propertyType:d.get('propertyType')||'', budget:d.get('budget')||'', timeline:d.get('timeline')||'',
+     productInterest:d.getAll('interest'), notes:(d.get('notes')||'').trim(),
+     website:d.get('website')||'', clientRef:clientRef, ref:ref
+   };
+   var digits=body.phone.replace(/\D/g,'').replace(/^91(?=\d{10}$)/,'').replace(/^0(?=\d{10}$)/,'');
+   if(body.name.length<2) return fail('Please enter your full name.');
+   if(!/^[6-9]\d{9}$/.test(digits)) return fail('Please enter a valid 10-digit mobile number.');
+   if(!body.city||body.city.length<2) return fail('Please select or enter your city.');
+   btn.disabled=true; btn.firstChild.textContent='Sending… ';
+   fetch('/api/leads/landing',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
+     .then(function(r){return r.json().catch(function(){return {};}).then(function(j){return {ok:r.ok,j:j};});})
+     .then(function(res){
+       if(!res.ok||!res.j.ok) return fail(res.j.error||'Something went wrong. Please try again.');
+       form.style.display='none';
+       $('doneName').textContent=body.name.split(' ')[0];
+       $('doneId').textContent='Reference: '+res.j.leadId;
+       $('doneWa').textContent=res.j.existing?"We already had your enquiry on record — we've added this to it.":(res.j.whatsappSent===false?"You'll receive a confirmation on WhatsApp shortly.":"We've sent a confirmation to your WhatsApp.");
+       $('done').style.display='block';
+       $('done').scrollIntoView({behavior:'smooth',block:'center'});
+     })
+     .catch(function(){fail('Network problem — please check your connection and try again.');});
+ });
+
+ // Gentle scroll-reveal (skipped for reduced-motion; content is visible without JS thanks to the guard below)
+ var els=document.querySelectorAll('.reveal');
+ if('IntersectionObserver' in window && !window.matchMedia('(prefers-reduced-motion: reduce)').matches){
+   var io=new IntersectionObserver(function(ents){ents.forEach(function(en){if(en.isIntersecting){en.target.classList.add('in');io.unobserve(en.target);}});},{threshold:.12,rootMargin:'0px 0px -40px 0px'});
+   els.forEach(function(el){io.observe(el);});
+ } else { els.forEach(function(el){el.classList.add('in');}); }
+})();
+</script>
+<noscript><style>.reveal{opacity:1;transform:none}</style></noscript>
+</body></html>

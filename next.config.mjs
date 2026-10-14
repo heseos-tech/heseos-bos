@@ -26,7 +26,12 @@ const nextConfig = {
   // a short, shareable URL — this is the link HESEOS Buddy sends on WhatsApp (lib/heseosDoorLock.js).
   // Query params (?p=<phone> prefill) pass straight through to the page's own script.
   async rewrites() {
-    return [{ source: '/lock', destination: '/door-lock/index.html' }];
+    return [
+      { source: '/lock', destination: '/door-lock/index.html' },
+      // The smart-home enquiry landing page (public/smart-home/index.html) — share this link; add
+      // ?ref=<attribution code> to credit a partner, ?p=<mobile> to pre-fill the number.
+      { source: '/smart-home', destination: '/smart-home/index.html' },
+    ];
   },
   outputFileTracingIncludes: {
     '/api/leads/[id]/quotation-pdf': ['./node_modules/pdfkit/js/**/*'],

@@ -150,6 +150,7 @@ const IconSrcEmployee = srcIcon('employee.png');
 
 const SOURCE_ICON = {
   website_api: IconSrcWebsite,
+  landing_page: IconSrcWebsite,
   meta_lead_form: IconSrcMeta,
   google_ads_lead_form: IconSrcGoogle,
   partner_app: IconSrcPartner,
