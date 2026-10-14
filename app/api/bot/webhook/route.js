@@ -169,7 +169,10 @@ export async function POST(req) {
               existingLeadId = firstLead.id;
               existingLead = firstLead;
               const returningFlow = tenantFlows.find((f) => f.id === HESEOS_RETURNING_FLOW_ID);
-              if (returningFlow) picked = returningFlow;
+              // Explicit shopping intent (door lock / buy / catalogue — the keyword tier already
+              // picked the shopping flow) outranks the welcome-back flow, same as it does for an
+              // existing chat further below.
+              if (returningFlow && picked?.id !== HESEOS_SHOPPING_FLOW_ID) picked = returningFlow;
             }
           }
 
@@ -309,27 +312,37 @@ export async function POST(req) {
             }
           }
 
-          // Explicit shopping intent — "buy"/"shopping"/"catalogue"/"catalog" — always wins,
-          // even mid-conversation on another flow (the lead-capture questionnaire, the
-          // returning-flow welcome-back message, whatever this chat already was on) and even
-          // over the returning-flow re-engagement just above: a customer typing this is telling
-          // us right now what they want, which outranks whatever flow happened to already be
-          // active. Reads the shopping flow's OWN triggers.keywords (not a separate hardcoded
-          // list) so this stays in sync with whatever an admin edits them to in Flow Builder —
-          // same substring match pickFlow uses for a brand-new chat. Heseos-brand only, same
-          // scope as the 'catalog' node type itself (see lib/botFlowEngine.js's own header
-          // comment). Skipped once the chat is already ON the shopping flow, so a message typed
-          // mid-browse/mid-checkout ('let's buy 2 more') doesn't reset flowNodeId and restart
-          // the catalogue — same "don't re-fire once already in that flow" rule the
-          // returning-flow re-engagement above follows.
+          // Explicit shopping intent — "door lock"/"buy"/"shopping"/"catalogue"/"catalog" — always
+          // wins, even mid-conversation on another flow (the lead-capture questionnaire, the
+          // returning-flow welcome-back message, whatever this chat already was on) and even over
+          // the returning-flow re-engagement just above: a customer typing this is telling us
+          // right now what they want. The shopping flow (lib/heseosShoppingFlow.js) replies with
+          // the door-lock landing-page link. Reads that flow's OWN triggers.keywords (not a
+          // separate hardcoded list) so this stays in sync with whatever an admin edits them to in
+          // Flow Builder — same substring match pickFlow uses for a brand-new chat. Heseos-brand
+          // only. A chat already sitting on this flow whose next message ISN'T a keyword is sent
+          // back to the normal lead-capture flow (see below) rather than re-sent the same link.
           if (tenant.botKind === 'heseos') {
             const shoppingFlow = tenantFlows.find((f) => f.id === HESEOS_SHOPPING_FLOW_ID && f.enabled && (f.nodes || []).some((n) => n.type === 'start'));
-            if (shoppingFlow && chat.activeFlowId !== HESEOS_SHOPPING_FLOW_ID) {
+            if (shoppingFlow) {
               const lower = String(m.text || '').trim().toLowerCase();
               const matched = lower && (shoppingFlow.triggers?.keywords || []).some((k) => k && lower.includes(String(k).toLowerCase()));
               if (matched) {
+                // Also when already on this flow: a returning-flow re-engagement above may have
+                // just pulled a chat with an open lead off it — an explicit keyword wins back.
                 patch.activeFlowId = shoppingFlow.id;
                 patch.flowNodeId = null;
+              } else if (chat.activeFlowId === HESEOS_SHOPPING_FLOW_ID && !patch.activeFlowId) {
+                // This flow is a single message (the landing-page link) with nothing left to ask,
+                // so a chat still sitting on it has already received its link. Whatever they type
+                // next that ISN'T another door-lock/shopping keyword goes back to the normal
+                // lead-capture flow instead of getting the same link again. (A matching keyword
+                // simply replays the link — runFlowTurn restarts a flow whose flowNodeId is null.)
+                const defaultFlow = tenantFlows.find((f) => f.id === HESEOS_DEFAULT_FLOW_ID);
+                if (defaultFlow) {
+                  patch.activeFlowId = defaultFlow.id;
+                  patch.flowNodeId = null;
+                }
               }
             }
           }

@@ -22,6 +22,12 @@ const nextConfig = {
   // The public, share-token quotation PDF route (/api/quotation/[token]/pdf — the link sent to
   // customers over WhatsApp) renders the exact same file and was missing from this list; added
   // it and a matching /api/quotation/** catch-all for the same reason as the /api/leads/** one.
+  // The HESEOS Smart Door Lock landing page (public/door-lock/index.html) is a static file served at
+  // a short, shareable URL — this is the link HESEOS Buddy sends on WhatsApp (lib/heseosDoorLock.js).
+  // Query params (?p=<phone> prefill) pass straight through to the page's own script.
+  async rewrites() {
+    return [{ source: '/lock', destination: '/door-lock/index.html' }];
+  },
   outputFileTracingIncludes: {
     '/api/leads/[id]/quotation-pdf': ['./node_modules/pdfkit/js/**/*'],
     '/api/leads/[id]/quotation-pdf/send': ['./node_modules/pdfkit/js/**/*'],
