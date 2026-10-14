@@ -295,9 +295,20 @@
    city.innerHTML='<option value="">Select your city</option>'+list.map(function(c){return '<option>'+String(c).replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</option>';}).join('')+'<option value="__other">Other city…</option>';
  }
  fillCities([]);
+ // ?c=<city> (sent by the WhatsApp card when we already know the partner's / placement's city) only
+ // PRE-SELECTS a city; the customer can change it.
+ var wantCity='';
+ try{wantCity=(new URLSearchParams(location.search).get('c')||'').trim().slice(0,60);}catch(e){}
+ function applyWantCity(){
+   if(!wantCity||city.value)return;
+   var hit=[].slice.call(city.options).filter(function(o){return o.value&&o.value!=='__other'&&o.value.toLowerCase()===wantCity.toLowerCase();})[0];
+   if(hit){city.value=hit.value;}
+   else{city.value='__other';cityOtherWrap.style.display='';cityOther.value=wantCity;}
+ }
  fetch('/api/cities',{cache:'no-store'}).then(function(r){return r.ok?r.json():null;}).then(function(d){
    if(d&&Array.isArray(d.cities)&&d.cities.length){var cur=city.value;fillCities(d.cities);if(cur)city.value=cur;}
- }).catch(function(){});
+   applyWantCity();
+ }).catch(function(){applyWantCity();});
  city.addEventListener('change',function(){
    var o=city.value==='__other'; cityOtherWrap.style.display=o?'':'none'; if(o)cityOther.focus();
  });

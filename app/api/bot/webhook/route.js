@@ -316,6 +316,34 @@ export async function POST(req) {
             }
           }
 
+          // A customer who ALREADY has a chat with us but scans a QR code / taps a referral link
+          // (the pre-filled message carries "(ref:<code>)") gets the same "thanks for scanning" +
+          // landing-page reply a brand-new chat gets — and the chat is re-attributed to THAT code, so
+          // the landing page credits whoever's link they just used (lib/heseosLandingLead.js still
+          // applies the first-touch rule, so credit can never move away from the original referrer).
+          // Skipped when the phone number has an OPEN lead: the "welcome back" flow above already
+          // owns that case, exactly as it does for a brand-new chat. Heseos-brand only.
+          if (tenant.botKind === 'heseos' && patch.activeFlowId !== HESEOS_RETURNING_FLOW_ID) {
+            const refLink = await resolveAttributionLink(m.text);
+            if (refLink) {
+              const attrFlow = pickFlow(tenantFlows, { attributionKind: refLink.kind });
+              const firstLead = findFirstLeadByPhone(m.from, await dbList('leads'));
+              const openLead = !!firstLead && stageOf(firstLead) !== 'Converted' && stageOf(firstLead) !== 'Rejected';
+              if (attrFlow && (attrFlow.triggers?.attribution || []).length && !openLead) {
+                patch.activeFlowId = attrFlow.id;
+                patch.flowNodeId = null;
+                patch.answers = {};
+                patch.menuRetries = 0;
+                patch.answerRetries = 0;
+                patch.leadId = null;
+                patch.attributionKind = refLink.kind;
+                patch.attributionLinkId = refLink.id;
+                patch.referrerNote = await referrerNoteFor(refLink);
+                patch.attributionCity = await attributionCityFor(refLink);
+              }
+            }
+          }
+
           // Explicit shopping intent — "door lock"/"buy"/"shopping"/"catalogue"/"catalog" — always
           // wins, even mid-conversation on another flow (the lead-capture questionnaire, the
           // returning-flow welcome-back message, whatever this chat already was on) and even over
