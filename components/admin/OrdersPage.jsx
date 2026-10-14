@@ -20,15 +20,16 @@ const PAGE_SIZE = 10;
 const STATUS_TABS = [
   { key: 'all', label: 'All' },
   { key: 'placed', label: 'Placed' },
+  { key: 'confirmed', label: 'Confirmed' },
   { key: 'packed', label: 'Packed' },
   { key: 'shipped', label: 'Dispatched' },
   { key: 'delivered', label: 'Delivered' },
   { key: 'installed', label: 'Installation Done' },
   { key: 'cancelled', label: 'Cancelled' },
 ];
-const FORWARD_STATUSES = ['placed', 'packed', 'shipped', 'delivered', 'installed'];
+const FORWARD_STATUSES = ['placed', 'confirmed', 'packed', 'shipped', 'delivered', 'installed'];
 // A cancel only makes sense until the goods are with the customer.
-const CANCELLABLE = new Set(['placed', 'packed', 'shipped']);
+const CANCELLABLE = new Set(['placed', 'confirmed', 'packed', 'shipped']);
 const STATUS_LABEL = Object.fromEntries(STATUS_TABS.map((s) => [s.key, s.label]));
 
 function money(n) {
