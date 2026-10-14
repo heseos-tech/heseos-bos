@@ -188,7 +188,7 @@ function fmtDate(v) {
   return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
-const STATUS_LABEL = { placed: 'Placed', packed: 'Packed', shipped: 'Shipped', delivered: 'Delivered', cancelled: 'Cancelled' };
+const STATUS_LABEL = { placed: 'Placed', packed: 'Packed', shipped: 'Dispatched', delivered: 'Delivered', installed: 'Installation Done', cancelled: 'Cancelled' };
 
 function DeliveryParty({ order }) {
   return (

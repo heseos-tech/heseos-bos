@@ -21,11 +21,14 @@ const STATUS_TABS = [
   { key: 'all', label: 'All' },
   { key: 'placed', label: 'Placed' },
   { key: 'packed', label: 'Packed' },
-  { key: 'shipped', label: 'Shipped' },
+  { key: 'shipped', label: 'Dispatched' },
   { key: 'delivered', label: 'Delivered' },
+  { key: 'installed', label: 'Installation Done' },
   { key: 'cancelled', label: 'Cancelled' },
 ];
-const FORWARD_STATUSES = ['placed', 'packed', 'shipped', 'delivered'];
+const FORWARD_STATUSES = ['placed', 'packed', 'shipped', 'delivered', 'installed'];
+// A cancel only makes sense until the goods are with the customer.
+const CANCELLABLE = new Set(['placed', 'packed', 'shipped']);
 const STATUS_LABEL = Object.fromEntries(STATUS_TABS.map((s) => [s.key, s.label]));
 
 function money(n) {
@@ -45,7 +48,7 @@ export default function OrdersPage() {
   const [modal, setModal] = useState(null); // { type: 'view', order }
   const [notice, setNotice] = useState('');
 
-  function flash(msg) { setNotice(msg); setTimeout(() => setNotice(''), 2500); }
+  function flash(msg) { setNotice(msg); setTimeout(() => setNotice(''), 4000); }
   function load() { invalidate(ORDERS_URL); refresh(); }
 
   const counts = useMemo(() => {
@@ -81,7 +84,7 @@ export default function OrdersPage() {
     if (!next) return;
     const updated = await patchOrder(order.id, { status: next });
     setModal({ type: 'view', order: updated });
-    flash(`Order marked ${STATUS_LABEL[next]}`);
+    flash(`Order marked ${STATUS_LABEL[next]}${updated.whatsappSent ? ' — customer notified on WhatsApp' : ' — WhatsApp message could not be sent'}`);
   }
 
   async function cancel(order) {
@@ -100,7 +103,7 @@ export default function OrdersPage() {
   return (
     <>
       <div className="adm-page-head">
-        <div><h1 className="adm-h1">Orders</h1><p className="adm-page-sub">Orders placed on the door-lock landing page — pack, dispatch and mark delivered from here</p></div>
+        <div><h1 className="adm-h1">Orders</h1><p className="adm-page-sub">Orders placed on the door-lock landing page — pack, dispatch, deliver and mark installation done from here — the customer is updated on WhatsApp at each step</p></div>
       </div>
 
       {notice && <div className="adm-notice">{notice}</div>}
@@ -109,7 +112,7 @@ export default function OrdersPage() {
         <StatCard label="Total Orders" value={orders.length} Icon={IconOrders} tone="orange" />
         <StatCard label="Placed" value={counts.placed || 0} Icon={IconLeads} tone="purple" />
         <StatCard label="Pending Payment" value={pendingPaymentCount} Icon={IconOrders} tone="teal" />
-        <StatCard label="Delivered" value={counts.delivered || 0} Icon={IconConversions} tone="green" />
+        <StatCard label="Delivered" value={(counts.delivered || 0) + (counts.installed || 0)} Icon={IconConversions} tone="green" />
       </div>
 
       <div className="adm-card">
@@ -139,7 +142,7 @@ export default function OrdersPage() {
                   <td>{(o.items || []).reduce((n, it) => n + (Number(it.qty) || 0), 0)} item(s)</td>
                   <td>{money(o.subtotal)}</td>
                   <td><span className={`adm-status-pill${o.paymentStatus === 'paid' ? ' active' : ' pending'}`}>{o.paymentStatus === 'paid' ? 'Paid' : 'Pending'}</span></td>
-                  <td><span className={`adm-status-pill${o.status === 'delivered' ? ' active' : o.status === 'cancelled' ? '' : ' pending'}`}>{STATUS_LABEL[o.status] || o.status}</span></td>
+                  <td><span className={`adm-status-pill${o.status === 'delivered' || o.status === 'installed' ? ' active' : o.status === 'cancelled' ? '' : ' pending'}`}>{STATUS_LABEL[o.status] || o.status}</span></td>
                   <td>{o.createdAt ? new Date(o.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}</td>
                   <td className="adm-row-actions"><button className="adm-chip-btn" onClick={(e) => { e.stopPropagation(); setModal({ type: 'view', order: o }); }}>View</button></td>
                 </tr>
@@ -166,7 +169,7 @@ export default function OrdersPage() {
 
 function OrderDetailModal({ order, onClose, onAdvance, onCancel, onMarkPaid }) {
   const next = nextForwardStatus(order.status);
-  const isOpen = order.status !== 'delivered' && order.status !== 'cancelled';
+  const canCancel = CANCELLABLE.has(order.status);
   return (
     <Modal title={`Order ${order.id}`} sub={`Placed ${order.createdAt ? new Date(order.createdAt).toLocaleString('en-IN') : '—'}`} onClose={onClose}>
       <div className="adm-detail-grid">
@@ -198,15 +201,22 @@ function OrderDetailModal({ order, onClose, onAdvance, onCancel, onMarkPaid }) {
         </table>
       </div>
 
-      <div className="lf-actions" style={{ marginTop: 18 }}>
-        <a className="adm-btn-outline" href={`/api/admin/orders/${order.id}/pdf?type=slip`}><IconDownload size={15} /> Generate Slip</a>
-        <a className="adm-btn-outline" href={`/api/admin/orders/${order.id}/pdf?type=invoice`}><IconDownload size={15} /> Generate Invoice</a>
+      {/* Wraps onto two rows: the secondary actions on the first, the (longer-labelled) next-step
+          button full-width underneath, so "Mark as Installation Done" never gets squashed. */}
+      <div className="lf-actions" style={{ marginTop: 18, flexWrap: 'wrap' }}>
+        <a className="adm-btn-outline" style={{ whiteSpace: 'nowrap' }} href={`/api/admin/orders/${order.id}/pdf?type=slip`}><IconDownload size={15} /> Generate Slip</a>
+        <a className="adm-btn-outline" style={{ whiteSpace: 'nowrap' }} href={`/api/admin/orders/${order.id}/pdf?type=invoice`}><IconDownload size={15} /> Generate Invoice</a>
         {order.paymentStatus !== 'paid' && order.status !== 'cancelled' && (
-          <button className="adm-chip-btn" onClick={onMarkPaid}>Mark Paid</button>
+          <button className="adm-chip-btn" style={{ whiteSpace: 'nowrap' }} onClick={onMarkPaid}>Mark Paid</button>
         )}
-        {isOpen && <button className="lf-btn-back" onClick={onCancel}>Cancel Order</button>}
-        {isOpen && next && <button className="lf-btn-next" onClick={onAdvance}>Mark as {STATUS_LABEL[next]}</button>}
+        {canCancel && <button className="lf-btn-back" style={{ whiteSpace: 'nowrap' }} onClick={onCancel}>Cancel Order</button>}
+        {next && order.status !== 'cancelled' && (
+          <button className="lf-btn-next" style={{ flex: '1 1 100%', whiteSpace: 'nowrap' }} onClick={onAdvance}>Mark as {STATUS_LABEL[next]}</button>
+        )}
       </div>
+      {next && order.status !== 'cancelled' && (
+        <p className="adm-lead-sub" style={{ marginTop: 8 }}>The customer gets a WhatsApp update when you move this order forward.</p>
+      )}
     </Modal>
   );
 }

@@ -3,6 +3,7 @@
 import { dbGetById } from '@/lib/db';
 import { getEmployee } from '@/lib/auth';
 import { advanceOrderStatus, markOrderPaid, ORDER_STATUSES } from '@/lib/heseosOrders';
+import { notifyHeseosOrderStatus } from '@/lib/heseosNotify';
 
 export const dynamic = 'force-dynamic';
 
@@ -37,7 +38,16 @@ export async function PATCH(request, { params }) {
       return Response.json({ error: `Unknown status "${body.status}"` }, { status: 400 });
     }
     const updated = await advanceOrderStatus(id, body.status, actorLabel);
-    return Response.json(updated);
+    // Tell the customer on WhatsApp — only when the status actually changed (a double-click or a
+    // retry never texts them twice) and only for the forward steps that have a message
+    // (Packed / Dispatched / Delivered / Installation Done). Best-effort: a failed send never
+    // undoes the status change; the admin just sees "WhatsApp message could not be sent".
+    let whatsappSent = false;
+    if (updated && existing.status !== body.status) {
+      const wa = await notifyHeseosOrderStatus(updated, body.status);
+      whatsappSent = !!wa?.ok;
+    }
+    return Response.json({ ...updated, whatsappSent });
   }
 
   return Response.json({ error: 'Nothing to update — send status or markPaid' }, { status: 400 });
