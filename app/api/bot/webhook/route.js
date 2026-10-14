@@ -5,7 +5,7 @@
 // matching the inbound payload's phone_number_id / verify token), see lib/botWhatsapp.js and
 // lib/botEngine.js.
 
-import { dbGetById, dbInsert, dbList, dbPatch, dbWhere } from '@/lib/db';
+import { dbGetById, dbInsert, dbList, dbPatch, dbWhere, dbDelete } from '@/lib/db';
 import { parseWebhookByPhone, describeMetaError, botMarkReadWithTyping, botWaConfigured } from '@/lib/botWhatsapp';
 import { runBotTurn } from '@/lib/botEngine';
 import { runFlowTurn, pickFlow } from '@/lib/botFlowEngine';
@@ -17,7 +17,6 @@ import { HESEOS_DEFAULT_FLOW_ID, ensureHeseosDefaultFlow } from '@/lib/heseosDef
 import { HESEOS_RETURNING_FLOW_ID, ensureHeseosReturningFlow } from '@/lib/heseosReturningFlow';
 import { ensureHeseosOrganicFlow } from '@/lib/heseosOrganicFlow';
 import { ensureHeseosRatingFlow } from '@/lib/heseosRatingFlow';
-import { ensureHeseosNoAnswerFlow } from '@/lib/heseosNoAnswerFlow';
 import { HESEOS_SHOPPING_FLOW_ID, ensureHeseosShoppingFlow } from '@/lib/heseosShoppingFlow';
 
 export const dynamic = 'force-dynamic';
@@ -103,7 +102,12 @@ export async function POST(req) {
         tenantFlows = await ensureHeseosReturningFlow(tenant, tenantFlows);
         tenantFlows = await ensureHeseosOrganicFlow(tenant, tenantFlows);
         tenantFlows = await ensureHeseosRatingFlow(tenant, tenantFlows);
-        tenantFlows = await ensureHeseosNoAnswerFlow(tenant, tenantFlows);
+        // The old "No-Answer Follow-up Nudge" flow was retired — drop its stored row once so it
+        // no longer shows up in Bot Flows. No-op after the first run.
+        if (tenantFlows.some((f) => f.id === 'heseos_no_answer_nudge_v1')) {
+          await dbDelete('bot_flows', 'heseos_no_answer_nudge_v1').catch((err) => console.error('retire no-answer flow error:', err));
+          tenantFlows = tenantFlows.filter((f) => f.id !== 'heseos_no_answer_nudge_v1');
+        }
         tenantFlows = await ensureHeseosShoppingFlow(tenant, tenantFlows);
       }
 

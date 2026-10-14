@@ -1,5 +1,5 @@
-# Hourly trigger for app/api/cron/lead-reminders/route.js — the no-answer follow-up nudges and
-# demo-time reminders. This exists here (rather than as a Vercel Cron entry in vercel.json)
+# Hourly trigger for app/api/cron/lead-reminders/route.js — the demo-time
+# reminders. This exists here (rather than as a Vercel Cron entry in vercel.json)
 # because Vercel's Hobby plan only allows cron jobs to run once a day with imprecise timing
 # (anywhere in a ~1 hour window) — nowhere near tight enough for a "2 hours before the demo"
 # reminder. GitHub Actions' own `schedule` trigger has the same few-minutes-of-slop as any
@@ -9,7 +9,7 @@
 # Actions) with the SAME value as the CRON_SECRET environment variable set in the Vercel
 # project (see .env.example) — this workflow authenticates with it exactly the way the route
 # itself checks (`Authorization: Bearer <CRON_SECRET>`).
-name: Lead reminders (no-answer nudges + demo reminders)
+name: Lead reminders (demo reminders)
 
 on:
   # Scheduled hourly run is PAUSED — every run was failing (both the no-answer nudges and the

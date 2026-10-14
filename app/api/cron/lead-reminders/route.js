@@ -1,24 +1,19 @@
 // app/api/cron/lead-reminders/route.js
 // The one scheduled (non-human-triggered) sweep in this app — everything else in
 // lib/heseosNotify.js fires off the back of a human action or an inbound webhook. This route
-// exists for the two things that instead depend on TIME PASSING with nobody doing anything:
+// exists for the one thing that instead depends on TIME PASSING with nobody doing anything:
 //
-//   1. A lead stuck in contactStage 'call_not_picked' (pre-sales tried to call, no answer) gets
-//      up to 3 automated WhatsApp nudges (lib/heseosNotify.js's notifyHeseosNoAnswerNudge, which
-//      routes the reply into lib/heseosNoAnswerFlow.js) instead of just sitting unworked until
-//      someone happens to try calling again.
-//   2. A lead with a booked demo (demoScheduledAt set, no demoOutcome logged yet) gets a
-//      courtesy reminder 24h and 2h before the visit (lib/heseosNotify.js's
-//      notifyHeseosDemoReminder).
+//   A lead with a booked demo (demoScheduledAt set, no demoOutcome logged yet) gets a
+//   courtesy reminder 24h and 2h before the visit (lib/heseosNotify.js's
+//   notifyHeseosDemoReminder).
 //
-// Both are idempotent by design — noAnswerAttempts/noAnswerLastAttemptAt and
-// demoReminder24hSentAt/demoReminder2hSentAt (see lib/leadStage.js's own comment on these) are
-// checked AND updated every time this runs, so calling this route twice in a row (or on
-// overlapping schedules) never double-sends. That matters because there's no cron
+// It is idempotent by design — demoReminder24hSentAt/demoReminder2hSentAt (see
+// lib/leadStage.js's own comment on these) are checked AND updated every time this runs, so
+// calling this route twice in a row (or on overlapping schedules) never double-sends. That matters because there's no cron
 // infrastructure built into this app or its host (Vercel) that can run more often than once a
 // day on the Hobby plan — see this repo's README for which plan/schedule this project actually
 // uses. The intended caller is an external scheduler hitting this route on a tighter cadence
-// (hourly is plenty for both jobs above); a `.github/workflows/lead-reminders.yml` GitHub
+// (hourly is plenty); a `.github/workflows/lead-reminders.yml` GitHub
 // Actions workflow is included for exactly this, authenticating with the same CRON_SECRET env
 // var checked below. If a Vercel Cron entry is ever added for this same route instead (or as a
 // redundant daily safety net), no code change is needed — Vercel's own cron invocations already
@@ -29,22 +24,11 @@
 // job can hold anyway.
 
 import { dbList, dbPatch } from '@/lib/db';
-import { pushHistory } from '@/lib/leadStage';
-import { notifyHeseosNoAnswerNudge, notifyHeseosDemoReminder } from '@/lib/heseosNotify';
+import { notifyHeseosDemoReminder } from '@/lib/heseosNotify';
 
 export const dynamic = 'force-dynamic';
 
 const HOUR_MS = 60 * 60 * 1000;
-const NO_ANSWER_MAX_ATTEMPTS = 3;
-// Minimum gap between automated nudges — gives pre-sales a real window to reach the customer
-// themselves before the bot tries. Not meant to be precise (this route may run hourly or once a
-// day depending on the scheduler); it's a floor, not a fixed cadence.
-const NO_ANSWER_RETRY_HOURS = 4;
-
-function hoursSince(iso) {
-  const t = iso ? new Date(iso).getTime() : NaN;
-  return Number.isNaN(t) ? Infinity : (Date.now() - t) / HOUR_MS;
-}
 
 // A lead's demoDate ("YYYY-MM-DD") + demoTime ("HH:MM", 24h) converge to this exact shape from
 // BOTH paths that can set them — the WhatsApp bot's date_ddmmyyyy/time_12h validators
@@ -72,27 +56,10 @@ export async function GET(request) {
   }
 
   const leads = await dbList('leads');
-  const summary = { checked: leads.length, noAnswerNudgesSent: 0, demoReminders24hSent: 0, demoReminders2hSent: 0, errors: [] };
+  const summary = { checked: leads.length, demoReminders24hSent: 0, demoReminders2hSent: 0, errors: [] };
 
   for (const lead of leads) {
     try {
-      // ── No-answer follow-up sequence ──────────────────────────────────────────
-      if (lead.contactStage === 'call_not_picked' && !lead.demoScheduledAt && (lead.noAnswerAttempts || 0) < NO_ANSWER_MAX_ATTEMPTS) {
-        const lastAttemptAt = lead.noAnswerLastAttemptAt || lead.contactStageAt;
-        if (hoursSince(lastAttemptAt) >= NO_ANSWER_RETRY_HOURS) {
-          const attemptNumber = (lead.noAnswerAttempts || 0) + 1;
-          const res = await notifyHeseosNoAnswerNudge(lead);
-          const patch = { noAnswerAttempts: attemptNumber, noAnswerLastAttemptAt: new Date().toISOString() };
-          patch.history = pushHistory(lead, {
-            event: `Automated follow-up sent (Attempt ${attemptNumber}/${NO_ANSWER_MAX_ATTEMPTS})`,
-            by: 'System (Cron)',
-            note: res.ok ? '' : (res.error || 'Send failed'),
-          });
-          await dbPatch('leads', lead.id, patch);
-          if (res.ok) summary.noAnswerNudgesSent += 1;
-        }
-      }
-
       // ── Demo-time reminders ─────────────────────────────────────────────────────
       if (lead.demoScheduledAt && !lead.demoOutcome) {
         const at = demoInstant(lead);
