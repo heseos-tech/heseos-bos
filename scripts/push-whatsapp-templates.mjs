@@ -28,8 +28,9 @@
 //   WHATSAPP_ACCESS_TOKEN a token with the whatsapp_business_management permission (a System User
 //                         token from Business Settings works; so does the one your bot already uses
 //                         if it was created with that permission).
-//   META_APP_ID           optional — only needed for 'quotation_ready_pdf', whose PDF header needs a
-//                         sample file uploaded to your Meta app. Without it that one template is skipped.
+//   META_APP_ID           optional — only needed if 'quotation_ready_pdf' is MISSING or REJECTED on the
+//                         account you point this at (its PDF header needs a sample file uploaded to your
+//                         Meta app). Not needed when that template is already approved.
 //   WHATSAPP_API_VERSION  optional, default v20.0 (same default the bot itself uses).
 //
 // Approval is not instant: Utility templates usually clear in minutes, occasionally a day. Re-run with
@@ -113,10 +114,12 @@ const CATALOGUE = [
     examples: ['Rahul', '15 Oct 2026', '11:00 AM'],
   },
   {
-    // PDF header — needs META_APP_ID (see header comment). Deliberately plain.
+    // Already APPROVED in HESEOS's account, so this script never touches it — the wording below is
+    // simply a copy of what Meta has approved. META_APP_ID is only needed if it ever has to be
+    // (re)created on a different WhatsApp account, because the PDF header needs a sample file upload.
     name: 'quotation_ready_pdf',
-    body: 'Hi {{1}}, your HESEOS quotation is ready. Quoted amount: {{2}}. The detailed quotation is attached as a PDF. Please reply here if you have any questions.\n\n— Team HESEOS',
-    examples: ['Rahul', '₹1,25,000'],
+    body: 'Hi {{1}}, your smart home quotation from HESEOS is ready — {{2}}. Please find it attached above. Let us know if you have any questions.',
+    examples: ['Priya', '₹85,000'],
     header: 'document',
   },
 
