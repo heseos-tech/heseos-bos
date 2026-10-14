@@ -39,8 +39,8 @@ export async function PATCH(request, { params }) {
     }
     const updated = await advanceOrderStatus(id, body.status, actorLabel);
     // Tell the customer on WhatsApp — only when the status actually changed (a double-click or a
-    // retry never texts them twice) and only for the forward steps that have a message
-    // (Packed / Dispatched / Delivered / Installation Done). Best-effort: a failed send never
+    // retry never texts them twice) and only for the steps that have a message
+    // (Packed / Dispatched / Delivered / Installation Done / Cancelled). Best-effort: a failed send never
     // undoes the status change; the admin just sees "WhatsApp message could not be sent".
     let whatsappSent = false;
     if (updated && existing.status !== body.status) {

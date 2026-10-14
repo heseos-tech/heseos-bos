@@ -91,7 +91,7 @@ export default function OrdersPage() {
     if (!window.confirm(`Cancel order ${order.id}? This can't be undone.`)) return;
     const updated = await patchOrder(order.id, { status: 'cancelled' });
     setModal({ type: 'view', order: updated });
-    flash('Order cancelled');
+    flash(`Order cancelled${updated.whatsappSent ? ' — customer notified on WhatsApp' : ' — WhatsApp message could not be sent'}`);
   }
 
   async function markPaid(order) {
