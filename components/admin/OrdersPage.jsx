@@ -1,7 +1,7 @@
 'use client';
-// Admin -> Orders: fulfillment queue for WhatsApp Shopping orders (see
-// lib/heseosShoppingFlow.js/lib/heseosOrders.js for how one of these gets created — a customer
-// browsing the catalog-node flow on WhatsApp, building a cart, and checking out). Deliberately
+// Admin -> Orders: fulfillment queue for orders placed on the door-lock landing page (see
+// lib/heseosDoorLock.js/lib/heseosOrders.js — a customer messages on WhatsApp, gets the page link,
+// and orders there). Deliberately
 // modeled on GrowthPage.jsx's tab-row pattern (status as tabs with live counts, not a dropdown)
 // and LeadsPage.jsx's pagination — same "read first, match the house style" approach used
 // everywhere else on this admin, not a bespoke layout.
@@ -100,7 +100,7 @@ export default function OrdersPage() {
   return (
     <>
       <div className="adm-page-head">
-        <div><h1 className="adm-h1">Orders</h1><p className="adm-page-sub">Orders placed through WhatsApp Shopping — pack, dispatch and mark delivered from here</p></div>
+        <div><h1 className="adm-h1">Orders</h1><p className="adm-page-sub">Orders placed on the door-lock landing page — pack, dispatch and mark delivered from here</p></div>
       </div>
 
       {notice && <div className="adm-notice">{notice}</div>}

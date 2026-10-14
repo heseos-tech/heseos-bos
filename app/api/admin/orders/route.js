@@ -1,4 +1,4 @@
-// Admin backend for WhatsApp Shopping orders (lib/heseosShoppingFlow.js/lib/heseosOrders.js).
+// Admin backend for orders placed on the door-lock landing page (lib/heseosDoorLock.js/lib/heseosOrders.js).
 // GET   — every order, newest first, for the Admin -> Orders tab. Any logged-in employee can
 //         read/manage orders (same access level as Leads/Growth) — this is an operational
 //         fulfillment queue, not a sensitive admin-only setting.

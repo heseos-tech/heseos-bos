@@ -1,5 +1,5 @@
 // lib/orderPdf.jsx
-// Renders a WhatsApp Shopping order (lib/heseosOrders.js) as a one-page PDF — pure-JS via
+// Renders a landing-page order (lib/heseosOrders.js) as a one-page PDF — pure-JS via
 // @react-pdf/renderer, same reason lib/quotationPdf.jsx uses it (no headless browser needed, so
 // it works fine in a serverless function). Used by app/api/admin/orders/[id]/pdf/route.js for
 // the Admin -> Orders detail modal's "Generate Slip" / "Generate Invoice" buttons
