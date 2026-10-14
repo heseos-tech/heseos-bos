@@ -69,11 +69,12 @@ const CATALOGUE = [
     examples: ['Rahul'],
   },
   {
-    // Current wording of the "we received your enquiry" confirmation (lib/heseosNotify.js's
-    // notifyHeseosMetaLeadCaptured tries this first, falls back to meta_lead_welcome above). Warmer
-    // and promise-y, so Meta may reclassify it as MARKETING — the table printed at the end shows the
-    // category Meta actually assigned.
-    name: 'meta_lead_welcome_v2',
+    // Confirmation for the /smart-home landing-page form (customers who came from a QR scan, a
+    // referral link or a direct WhatsApp message) — lib/heseosNotify.js's
+    // notifyHeseosLandingLeadCaptured tries this first and falls back to meta_lead_welcome above.
+    // Warmer and promise-y, so Meta may reclassify it as MARKETING — the line printed when it is
+    // created shows the category Meta actually assigned.
+    name: 'landing_enquiry_received',
     body: "Hi {{1}}! 👋 We have received your enquiry with HESEOS.\n\nHere's what happens next:\n✅ Our smart home expert will review your requirement\n✅ They'll personally reach out within 24 hours\n✅ You'll get a customised plan + free consultation\n\nThank you for choosing *HESEOS* — welcome to the HESEOS family! 🏡💙",
     examples: ['Rahul'],
   },
