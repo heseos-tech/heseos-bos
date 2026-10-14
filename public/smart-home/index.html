@@ -314,13 +314,15 @@
  });
 
  // ?p=<mobile> pre-fills the number; ?ref=<code> credits a partner / QR / referral link (kept for the visit)
- var ref='';
+ var ref='', via='';
  try{
    var q=new URLSearchParams(location.search);
    var p=q.get('p'); if(p&&/^\d{10}$/.test(p)) $('phone').value=p;
    var r=(q.get('ref')||'').trim();
    if(/^[A-Za-z0-9]{4,24}$/.test(r)){ref=r; try{sessionStorage.setItem('hs_ref',r);}catch(e){}}
    else{try{ref=sessionStorage.getItem('hs_ref')||'';}catch(e){}}
+   if(q.get('via')==='wa'){via='wa'; try{sessionStorage.setItem('hs_via','wa');}catch(e){}}
+   else{try{via=sessionStorage.getItem('hs_via')||'';}catch(e){}}
  }catch(e){}
 
  var clientRef='c'+Date.now().toString(36)+Math.random().toString(36).slice(2,10);
@@ -334,7 +336,7 @@
      name:(d.get('name')||'').trim(), phone:(d.get('phone')||'').trim(), city:cityVal,
      propertyType:d.get('propertyType')||'', budget:d.get('budget')||'', timeline:d.get('timeline')||'',
      productInterest:d.getAll('interest'), notes:(d.get('notes')||'').trim(),
-     website:d.get('website')||'', clientRef:clientRef, ref:ref
+     website:d.get('website')||'', clientRef:clientRef, ref:ref, via:via
    };
    var digits=body.phone.replace(/\D/g,'').replace(/^91(?=\d{10}$)/,'').replace(/^0(?=\d{10}$)/,'');
    if(body.name.length<2) return fail('Please enter your full name.');

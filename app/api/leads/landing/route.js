@@ -1,7 +1,7 @@
 // app/api/leads/landing/route.js
 // PUBLIC (no login) — the HESEOS smart-home enquiry landing page (/smart-home,
 // public/smart-home/index.html) posts here. Creates a lead exactly like every other channel
-// (lib/heseosLandingLead.js: source 'landing_page', first-touch referral credit for ?ref=<code>,
+// (lib/heseosLandingLead.js: lead source follows the channel — QR / Referral / WhatsApp Direct, else 'landing_page' — first-touch referral credit for ?ref=<code>,
 // city-based pre-sales auto-assignment) and WhatsApps the customer a "we've received your
 // enquiry" confirmation from HESEOS's own number (lib/heseosNotify.js).
 //
@@ -61,7 +61,7 @@ export async function POST(request) {
   // Per-phone cap — the lead-creation path already merges repeat enquiries into one open lead, but
   // this also stops the page being used to spam someone's WhatsApp with confirmations.
   const target = normalizePhone(mobile);
-  const recent = existing.filter((l) => l.source === 'landing_page' && normalizePhone(l.phone) === target && Date.now() - new Date(l.createdAt).getTime() < HOUR_MS);
+  const recent = existing.filter((l) => l.viaLandingPage && normalizePhone(l.phone) === target && Date.now() - new Date(l.createdAt).getTime() < HOUR_MS);
   if (recent.length >= 3) {
     return Response.json({ error: 'We already have your enquiry. Our team will contact you shortly.' }, { status: 429 });
   }
@@ -71,7 +71,7 @@ export async function POST(request) {
   let result;
   try {
     result = await createHeseosLandingLead({
-      name, phone: mobile, city, propertyType, budget, timeline, productInterest, notes, link, pageUrl: '/smart-home', clientRef,
+      name, phone: mobile, city, propertyType, budget, timeline, productInterest, notes, link, pageUrl: '/smart-home', clientRef, viaWhatsApp: body?.via === 'wa',
     });
   } catch (err) {
     console.error('POST /api/leads/landing error:', err);
