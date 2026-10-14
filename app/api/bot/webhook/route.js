@@ -388,7 +388,9 @@ export async function POST(req) {
             const shoppingFlow = tenantFlows.find((f) => f.id === HESEOS_SHOPPING_FLOW_ID && f.enabled && (f.nodes || []).some((n) => n.type === 'start'));
             if (shoppingFlow) {
               const lower = String(m.text || '').trim().toLowerCase();
-              const matched = lower && (shoppingFlow.triggers?.keywords || []).some((k) => k && lower.includes(String(k).toLowerCase()));
+              // A tap on one of the bot's OWN buttons (m.replyId — e.g. "🔒 Order door lock again") is an
+              // answer to the menu the chat is on, never a fresh "door lock" keyword message.
+              const matched = lower && !m.replyId && (shoppingFlow.triggers?.keywords || []).some((k) => k && lower.includes(String(k).toLowerCase()));
               if (matched) {
                 // Also when already on this flow: a returning-flow re-engagement above may have
                 // just pulled a chat with an open lead off it — an explicit keyword wins back.
