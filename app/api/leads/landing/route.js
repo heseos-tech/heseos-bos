@@ -8,13 +8,13 @@
 // Abuse guards, since this is open to the internet AND triggers an outbound WhatsApp message to
 // whatever number is typed in: a hidden honeypot field, a per-IP rate limit, a per-phone cap, and
 // `clientRef` de-duplication so a double-tap or browser retry never creates two leads.
-import { dbList } from '@/lib/db';
+import { dbList, dbGetById } from '@/lib/db';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { PRODUCT_INTEREST, PROPERTY_TYPE, BUDGET_BY_PROPERTY, TIMELINE } from '@/lib/formOptions';
 import { indianMobile } from '@/lib/heseosDoorLock';
 import { normalizePhone } from '@/lib/leadOrigin';
 import { createHeseosLandingLead, resolveLandingRef } from '@/lib/heseosLandingLead';
-import { notifyHeseosLandingLeadCaptured } from '@/lib/heseosNotify';
+import { notifyHeseosLandingLeadCaptured, notifyHeseosPartnerQrLeadCreated } from '@/lib/heseosNotify';
 
 export const dynamic = 'force-dynamic';
 
@@ -85,6 +85,22 @@ export async function POST(request) {
   if (!result.existing) {
     const wa = await notifyHeseosLandingLeadCaptured(result.lead).catch((err) => { console.error('notifyHeseosLandingLeadCaptured error:', err); return null; });
     whatsappSent = !!wa?.ok;
+  }
+
+  // Tell the partner in real time that their QR code just produced a lead — same approved
+  // 'qr_lead_scanned_partner_notify' template the WhatsApp chat path always used
+  // (lib/heseosLeadSync.js's finalizeHeseosLead). lead.partnerId is only set when this phone's
+  // FIRST-EVER lead is the one being credited (lib/heseosLandingLead.js), so a partner is never
+  // notified twice for the same customer; link.kind === 'qr_partner' keeps it to an actual QR scan
+  // (the template's wording says "scanned your QR code" — not true of a shared referral link).
+  // Best-effort, never affects the response.
+  if (!result.existing && result.lead.partnerId && link?.kind === 'qr_partner') {
+    try {
+      const partner = await dbGetById('partners', result.lead.partnerId);
+      if (partner) await notifyHeseosPartnerQrLeadCreated(partner, result.lead);
+    } catch (err) {
+      console.error('notifyHeseosPartnerQrLeadCreated error:', err);
+    }
   }
 
   return Response.json({ ok: true, leadId: result.lead.id, existing: result.existing, whatsappSent });
