@@ -22,6 +22,7 @@ import GrowthPage from "./GrowthPage";
 import ProductsPage from "./ProductsPage";
 import OrdersPage from "./OrdersPage";
 import CallRequestsPage from "./CallRequestsPage";
+import MarketingStudioPage from "./MarketingStudioPage";
 import LandingActivityPage from "./LandingActivityPage";
 import QuotationsPage from "./QuotationsPage";
 import DemoSchedulePage from "./DemoSchedulePage";
@@ -43,6 +44,7 @@ function renderTab(tab, employee) {
     case "orders": return <OrdersPage />;
     case "call-requests": return <CallRequestsPage />;
     case "landing-activity": return <LandingActivityPage />;
+    case "marketing": return <MarketingStudioPage />;
     case "quotations": return <QuotationsPage />;
     case "demo-schedule": return <DemoSchedulePage />;
     case "conversions": return <ConversionsPage />;
@@ -51,7 +53,7 @@ function renderTab(tab, employee) {
   }
 }
 
-const KNOWN_TABS = new Set(["dashboard", "leads", "partners", "employees", "sales-engineers", "presales", "reports", "settings", "growth", "products", "orders", "call-requests", "landing-activity", "quotations", "demo-schedule", "conversions", "payouts"]);
+const KNOWN_TABS = new Set(["dashboard", "leads", "partners", "employees", "sales-engineers", "presales", "reports", "settings", "growth", "products", "orders", "call-requests", "landing-activity", "marketing", "quotations", "demo-schedule", "conversions", "payouts"]);
 
 export default function AdminHome({ employee }) {
   const { tab: rawTab } = useDashboardTab();
