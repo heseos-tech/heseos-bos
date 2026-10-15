@@ -71,8 +71,16 @@ export async function POST(request) {
       if (!employee) return Response.json({ error: 'Employee login required' }, { status: 401 });
       addedByEmployeeId = employee.id;
       addedByLabel = `${employee.name || 'Our team member'}, Heseos Team Member`;
-    } else if (!LEAD_SOURCES[source]) {
-      source = 'manual_entry';
+    } else {
+      if (!LEAD_SOURCES[source]) source = 'manual_entry';
+      // Admin's own "Add Lead" (manual entry): the customer gets the same "<who> has added your
+      // details" welcome a partner's / employee's lead gets (lead_added_notify template), signed
+      // "HESEOS Team". Only when a LOGGED-IN employee is making the request — this route is also
+      // reachable without a session, and we must never let an anonymous call make HESEOS text an
+      // arbitrary phone number.
+      if (source === 'manual_entry' && (await getEmployee())) {
+        addedByLabel = 'HESEOS Team';
+      }
     }
 
     const existingLeads = await dbList('leads');
