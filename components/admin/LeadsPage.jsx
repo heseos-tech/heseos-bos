@@ -2,7 +2,11 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { fmtDate } from '@/lib/date';
-import { LEAD_SOURCES, PROPERTY_TYPE } from '@/lib/formOptions';
+import { LEAD_SOURCES, PROPERTY_TYPE, TIMELINE } from '@/lib/formOptions';
+import {
+  WIZARD_PROPERTY_TYPE, CONFIGURATION, REFERRAL_SOURCE, PROPERTY_TYPE_LABEL, CONFIGURATION_LABEL,
+  TIMELINE_LABEL, REFERRAL_SOURCE_LABEL, budgetOptionsFor, budgetLabel,
+} from '@/lib/partnerMock';
 import { isQrKind } from '@/lib/attributionConstants';
 import { adminStatus, leadBucket, nextAction, LEAD_BUCKETS } from '@/lib/adminMetrics';
 import { StatusBadge, Pagination, Modal, StatCard } from './ui';
@@ -323,40 +327,137 @@ function ViewLeadModal({ lead, partnerName, engineerName, onClose }) {
   );
 }
 
+const EMPTY_LEAD = {
+  name: '', phone: '', altPhone: '', city: '',
+  propertyType: '', configuration: '', budget: '', timeline: '', referralSource: '', notes: '',
+};
+
+// Admin's "Add lead" — same three steps and fields as the Partner / Team app wizards
+// (components/partner/LeadWizard.jsx, components/team/LeadWizard.jsx): customer details ->
+// requirement details -> review. Posts source 'manual_entry' (the customer is welcomed on WhatsApp as
+// "HESEOS Team" — see app/api/leads/route.js).
 function AddLeadModal({ onClose, onDone }) {
-  const [name, setName] = useState('');
-  const [phone, setPhone] = useState('');
-  const [city, setCity] = useState('');
-  const [propertyType, setPropertyType] = useState('');
+  const [step, setStep] = useState(0);
+  const [form, setForm] = useState(EMPTY_LEAD);
+  const [cities, setCities] = useState([]);
+  const [citiesLoading, setCitiesLoading] = useState(true);
+  const [dupe, setDupe] = useState(null);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    fetch('/api/cities').then((r) => (r.ok ? r.json() : { cities: [] })).then((d) => setCities(d.cities || [])).catch(() => {}).finally(() => setCitiesLoading(false));
+  }, []);
+
+  // Non-blocking duplicate notice, same lookup the Team app wizard uses.
+  useEffect(() => {
+    const digits = form.phone.replace(/\D/g, '');
+    if (digits.length !== 10) { setDupe(null); return undefined; }
+    let cancelled = false;
+    const t = setTimeout(() => {
+      fetch(`/api/leads/lookup?phone=${digits}`)
+        .then((r) => (r.ok ? r.json() : { exists: false }))
+        .then((d) => { if (!cancelled) setDupe(d.exists ? d : null); })
+        .catch(() => { if (!cancelled) setDupe(null); });
+    }, 400);
+    return () => { cancelled = true; clearTimeout(t); };
+  }, [form.phone]);
+
+  function set(field, val) {
+    setForm((f) => ({ ...f, [field]: val, ...(field === 'propertyType' ? { budget: '' } : {}) }));
+  }
+  const step1Ok = form.name.trim() && /^\d{10}$/.test(form.phone.replace(/\D/g, '')) && form.city.trim();
+  const step2Ok = form.propertyType && form.configuration && form.budget && form.timeline && form.referralSource;
 
   async function submit() {
     setError(''); setSaving(true);
     try {
-      const res = await fetch('/api/leads', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, phone, city, propertyType, source: 'manual_entry' }) });
+      const res = await fetch('/api/leads', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...form, phone: form.phone.replace(/\D/g, ''), source: 'manual_entry' }) });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to add lead');
       onDone();
     } catch (e) { setError(e.message); } finally { setSaving(false); }
   }
 
+  const sel = (value, onChange, options, placeholder, disabled) => (
+    <select className="lf-input" value={value} onChange={(e) => onChange(e.target.value)} disabled={disabled}>
+      <option value="">{placeholder}</option>
+      {options.map((o) => <option key={o.v} value={o.v}>{o.l}</option>)}
+    </select>
+  );
+  const row = (label, val) => (
+    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, padding: '7px 0', borderBottom: '1px solid #f0f2f5', fontSize: 13.5 }}>
+      <span style={{ color: '#7b8494' }}>{label}</span><span style={{ fontWeight: 600, textAlign: 'right' }}>{val || '—'}</span>
+    </div>
+  );
+
   return (
-    <Modal title="Add lead" sub="Manually log a lead into the pipeline" onClose={onClose}>
-      <div className="lf-field"><label className="lf-label">Full name</label><input className="lf-input" value={name} onChange={(e) => setName(e.target.value)} /></div>
-      <div className="lf-field"><label className="lf-label">Mobile number</label><input className="lf-input" value={phone} onChange={(e) => setPhone(e.target.value)} /></div>
-      <div className="lf-field"><label className="lf-label">City</label><input className="lf-input" value={city} onChange={(e) => setCity(e.target.value)} /></div>
-      <div className="lf-field">
-        <label className="lf-label">Property Type</label>
-        <select className="lf-input" value={propertyType} onChange={(e) => setPropertyType(e.target.value)}>
-          <option value="">Select</option>
-          {PROPERTY_TYPE.map((p) => <option key={p.v} value={p.v}>{p.l}</option>)}
-        </select>
+    <Modal title="Add lead" sub={step === 0 ? 'Customer details' : step === 1 ? 'Requirement details' : 'Review and add'} onClose={onClose}>
+      <div className="lf-progress">
+        {[0, 1, 2].map((i) => (
+          <span key={i} style={{ display: 'contents' }}>
+            <div className={`lf-prog-dot${i < step ? ' done' : i === step ? ' active' : ''}`}>{i + 1}</div>
+            {i < 2 && <div className={`lf-prog-line${i < step ? ' done' : ''}`} />}
+          </span>
+        ))}
       </div>
+
+      {step === 0 && (
+        <>
+          <div className="lf-field-row">
+            <div className="lf-field"><label className="lf-label">Full name *</label><input className="lf-input" placeholder="Enter full name" value={form.name} onChange={(e) => set('name', e.target.value)} /></div>
+            <div className="lf-field"><label className="lf-label">Mobile number *</label><input className="lf-input" inputMode="numeric" placeholder="10 digit mobile number" value={form.phone} onChange={(e) => set('phone', e.target.value)} /></div>
+          </div>
+          {dupe && (
+            <div className="adm-notice" style={{ marginTop: 12, background: '#fff7e6', color: '#a15c00' }}>
+              This number is already in our system — {dupe.origin}. You can still add it if this is a new enquiry.
+            </div>
+          )}
+          <div className="lf-field-row" style={{ marginTop: 16 }}>
+            <div className="lf-field"><label className="lf-label">Alternate number (optional)</label><input className="lf-input" inputMode="numeric" placeholder="Alternate number" value={form.altPhone} onChange={(e) => set('altPhone', e.target.value)} /></div>
+            <div className="lf-field">
+              <label className="lf-label">City *</label>
+              {cities.length > 0 || citiesLoading
+                ? <select className="lf-input" value={form.city} onChange={(e) => set('city', e.target.value)} disabled={citiesLoading}><option value="">{citiesLoading ? 'Loading cities…' : 'Select city'}</option>{cities.map((c) => <option key={c} value={c}>{c}</option>)}</select>
+                : <input className="lf-input" placeholder="Enter city" value={form.city} onChange={(e) => set('city', e.target.value)} />}
+            </div>
+          </div>
+        </>
+      )}
+
+      {step === 1 && (
+        <>
+          <div className="lf-field-row">
+            <div className="lf-field"><label className="lf-label">Property type *</label>{sel(form.propertyType, (v) => set('propertyType', v), WIZARD_PROPERTY_TYPE, 'Select property type')}</div>
+            <div className="lf-field"><label className="lf-label">Configuration *</label>{sel(form.configuration, (v) => set('configuration', v), CONFIGURATION, 'Select configuration')}</div>
+          </div>
+          <div className="lf-field-row" style={{ marginTop: 16 }}>
+            <div className="lf-field"><label className="lf-label">Budget range *</label>{sel(form.budget, (v) => set('budget', v), budgetOptionsFor(form.propertyType), form.propertyType ? 'Select budget range' : 'Select property type first', !form.propertyType)}</div>
+            <div className="lf-field"><label className="lf-label">When are they planning? *</label>{sel(form.timeline, (v) => set('timeline', v), TIMELINE, 'Select timeline')}</div>
+          </div>
+          <div className="lf-field" style={{ marginTop: 16 }}><label className="lf-label">How did they connect? *</label>{sel(form.referralSource, (v) => set('referralSource', v), REFERRAL_SOURCE, 'Select source')}</div>
+          <div className="lf-field"><label className="lf-label">Additional notes (optional)</label><textarea className="lf-input" rows={3} placeholder="Write notes here…" value={form.notes} onChange={(e) => set('notes', e.target.value)} /></div>
+        </>
+      )}
+
+      {step === 2 && (
+        <>
+          <div className="adm-detail-label">Customer</div>
+          {row('Name', form.name)}{row('Mobile', form.phone)}{row('Alternate', form.altPhone)}{row('City', form.city)}
+          <div className="adm-detail-label" style={{ marginTop: 16 }}>Requirement</div>
+          {row('Property type', PROPERTY_TYPE_LABEL[form.propertyType])}{row('Configuration', CONFIGURATION_LABEL[form.configuration])}
+          {row('Budget range', budgetLabel(form.propertyType, form.budget))}{row('Timeline', TIMELINE_LABEL[form.timeline])}
+          {row('Source', REFERRAL_SOURCE_LABEL[form.referralSource])}{form.notes && row('Notes', form.notes)}
+          <p className="adm-lead-sub" style={{ marginTop: 12 }}>The customer will get a WhatsApp welcome from “HESEOS Team”, and the lead is auto-assigned by city.</p>
+        </>
+      )}
+
       {error && <div className="lf-error">{error}</div>}
       <div className="lf-actions">
-        <button className="lf-btn-back" onClick={onClose} disabled={saving}>Cancel</button>
-        <button className="lf-btn-next" onClick={submit} disabled={saving || !name || !phone || !city}>{saving ? 'Saving…' : 'Add Lead'}</button>
+        <button className="lf-btn-back" onClick={step === 0 ? onClose : () => setStep((n) => n - 1)} disabled={saving}>{step === 0 ? 'Cancel' : 'Back'}</button>
+        {step < 2
+          ? <button className="lf-btn-next" onClick={() => setStep((n) => n + 1)} disabled={step === 0 ? !step1Ok : !step2Ok}>Next</button>
+          : <button className="lf-btn-next" onClick={submit} disabled={saving}>{saving ? 'Saving…' : 'Add Lead'}</button>}
       </div>
     </Modal>
   );
