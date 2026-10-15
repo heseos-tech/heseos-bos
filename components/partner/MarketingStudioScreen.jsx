@@ -13,6 +13,33 @@ import { ScreenHeader } from './ui';
 import { IconShare, IconDownload, IconCopy } from './icons';
 import { CREATIVE_CATS } from '@/lib/marketing';
 import { drawBranded, loadImage } from '@/lib/marketingCompose';
+import { Capacitor, registerPlugin } from '@capacitor/core';
+
+// Native sharing inside the Capacitor app (WhatsApp -> My Status with the image attached).
+// registerPlugin only creates a bridge proxy — the native side comes from the @capacitor/share
+// and @capacitor/filesystem packages (npm install + `npx cap sync`, then rebuild the app). In an
+// app build without them, or in a normal browser, isNativeShareReady() is false and the screen
+// falls back to the web share sheet / download.
+const NativeShare = registerPlugin('Share');
+const NativeFs = registerPlugin('Filesystem');
+function isNativeShareReady() {
+  try {
+    return Capacitor.isNativePlatform() && Capacitor.isPluginAvailable('Share') && Capacitor.isPluginAvailable('Filesystem');
+  } catch { return false; }
+}
+function blobToBase64(blob) {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onerror = () => reject(new Error('read'));
+    r.onload = () => resolve(String(r.result).split(',')[1] || '');
+    r.readAsDataURL(blob);
+  });
+}
+// Writes the poster to the app cache and opens the native share sheet with it attached.
+async function nativeShareImage(blob, name, text) {
+  const { uri } = await NativeFs.writeFile({ path: name, data: await blobToBase64(blob), directory: 'CACHE' });
+  await NativeShare.share({ title: 'Heseos', text, files: [uri], dialogTitle: 'Share poster' });
+}
 
 function captionFor(url) {
   return url
@@ -95,8 +122,19 @@ export default function MarketingStudioScreen() {
 
   async function download() {
     setBusy('download');
-    try { saveFile(await toBlob()); track('download'); flash('Poster saved'); }
-    catch { flash('Could not save the poster'); }
+    try {
+      const blob = await toBlob();
+      if (isNativeShareReady()) {
+        // A WebView can't save files by itself — the share sheet is where "Save Image" / Files live.
+        await nativeShareImage(blob, fileName(), '');
+      } else {
+        saveFile(blob);
+        flash('Poster saved');
+      }
+      track('download');
+    } catch (e) {
+      if (!e || !/cancel|dismiss/i.test(String(e.message || e))) flash('Could not save the poster');
+    }
     setBusy('');
   }
 
@@ -106,7 +144,11 @@ export default function MarketingStudioScreen() {
       const blob = await toBlob();
       const file = new File([blob], fileName(), { type: 'image/jpeg' });
       const text = captionFor(link);
-      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      if (isNativeShareReady()) {
+        if (link) { try { await navigator.clipboard.writeText(link); } catch { /* optional */ } }
+        await nativeShareImage(blob, fileName(), text);
+        track('share');
+      } else if (navigator.canShare && navigator.canShare({ files: [file] })) {
         // Copy first so the link is on the clipboard for the Status caption, whatever the app does with `text`.
         if (link) { try { await navigator.clipboard.writeText(link); } catch { /* optional */ } }
         await navigator.share({ files: [file], text });
@@ -119,7 +161,8 @@ export default function MarketingStudioScreen() {
         flash('Poster saved — attach it in WhatsApp');
       }
     } catch (e) {
-      if (!e || e.name !== 'AbortError') flash('Could not share — try Download instead');
+      const cancelled = e && (e.name === 'AbortError' || /cancel|dismiss/i.test(String(e.message || e)));
+      if (!cancelled) flash('Could not share — try Download instead');
     }
     setBusy('');
   }
