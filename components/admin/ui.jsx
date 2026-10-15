@@ -19,6 +19,7 @@ import {
 export const NAV_ITEMS = [
   { tab: 'dashboard', href: '/admin', label: 'Dashboard', Icon: IconDashboard },
   { tab: 'leads', href: '/admin?tab=leads', label: 'Leads', Icon: IconLeads },
+  { tab: 'landing-activity', href: '/admin?tab=landing-activity', label: 'Landing Activity', Icon: IconReports },
   { tab: 'call-requests', href: '/admin?tab=call-requests', label: 'Call Requests', Icon: IconPhone },
   { tab: 'partners', href: '/admin?tab=partners', label: 'Partners', Icon: IconPartners },
   { tab: 'employees', href: '/admin?tab=employees', label: 'Employees', Icon: IconEmployees },

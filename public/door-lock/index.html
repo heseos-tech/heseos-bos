@@ -28,7 +28,7 @@
   <nav class="navlinks" aria-label="Main navigation"><a href="#features">Features</a><a href="#built">Built to last</a><a href="#order">Order now</a><a class="btn" href="#order">Order now <span>↗</span></a></nav>
 </header>
 <main id="top">
-<section class="wrap hero">
+<section class="wrap hero" id="hero">
   <div>
     <div class="eyebrow"><span class="dot"></span> A smarter way to come home</div>
     <h1>Your door.<br><span>Your rules.</span></h1>
@@ -106,6 +106,7 @@
 </main>
 <footer class="footer"><div class="wrap footer-inner"><div><strong>HESEOS</strong> <span style="margin-left:10px">LIGHTING AHEAD</span></div><div>Smart access. Thoughtful living.</div><div>Product specifications are subject to confirmation by HESEOS.</div></div></footer>
 <div class="mobile-cta"><a class="btn" href="#order">Order now <span>↗</span></a></div>
+<script src="/hs-track.js" data-page="door_lock"></script>
 <script>
 (function(){
  var price=4999,mrp=15999,maxQty=10,productName='HESEOS Smart Door Lock';
@@ -139,7 +140,7 @@
 
  var clientRef='c'+Date.now().toString(36)+Math.random().toString(36).slice(2,10);
  var form=$('orderForm'),btn=$('placeBtn'),err=$('err');
- function fail(msg){err.textContent=msg;err.style.display='block';btn.disabled=false;btn.firstChild.textContent='Place order ';}
+ function fail(msg){window.hsTrack&&window.hsTrack('error');err.textContent=msg;err.style.display='block';btn.disabled=false;btn.firstChild.textContent='Place order ';}
  form.addEventListener('submit',function(e){
    e.preventDefault(); err.style.display='none';
    var d=new FormData(form);
@@ -159,6 +160,7 @@
      .then(function(r){return r.json().catch(function(){return {};}).then(function(j){return {ok:r.ok,j:j};});})
      .then(function(res){
        if(!res.ok||!res.j.ok) return fail(res.j.error||'Something went wrong. Please try again.');
+       window.hsTrack&&window.hsTrack('submitted',{name:body.name,phone:body.phone,refId:res.j.orderId});
        form.style.display='none';
        $('doneName').textContent=body.name.split(' ')[0];
        $('doneId').textContent='Order ID: '+res.j.orderId;

@@ -132,7 +132,7 @@
 </header>
 
 <main id="top">
-<section class="wrap hero">
+<section class="wrap hero" id="hero">
   <div>
     <div class="eyebrow"><span class="dot"></span> Smart home automation</div>
     <h1>Make your home <span>smart.</span> Effortlessly.</h1>
@@ -259,6 +259,7 @@
 <footer class="footer"><div class="wrap footer-inner"><img src="/brand/lockup-white.png" alt="HESEOS — Lighting Ahead" width="282" height="64"><div>Smart homes. Happier lives.</div><div>Product pictures may differ from the actual product.</div></div></footer>
 <div class="mobile-cta"><a class="btn" href="#enquire">Get a callback <span>↗</span></a></div>
 
+<script src="/hs-track.js" data-page="smart_home"></script>
 <script>
 (function(){
  function $(id){return document.getElementById(id);}
@@ -327,7 +328,7 @@
 
  var clientRef='c'+Date.now().toString(36)+Math.random().toString(36).slice(2,10);
  var form=$('enquiryForm'),btn=$('sendBtn'),err=$('err');
- function fail(msg){err.textContent=msg;err.style.display='block';btn.disabled=false;btn.firstChild.textContent='Request my callback ';}
+ function fail(msg){window.hsTrack&&window.hsTrack('error');err.textContent=msg;err.style.display='block';btn.disabled=false;btn.firstChild.textContent='Request my callback ';}
  form.addEventListener('submit',function(e){
    e.preventDefault(); err.style.display='none';
    var d=new FormData(form);
@@ -347,6 +348,7 @@
      .then(function(r){return r.json().catch(function(){return {};}).then(function(j){return {ok:r.ok,j:j};});})
      .then(function(res){
        if(!res.ok||!res.j.ok) return fail(res.j.error||'Something went wrong. Please try again.');
+       window.hsTrack&&window.hsTrack('submitted',{name:body.name,phone:body.phone,refId:res.j.leadId});
        form.style.display='none';
        $('doneName').textContent=body.name.split(' ')[0];
        $('doneId').textContent='Reference: '+res.j.leadId;
