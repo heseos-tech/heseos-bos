@@ -24,6 +24,7 @@ export default function ConfigScreen({ tenant: initialTenant }) {
   const [qrActiveLang, setQrActiveLang] = useState((initialTenant.languages || ['en'])[0]);
   const [waPhoneNumberId, setWaPhoneNumberId] = useState(initialTenant.waPhoneNumberId || '');
   const [waAccessToken, setWaAccessToken] = useState(initialTenant.waAccessToken || '');
+  const [waBusinessAccountId, setWaBusinessAccountId] = useState(initialTenant.waBusinessAccountId || '');
   const [origin, setOrigin] = useState('');
   const [copied, setCopied] = useState('');
   const [saving, setSaving] = useState(false);
@@ -113,7 +114,7 @@ export default function ConfigScreen({ tenant: initialTenant }) {
       const res = await fetch('/api/bot/config', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ businessName, botName, brandColor, languages, welcomeMessage: welcome, qrWelcomeMessage: qrWelcome, menuOptions: menu, waPhoneNumberId, waAccessToken, ...extra }),
+        body: JSON.stringify({ businessName, botName, brandColor, languages, welcomeMessage: welcome, qrWelcomeMessage: qrWelcome, menuOptions: menu, waPhoneNumberId, waAccessToken, waBusinessAccountId, ...extra }),
       });
       if (res.ok) {
         const updated = await res.json();
@@ -185,6 +186,7 @@ export default function ConfigScreen({ tenant: initialTenant }) {
             <TextField label="WhatsApp Phone Number ID" value={waPhoneNumberId} onChange={(e) => { setWaPhoneNumberId(e.target.value); setWaCheck(null); }} placeholder="e.g. 109876543210987" />
             <TextField label="Access Token" type="password" value={waAccessToken} onChange={(e) => { setWaAccessToken(e.target.value); setWaCheck(null); }} placeholder="Permanent access token from Meta" />
           </div>
+          <TextField label="WhatsApp Business Account ID (optional)" value={waBusinessAccountId} onChange={(e) => setWaBusinessAccountId(e.target.value)} placeholder="e.g. 123456789012345 — lets the Inbox Template button list all your approved templates" />
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: -6, marginBottom: 4 }}>
             <button type="button" className="bc-btn bc-btn-outline bc-btn-sm" onClick={() => testConnection()} disabled={checking || !waPhoneNumberId || !waAccessToken}>
               {checking ? 'Testing…' : 'Test Connection'}

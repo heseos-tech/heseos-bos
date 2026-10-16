@@ -18,7 +18,7 @@ export const dynamic = 'force-dynamic';
 // qrWelcomeMessage is optional, per-language, same shape as welcomeMessage — sent instead of it
 // when a chat's first message came from a QR scan / partner link (see lib/botEngine.js's
 // welcomeText()). Blank for a given language just falls back to the regular welcomeMessage.
-const EDITABLE_FIELDS = ['businessName', 'botName', 'brandColor', 'status', 'languages', 'welcomeMessage', 'qrWelcomeMessage', 'menuOptions', 'whatsappNumber', 'waPhoneNumberId', 'waAccessToken'];
+const EDITABLE_FIELDS = ['businessName', 'botName', 'brandColor', 'status', 'languages', 'welcomeMessage', 'qrWelcomeMessage', 'menuOptions', 'whatsappNumber', 'waPhoneNumberId', 'waAccessToken', 'waBusinessAccountId'];
 
 export async function GET() {
   let tenant = await getBotTenant();
@@ -48,6 +48,7 @@ export async function PATCH(request) {
   // and vanish with no error anywhere. Trim defensively rather than let that happen.
   if (typeof patch.waPhoneNumberId === 'string') patch.waPhoneNumberId = patch.waPhoneNumberId.trim();
   if (typeof patch.waAccessToken === 'string') patch.waAccessToken = patch.waAccessToken.trim();
+  if (typeof patch.waBusinessAccountId === 'string') patch.waBusinessAccountId = patch.waBusinessAccountId.replace(/\D/g, '');
   if (patch.status && !['live', 'paused'].includes(patch.status)) delete patch.status;
   if (Object.keys(patch).length === 0) return Response.json({ error: 'Nothing to update' }, { status: 400 });
 

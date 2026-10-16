@@ -7,6 +7,7 @@ import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { fmtDate } from '@/lib/date';
 import { Avatar, fmtTime } from './ui';
 import { IconSearch, IconSend } from './icons';
+import { renderTemplate } from '@/lib/botTemplates';
 
 const TABS = [
   { key: 'all', label: 'All' },
@@ -24,6 +25,16 @@ export default function InboxScreen({ tenant }) {
   const [tab, setTab] = useState('all');
   const [query, setQuery] = useState('');
   const bottomRef = useRef(null);
+
+  // Template picker (the "Template" pill): lists approved templates, collects their variables,
+  // previews the result and sends it — the only way to message a customer whose 24h window closed.
+  const [tplOpen, setTplOpen] = useState(false);
+  const [tplList, setTplList] = useState(null);
+  const [tplNote, setTplNote] = useState('');
+  const [tplSel, setTplSel] = useState(null);
+  const [tplParams, setTplParams] = useState([]);
+  const [tplSending, setTplSending] = useState(false);
+  const [tplError, setTplError] = useState('');
 
   const fetchChats = useCallback(async () => {
     const res = await fetch('/api/bot/chats');
@@ -79,6 +90,40 @@ export default function InboxScreen({ tenant }) {
     } finally {
       setSending(false);
     }
+  }
+
+  async function openTemplates() {
+    setTplOpen(true); setTplSel(null); setTplError('');
+    if (tplList) return;
+    try {
+      const res = await fetch('/api/bot/templates');
+      const d = res.ok ? await res.json() : { templates: [] };
+      setTplList(d.templates || []);
+      setTplNote(d.note || '');
+    } catch { setTplList([]); setTplNote('Could not load templates.'); }
+  }
+
+  function pickTemplate(t) {
+    const first = String(active?.name || '').trim().split(/\s+/)[0];
+    const looksLikeName = first && !/^\d+$/.test(first);
+    setTplSel(t);
+    setTplError('');
+    setTplParams(Array.from({ length: t.params }, (_, i) => (i === 0 && looksLikeName ? first : '')));
+  }
+
+  async function sendTemplate() {
+    if (!tplSel || !activeId) return;
+    setTplSending(true); setTplError('');
+    try {
+      const res = await fetch(`/api/bot/chats/${encodeURIComponent(activeId)}/messages`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ template: { name: tplSel.name, language: tplSel.language, body: tplSel.body, params: tplParams } }),
+      });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) { setTplError(d.error || 'Could not send'); }
+      else if (d.delivered === false) { setTplError(d.error || 'Meta did not accept this template'); fetchMessages(activeId); fetchChats(); }
+      else { setTplOpen(false); setTplSel(null); fetchMessages(activeId); fetchChats(); }
+    } finally { setTplSending(false); }
   }
 
   const counts = useMemo(() => ({
@@ -153,7 +198,7 @@ export default function InboxScreen({ tenant }) {
                   <button className={`bc-pill ${active.botOn ? 'bc-pill-on' : 'bc-pill-off'}`} onClick={() => patchActive({ botOn: !active.botOn })}>
                     <span className="bc-pill-dot" /> {active.botOn ? 'Bot on' : 'Bot off'}
                   </button>
-                  <button className="bc-pill bc-pill-template">Template</button>
+                  <button className="bc-pill bc-pill-template" onClick={openTemplates}>Template</button>
                   <select className="bc-status-select" value={active.status} onChange={(e) => patchActive({ status: e.target.value })}>
                     <option value="open">Open</option>
                     <option value="resolved">Resolved</option>
@@ -180,6 +225,49 @@ export default function InboxScreen({ tenant }) {
                 <div ref={bottomRef} />
               </div>
 
+
+              {tplOpen && (
+                <div className="bc-tpl-overlay" onClick={(e) => e.target === e.currentTarget && setTplOpen(false)}>
+                  <div className="bc-tpl-card">
+                    <div className="bc-tpl-head">
+                      <div className="bc-tpl-title">{tplSel ? tplSel.name : 'Send a template'}</div>
+                      <button className="bc-tpl-x" onClick={() => setTplOpen(false)} aria-label="Close">×</button>
+                    </div>
+                    {!tplSel ? (
+                      <div className="bc-tpl-body">
+                        <div className="bc-tpl-sub">Templates can be sent any time — even when the customer last wrote more than 24 hours ago.</div>
+                        {tplNote && <div className="bc-tpl-note">{tplNote}</div>}
+                        {tplList === null && <div className="bc-empty">Loading templates…</div>}
+                        {tplList && tplList.length === 0 && <div className="bc-empty">No templates found.</div>}
+                        {(tplList || []).map((t) => (
+                          <button key={`${t.name}_${t.language}`} className="bc-tpl-row" disabled={!t.sendable} onClick={() => pickTemplate(t)}>
+                            <div className="bc-tpl-row-top"><span className="bc-tpl-row-name">{t.name}</span><span className="bc-tpl-row-lang">{t.language}</span></div>
+                            <div className="bc-tpl-row-text">{t.body}</div>
+                            {!t.sendable && <div className="bc-tpl-row-warn">Can't send from here{t.reason ? ` — ${t.reason}` : ''}</div>}
+                          </button>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="bc-tpl-body">
+                        {tplSel.params > 0 && <div className="bc-tpl-sub">Fill in the variables:</div>}
+                        {tplParams.map((v, i) => (
+                          <div key={i} className="bc-tpl-field">
+                            <label>{(tplSel.hints && tplSel.hints[i]) || `Variable {{${i + 1}}}`}</label>
+                            <input value={v} onChange={(e) => setTplParams((prev) => prev.map((x, j) => (j === i ? e.target.value : x)))} placeholder={`{{${i + 1}}}`} />
+                          </div>
+                        ))}
+                        <div className="bc-tpl-sub" style={{ marginTop: 10 }}>Preview</div>
+                        <div className="bc-tpl-preview">{renderTemplate(tplSel.body, tplParams)}</div>
+                        {tplError && <div className="bc-tpl-error">{tplError}</div>}
+                        <div className="bc-tpl-actions">
+                          <button className="bc-btn bc-btn-outline bc-btn-sm" onClick={() => setTplSel(null)} disabled={tplSending}>Back</button>
+                          <button className="bc-btn bc-btn-primary bc-btn-sm" onClick={sendTemplate} disabled={tplSending || tplParams.some((p) => !String(p).trim())}>{tplSending ? 'Sending…' : 'Send template'}</button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
               <div className="bc-composer">
                 <input placeholder="Type your message…" value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && send()} />
                 <button className="bc-send-btn" onClick={send} disabled={sending || !text.trim()} aria-label="Send"><IconSend size={17} /></button>

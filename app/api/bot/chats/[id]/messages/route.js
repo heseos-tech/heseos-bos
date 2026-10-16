@@ -4,7 +4,8 @@
 
 import { dbWhere, dbInsert, dbPatch, dbGetById } from '@/lib/db';
 import { getBotTenant } from '@/lib/auth';
-import { botSendText } from '@/lib/botWhatsapp';
+import { botSendText, botSendTemplate } from '@/lib/botWhatsapp';
+import { renderTemplate, paramCount } from '@/lib/botTemplates';
 
 export const dynamic = 'force-dynamic';
 
@@ -34,7 +35,29 @@ export async function POST(request, { params }) {
   const chat = await loadChat(chatId, tenant.id);
   if (!chat) return Response.json({ error: 'Not found' }, { status: 404 });
 
-  const { text } = await request.json().catch(() => ({}));
+  const payload = await request.json().catch(() => ({}));
+
+  // Template send (Inbox -> Template button): works outside the 24h window, unlike plain text.
+  if (payload.template && payload.template.name) {
+    const { name, language = 'en_US', body: tplBody = '' } = payload.template;
+    const params = Array.isArray(payload.template.params) ? payload.template.params.map((p) => String(p ?? '').trim()) : [];
+    if (params.length < paramCount(tplBody) || params.slice(0, paramCount(tplBody)).some((p) => !p)) {
+      return Response.json({ error: 'Fill in every variable before sending' }, { status: 400 });
+    }
+    const now = new Date().toISOString();
+    const msgId = `${chatId}_M${Date.now()}`;
+    const sender = tenant.contactName || tenant.businessName || 'Agent';
+    const logBody = renderTemplate(tplBody, params) || `[Template: ${name}]`;
+    const sent = await botSendTemplate({ phoneNumberId: tenant.waPhoneNumberId, token: tenant.waAccessToken }, chatId, { name: String(name), language: String(language), params });
+    await dbInsert('bot_messages', msgId, {
+      id: msgId, tenantId: tenant.id, chatId, direction: 'out', body: logBody, ts: now, sender,
+      status: sent.ok ? 'sent' : 'failed', error: sent.ok ? null : sent.error,
+    });
+    await dbPatch('bot_chats', chatId, { lastText: logBody, lastAt: now, unread: 0, assignedTo: chat.assignedTo || sender });
+    return Response.json({ success: true, id: msgId, delivered: sent.ok, error: sent.ok ? null : sent.error });
+  }
+
+  const { text } = payload;
   const body = String(text || '').trim();
   if (!body) return Response.json({ error: 'text is required' }, { status: 400 });
 
