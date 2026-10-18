@@ -37,7 +37,7 @@ export default function EmployeeLoginPage() {
     <div className="auth-shell">
       <div className="auth-card">
         <Image src="/brand/lockup-navy.png" alt="Heseos" width={282} height={64} style={{ height: 34, width: 'auto', marginBottom: 4 }} />
-        <div className="auth-sub">Employee interface — pre-sales &amp; sales engineers</div>
+        <div className="auth-sub">Employee interface — sign in with your Heseos email</div>
         <form onSubmit={submit}>
           <div className="auth-field">
             <label className="lf-label">Email</label>
