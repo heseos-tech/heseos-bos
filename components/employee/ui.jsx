@@ -21,7 +21,7 @@ import {
 import { LEAD_SOURCES, TIMELINE, BUDGET_BY_PROPERTY } from '@/lib/formOptions';
 import { isQrKind } from '@/lib/attributionConstants';
 
-export const ROLE_LABEL = { presales: 'Pre-Sales', sales_engineer: 'Sales Engineer' };
+export const ROLE_LABEL = { presales: 'Pre-Sales', sales_engineer: 'Sales Engineer', operations: 'Operations' };
 
 // Lead Detail modal needs human labels for `timeline` and `budget` too (Interest/Property
 // Type already have PI_LABEL/PT_LABEL built locally in each panel from PRODUCT_INTEREST/
@@ -50,7 +50,7 @@ export const EMPLOYEE_NAV_ITEMS = [
   { key: 'settings', label: 'Settings', Icon: IconSettings },
 ];
 
-export function EmployeeShell({ employee, section, onSection, children }) {
+export function EmployeeShell({ employee, section, onSection, children, navItems = EMPLOYEE_NAV_ITEMS }) {
   const router = useRouter();
 
   async function logout() {
@@ -66,7 +66,7 @@ export function EmployeeShell({ employee, section, onSection, children }) {
           <Image src="/brand/lockup-navy.png" alt="Heseos" width={282} height={64} className="adm-sidebar-logo adm-sidebar-logo-full" />
         </div>
         <nav className="adm-nav">
-          {EMPLOYEE_NAV_ITEMS.map((item) => (
+          {navItems.map((item) => (
             <button
               key={item.key}
               type="button"
