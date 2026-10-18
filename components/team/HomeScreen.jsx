@@ -8,7 +8,7 @@ import Link from "next/link";
 import { Avatar } from "@/components/partner/ui";
 import { GENERIC_ROLES } from "@/components/team/ui";
 import { IconBell, IconLeads, IconGift, IconCheck, IconMapPin, IconWallet } from "@/components/partner/icons";
-import { IconProducts, IconPartners, IconChevronRight } from "@/components/admin/icons";
+import { IconProducts, IconPartners, IconChevronRight, IconOrders } from "@/components/admin/icons";
 import { fmtDateTime } from "@/lib/date";
 import { stageOf, displayStatus } from "@/lib/leadStage";
 import { activeReferrals, referralKind } from "@/lib/teamReferrals";
@@ -20,6 +20,28 @@ import BrochureCard from "@/components/shared/BrochureCard";
 
 const PT_LABEL = Object.fromEntries(PROPERTY_TYPE.map((p) => [p.v, p.l]));
 function norm(s) { return String(s || "").trim().toLowerCase(); }
+
+// Operations only — mounted just for that role so other roles never fetch the order list.
+function OpsOrdersCard() {
+  const { data: orders } = useApiResource("/api/admin/orders", { pollMs: 30000 });
+  const open = orders.filter((o) => ["confirmed", "packed", "shipped", "delivered"].includes(o.status));
+  const toPack = open.filter((o) => o.status === "confirmed").length;
+  const noDate = open.filter((o) => !o.installDate).length;
+  return (
+    <Link href="/team/orders" className="hp-card" style={{ display: "flex", alignItems: "center", gap: 12, textDecoration: "none", border: "1px solid var(--hp-orange)" }}>
+      <div className="hp-stat-icon" style={{ width: 38, height: 38, flexShrink: 0, margin: 0 }}><IconOrders size={19} /></div>
+      <div style={{ flex: 1 }}>
+        <div style={{ fontSize: 14, fontWeight: 700, color: "#fff" }}>Orders to action</div>
+        <div style={{ fontSize: 12, color: "var(--hp-text-soft)" }}>
+          {open.length > 0
+            ? `${open.length} in progress${toPack ? ` · ${toPack} to pack` : ""}${noDate ? ` · ${noDate} need an install date` : ""}`
+            : "Pack, dispatch, deliver & schedule installations"}
+        </div>
+      </div>
+      <IconChevronRight size={18} style={{ color: "var(--hp-text-faint)", flexShrink: 0 }} />
+    </Link>
+  );
+}
 
 export default function TeamHomeScreen({ employee }) {
   const isPresales = employee.role === "presales";
@@ -167,6 +189,8 @@ export default function TeamHomeScreen({ employee }) {
           })}
         </div>
       )}
+
+      {employee.role === "operations" && <OpsOrdersCard />}
 
       <Link href="/team/catalogue" className="hp-card" style={{ display: "flex", alignItems: "center", gap: 12, textDecoration: "none" }}>
         <div className="hp-stat-icon" style={{ width: 38, height: 38, flexShrink: 0, margin: 0 }}><IconProducts size={19} /></div>

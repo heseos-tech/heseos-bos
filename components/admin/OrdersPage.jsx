@@ -179,6 +179,19 @@ function OrderDetailModal({ order, onClose, onAdvance, onCancel, onMarkPaid }) {
         <div><span className="adm-detail-label">Status</span>{STATUS_LABEL[order.status] || order.status}</div>
         <div><span className="adm-detail-label">Payment</span>{order.paymentStatus === 'paid' ? `Paid${order.paidAt ? ` (${new Date(order.paidAt).toLocaleDateString('en-IN')})` : ''}` : 'Pending (Cash/UPI on delivery)'}</div>
       </div>
+      {order.installDate && (
+        <div className="adm-detail-notes" style={{ marginTop: 4 }}>
+          <span className="adm-detail-label">Installation</span>
+          {new Date(`${order.installDate}T00:00:00Z`).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })}
+          {order.installSlot ? ` · ${order.installSlot}` : ''}
+        </div>
+      )}
+      {order.notes ? (
+        <div className="adm-detail-notes" style={{ marginTop: 4 }}>
+          <span className="adm-detail-label">Team note</span>
+          {order.notes}
+        </div>
+      ) : null}
       <div className="adm-detail-notes" style={{ marginTop: 4 }}>
         <span className="adm-detail-label">Delivery Address</span>
         {order.deliveryAddress}

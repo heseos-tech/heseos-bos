@@ -2,8 +2,9 @@
 // list route (any logged-in employee) — see that file's own header comment for why.
 import { dbGetById } from '@/lib/db';
 import { getEmployee } from '@/lib/auth';
-import { advanceOrderStatus, markOrderPaid, ORDER_STATUSES } from '@/lib/heseosOrders';
-import { notifyHeseosOrderStatus } from '@/lib/heseosNotify';
+import { dbPatch } from '@/lib/db';
+import { advanceOrderStatus, markOrderPaid, setInstallationSchedule, ORDER_STATUSES } from '@/lib/heseosOrders';
+import { notifyHeseosOrderStatus, notifyHeseosInstallationScheduled } from '@/lib/heseosNotify';
 
 export const dynamic = 'force-dynamic';
 
@@ -28,6 +29,28 @@ export async function PATCH(request, { params }) {
   const body = await request.json().catch(() => ({}));
   const actorLabel = employee.name || 'Admin';
 
+  // Operations: record the installation date agreed with the customer on the phone (and, optionally,
+  // a time window). The customer is told on WhatsApp whenever it actually changes.
+  if (body.installation !== undefined) {
+    if (existing.status === 'cancelled' || existing.status === 'placed') {
+      return Response.json({ error: 'Installation can only be scheduled for a confirmed order' }, { status: 400 });
+    }
+    const wanted = String(body.installation?.date || '');
+    if (wanted && !/^\d{4}-\d{2}-\d{2}$/.test(wanted)) {
+      return Response.json({ error: 'Pick a valid installation date' }, { status: 400 });
+    }
+    const r = await setInstallationSchedule(id, body.installation || {}, actorLabel);
+    let whatsappSent = false;
+    if (r?.changed && r.order?.installDate) whatsappSent = !!(await notifyHeseosInstallationScheduled(r.order))?.ok;
+    return Response.json({ ...r.order, whatsappSent });
+  }
+
+  // Internal notes (e.g. "customer asked to call after 6 pm") — shown to the team, never the customer.
+  if (typeof body.notes === 'string') {
+    const updated = await dbPatch('orders', id, { notes: body.notes.slice(0, 1000), updatedAt: new Date().toISOString() });
+    return Response.json(updated);
+  }
+
   if (body.markPaid === true) {
     const updated = await markOrderPaid(id, actorLabel);
     return Response.json(updated);
@@ -36,6 +59,10 @@ export async function PATCH(request, { params }) {
   if (body.status !== undefined) {
     if (!VALID_STATUSES.has(body.status)) {
       return Response.json({ error: `Unknown status "${body.status}"` }, { status: 400 });
+    }
+    // Cancelling is Admin-only; the Operations panel moves orders forward but can't cancel them.
+    if (body.status === 'cancelled' && employee.role !== 'admin') {
+      return Response.json({ error: 'Only an admin can cancel an order' }, { status: 403 });
     }
     const updated = await advanceOrderStatus(id, body.status, actorLabel);
     // Tell the customer on WhatsApp — only when the status actually changed (a double-click or a
