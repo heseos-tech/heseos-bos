@@ -60,10 +60,6 @@ export async function PATCH(request, { params }) {
     if (!VALID_STATUSES.has(body.status)) {
       return Response.json({ error: `Unknown status "${body.status}"` }, { status: 400 });
     }
-    // Cancelling is Admin-only; the Operations panel moves orders forward but can't cancel them.
-    if (body.status === 'cancelled' && employee.role !== 'admin') {
-      return Response.json({ error: 'Only an admin can cancel an order' }, { status: 403 });
-    }
     const updated = await advanceOrderStatus(id, body.status, actorLabel);
     // Tell the customer on WhatsApp — only when the status actually changed (a double-click or a
     // retry never texts them twice) and only for the steps that have a message

@@ -9,7 +9,7 @@
 import { useMemo, useState } from 'react';
 import { ScreenHeader } from '@/components/partner/ui';
 import Portal from '@/components/shared/Portal';
-import { IconSearch, IconPhone, IconWhatsApp, IconOrders, IconX } from '@/components/admin/icons';
+import { IconSearch, IconPhone, IconWhatsApp, IconOrders, IconX, IconDownload } from '@/components/admin/icons';
 import { IconNote, IconCalendar } from '@/components/partner/icons';
 import { useApiResource, invalidate } from '@/lib/useApiResource';
 
@@ -24,6 +24,8 @@ const STAGES = [
   { key: 'delivered', tab: 'To install', label: 'Delivered', next: 'installed', action: 'Mark Installed' },
   { key: 'installed', tab: 'Installed', label: 'Installed', next: null, action: null },
 ];
+// Cancel only until the goods are with the customer (same rule as Admin -> Orders).
+const CANCELLABLE = new Set(['confirmed', 'packed', 'shipped']);
 const STAGE = Object.fromEntries(STAGES.map((s) => [s.key, s]));
 const BADGE_COLOR = {
   confirmed: ['#7fc4ff', 'var(--hp-info-dim)'],
@@ -118,6 +120,12 @@ export default function OperationsOrdersScreen() {
     if (await patch(order, { markPaid: true })) flash('Payment marked as received');
   }
 
+  async function cancel(order) {
+    if (!window.confirm(`Cancel order ${order.id}? This can't be undone, and the customer is told on WhatsApp.`)) return;
+    const r = await patch(order, { status: 'cancelled' });
+    if (r) flash(`Order cancelled${r.whatsappSent ? ' — customer notified on WhatsApp' : ' — WhatsApp message not sent'}`);
+  }
+
   async function saveSchedule(order, date, slot) {
     const r = await patch(order, { installation: { date, slot } });
     if (!r) return false;
@@ -176,6 +184,7 @@ export default function OperationsOrdersScreen() {
               onPaid={() => markPaid(o)}
               onSchedule={() => setSheet({ type: 'schedule', order: o })}
               onNotes={() => setSheet({ type: 'notes', order: o })}
+              onCancel={() => cancel(o)}
             />
           ))}
         </div>
@@ -201,7 +210,7 @@ export default function OperationsOrdersScreen() {
   );
 }
 
-function OrderCard({ order: o, busy, onAdvance, onPaid, onSchedule, onNotes }) {
+function OrderCard({ order: o, busy, onAdvance, onPaid, onSchedule, onNotes, onCancel }) {
   const st = STAGE[o.status];
   const [color, bg] = BADGE_COLOR[o.status] || BADGE_COLOR.confirmed;
   const paid = o.paymentStatus === 'paid';
@@ -257,6 +266,13 @@ function OrderCard({ order: o, busy, onAdvance, onPaid, onSchedule, onNotes }) {
           <button type="button" className="hp-btn hp-btn-outline hp-btn-sm" disabled={busy} onClick={onPaid}>Payment received</button>
         )}
         <button type="button" className="hp-btn hp-btn-outline hp-btn-sm" disabled={busy} onClick={onNotes}>{o.notes ? 'Edit note' : 'Add note'}</button>
+      </div>
+      <div className="ops-actions">
+        <a className="hp-btn hp-btn-outline hp-btn-sm" href={`/api/admin/orders/${o.id}/pdf?type=slip`} target="_blank" rel="noreferrer"><IconDownload size={14} /> Slip</a>
+        <a className="hp-btn hp-btn-outline hp-btn-sm" href={`/api/admin/orders/${o.id}/pdf?type=invoice`} target="_blank" rel="noreferrer"><IconDownload size={14} /> Invoice</a>
+        {CANCELLABLE.has(o.status) && (
+          <button type="button" className="hp-btn hp-btn-outline hp-btn-sm" style={{ color: '#ff8484' }} disabled={busy} onClick={onCancel}>Cancel order</button>
+        )}
       </div>
     </div>
   );

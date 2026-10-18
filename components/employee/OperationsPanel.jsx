@@ -11,7 +11,7 @@
 import { useMemo, useState } from 'react';
 import { EmployeeShell } from '@/components/employee/ui';
 import { StatCard, Modal, Pagination } from '@/components/admin/ui';
-import { IconOrders, IconDemo, IconSearch, IconConversions, IconLeads, IconPhone, IconWhatsApp } from '@/components/admin/icons';
+import { IconOrders, IconDemo, IconSearch, IconConversions, IconLeads, IconPhone, IconWhatsApp, IconDownload } from '@/components/admin/icons';
 import { useApiResource, invalidate } from '@/lib/useApiResource';
 
 const ORDERS_URL = '/api/admin/orders';
@@ -27,6 +27,8 @@ const STAGES = [
   { key: 'installed', tab: 'Installed', label: 'Installation Done', next: null, action: null },
 ];
 const STAGE = Object.fromEntries(STAGES.map((s) => [s.key, s]));
+// A cancel only makes sense until the goods are with the customer (same rule as Admin -> Orders).
+const CANCELLABLE = new Set(['confirmed', 'packed', 'shipped']);
 const NAV = [
   { key: 'orders', label: 'Orders', Icon: IconOrders },
   { key: 'schedule', label: 'Installations', Icon: IconDemo },
@@ -112,6 +114,11 @@ export default function OperationsPanel({ employee }) {
   async function markPaid(order) {
     if (!window.confirm(`Payment of ${money(order.subtotal)} received for ${order.id}?`)) return;
     if (await patch(order, { markPaid: true })) flash('Payment marked as received');
+  }
+  async function cancel(order) {
+    if (!window.confirm(`Cancel order ${order.id}? This can't be undone, and the customer is told on WhatsApp.`)) return;
+    const r = await patch(order, { status: 'cancelled' });
+    if (r) { setModalId(null); flash(`Order ${order.id} cancelled${r.whatsappSent ? ' — customer notified on WhatsApp' : ' — WhatsApp message could not be sent'}`); }
   }
   async function saveSchedule(order, date, slot) {
     const r = await patch(order, { installation: { date, slot } });
@@ -226,6 +233,7 @@ export default function OperationsPanel({ employee }) {
           onClose={() => setModalId(null)}
           onAdvance={() => advance(modalOrder)}
           onPaid={() => markPaid(modalOrder)}
+          onCancel={() => cancel(modalOrder)}
           onSchedule={(d, s) => saveSchedule(modalOrder, d, s)}
           onNotes={(n) => saveNotes(modalOrder, n)}
         />
@@ -259,7 +267,7 @@ function OrderRow({ o, busy, onOpen, onAdvance }) {
   );
 }
 
-function OrderModal({ order, busy, onClose, onAdvance, onPaid, onSchedule, onNotes }) {
+function OrderModal({ order, busy, onClose, onAdvance, onPaid, onCancel, onSchedule, onNotes }) {
   const st = STAGE[order.status];
   const done = order.status === 'installed';
   const [date, setDate] = useState(order.installDate || '');
@@ -312,7 +320,10 @@ function OrderModal({ order, busy, onClose, onAdvance, onPaid, onSchedule, onNot
       </div>
 
       <div className="lf-actions" style={{ marginTop: 18, flexWrap: 'wrap' }}>
-        {order.paymentStatus !== 'paid' && <button className="adm-chip-btn" style={{ whiteSpace: 'nowrap' }} disabled={busy} onClick={onPaid}>Mark Payment Received</button>}
+        <a className="adm-btn-outline" style={{ whiteSpace: 'nowrap' }} href={`/api/admin/orders/${order.id}/pdf?type=slip`}><IconDownload size={15} /> Generate Slip</a>
+        <a className="adm-btn-outline" style={{ whiteSpace: 'nowrap' }} href={`/api/admin/orders/${order.id}/pdf?type=invoice`}><IconDownload size={15} /> Generate Invoice</a>
+        {order.paymentStatus !== 'paid' && <button className="adm-chip-btn" style={{ whiteSpace: 'nowrap' }} disabled={busy} onClick={onPaid}>Mark Paid</button>}
+        {CANCELLABLE.has(order.status) && <button className="lf-btn-back" style={{ whiteSpace: 'nowrap' }} disabled={busy} onClick={onCancel}>Cancel Order</button>}
         {st.next && <button className="lf-btn-next" style={{ flex: '1 1 100%', whiteSpace: 'nowrap' }} disabled={busy} onClick={onAdvance}>{st.action}</button>}
       </div>
       {st.next && <p className="adm-lead-sub" style={{ marginTop: 8 }}>The customer gets a WhatsApp update when you move this order forward.</p>}
