@@ -6,7 +6,7 @@
 // them exactly like the referral link is (components/partner/ReferAndEarnScreen.jsx). A partner
 // can link more than one code — e.g. a second sticker for a second shop.
 import { useState, useCallback, useEffect } from 'react';
-import { ScreenHeader, TextField, Button } from './ui';
+import { ScreenHeader, TextField, Button, useAppBase } from './ui';
 import { IconQrCode, IconCopy } from './icons';
 
 function QrCodeCard({ code }) {
@@ -66,6 +66,7 @@ function QrCodeCard({ code }) {
 }
 
 export default function QrCodeScreen() {
+  const base = useAppBase();
   const [data, setData] = useState(null);
   const [codeInput, setCodeInput] = useState('');
   const [claiming, setClaiming] = useState(false);
@@ -105,7 +106,7 @@ export default function QrCodeScreen() {
 
   return (
     <>
-      <ScreenHeader title="QR Code" backHref="/partner/home?tab=profile" />
+      <ScreenHeader title="QR Code" backHref={`${base}/home?tab=profile`} />
 
       <div style={{ padding: '0 16px' }}>
         <div className="hp-card">

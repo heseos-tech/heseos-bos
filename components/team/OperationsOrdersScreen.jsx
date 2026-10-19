@@ -54,7 +54,7 @@ function dueTag(ymd) {
   return '';
 }
 
-export default function OperationsOrdersScreen() {
+function OrdersView({ pmap }) {
   const { data: orders, loading, refresh } = useApiResource(ORDERS_URL, { pollMs: 20000 });
   const [tab, setTab] = useState('confirmed');
   const [q, setQ] = useState('');
@@ -126,11 +126,16 @@ export default function OperationsOrdersScreen() {
     if (r) flash(`Order cancelled${r.whatsappSent ? ' — customer notified on WhatsApp' : ' — WhatsApp message not sent'}`);
   }
 
-  async function saveSchedule(order, date, slot) {
-    const r = await patch(order, { installation: { date, slot } });
+  async function saveSchedule(order, date, slot, fee) {
+    const r = await patch(order, { installation: { date, slot, fee: fee === '' ? null : Number(fee) } });
     if (!r) return false;
-    flash(date ? `Installation set for ${fmtDate(date)}${r.whatsappSent ? ' — customer notified on WhatsApp' : ' — saved (WhatsApp message not sent)'}` : 'Installation date cleared');
+    flash(date ? `Installation saved for ${fmtDate(date)}${r.whatsappSent ? ' — customer notified on WhatsApp' : ''}` : 'Installation date cleared');
     return true;
+  }
+
+  async function releaseInstaller(order) {
+    if (!window.confirm('Take this job back from the installer? It becomes available to other installers again.')) return;
+    if (await patch(order, { installation: { releaseInstaller: true } })) flash('Installer released');
   }
 
   async function saveNotes(order, notes) {
@@ -141,8 +146,6 @@ export default function OperationsOrdersScreen() {
 
   return (
     <>
-      <ScreenHeader title="Orders" backHref="/team/home" />
-
       <div className="hp-search-wrap">
         <div className="hp-input-wrap">
           <span className="hp-input-icon"><IconSearch size={16} /></span>
@@ -185,6 +188,8 @@ export default function OperationsOrdersScreen() {
               onSchedule={() => setSheet({ type: 'schedule', order: o })}
               onNotes={() => setSheet({ type: 'notes', order: o })}
               onCancel={() => cancel(o)}
+              installer={pmap[o.installPartnerId]}
+              onRelease={() => releaseInstaller(o)}
             />
           ))}
         </div>
@@ -194,7 +199,8 @@ export default function OperationsOrdersScreen() {
         <ScheduleSheet
           order={orders.find((x) => x.id === sheet.order.id) || sheet.order}
           onClose={() => setSheet(null)}
-          onSave={async (date, slot) => { if (await saveSchedule(sheet.order, date, slot)) setSheet(null); }}
+          notify
+          onSave={async (date, slot, fee) => { if (await saveSchedule(sheet.order, date, slot, fee)) setSheet(null); }}
         />
       )}
       {sheet?.type === 'notes' && (
@@ -210,7 +216,7 @@ export default function OperationsOrdersScreen() {
   );
 }
 
-function OrderCard({ order: o, busy, onAdvance, onPaid, onSchedule, onNotes, onCancel }) {
+function OrderCard({ order: o, busy, onAdvance, onPaid, onSchedule, onNotes, onCancel, installer, onRelease }) {
   const st = STAGE[o.status];
   const [color, bg] = BADGE_COLOR[o.status] || BADGE_COLOR.confirmed;
   const paid = o.paymentStatus === 'paid';
@@ -253,6 +259,8 @@ function OrderCard({ order: o, busy, onAdvance, onPaid, onSchedule, onNotes, onC
         <div className="ops-install none"><IconCalendar size={14} /><span>No installation date yet — call the customer</span></div>
       ))}
 
+      <InstallMeta date={o.installDate} fee={o.installFee} partnerId={o.installPartnerId} installer={installer} city={o.city} done={done} busy={busy} onRelease={onRelease} />
+
       {o.notes ? <div className="ops-note"><IconNote size={13} /> {o.notes}</div> : null}
 
       <div className="ops-actions">
@@ -278,18 +286,20 @@ function OrderCard({ order: o, busy, onAdvance, onPaid, onSchedule, onNotes, onC
   );
 }
 
-function ScheduleSheet({ order, onClose, onSave }) {
+function ScheduleSheet({ order, onClose, onSave, notify = false }) {
   const [date, setDate] = useState(order.installDate || '');
   const [slot, setSlot] = useState(order.installSlot || '');
+  const [fee, setFee] = useState(order.installFee != null ? String(order.installFee) : '');
   const [saving, setSaving] = useState(false);
-  const unchanged = date === (order.installDate || '') && slot === (order.installSlot || '');
-  async function go(d, s) { setSaving(true); await onSave(d, s); setSaving(false); }
+  const unchanged = date === (order.installDate || '') && slot === (order.installSlot || '') && fee === (order.installFee != null ? String(order.installFee) : '');
+  const dateDirty = date !== (order.installDate || '') || slot !== (order.installSlot || '');
+  async function go(d, s, f) { setSaving(true); await onSave(d, s, f); setSaving(false); }
   return (
     <Portal>
       <div className="hp-sheet-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
         <div className="hp-sheet">
           <div className="hp-sheet-handle" />
-          <div className="hp-sheet-title">Installation date</div>
+          <div className="hp-sheet-title">Installation</div>
           <div className="hp-sheet-sub">{order.customerName || order.id} · {order.phone}</div>
 
           <div className="hp-field">
@@ -305,18 +315,46 @@ function ScheduleSheet({ order, onClose, onSave }) {
               <button key={s} type="button" className={`hp-pill${slot === s ? ' active' : ''}`} onClick={() => setSlot(slot === s ? '' : s)}>{s}</button>
             ))}
           </div>
-          <div className="hp-hint" style={{ marginTop: 10 }}>The customer gets a WhatsApp message with this date as soon as you save.</div>
+
+          <div className="hp-field" style={{ marginTop: 14 }}>
+            <label className="hp-field-label">Installation fee for the installer (₹)</label>
+            <div className="hp-input-wrap">
+              <input className="hp-input" type="number" inputMode="decimal" min="0" placeholder="e.g. 1500" value={fee} onChange={(e) => setFee(e.target.value)} />
+            </div>
+          </div>
+          <div className="hp-hint" style={{ marginTop: 6 }}>
+            Installers in this city can claim the job once it has both a date and a fee.
+            {notify ? ' The customer gets a WhatsApp message when the date or time changes.' : ''}
+          </div>
 
           <div className="hp-sheet-actions">
             {order.installDate && (
-              <button type="button" className="hp-btn hp-btn-outline" disabled={saving} onClick={() => go('', '')} aria-label="Clear date"><IconX size={16} /></button>
+              <button type="button" className="hp-btn hp-btn-outline" disabled={saving} onClick={() => go('', '', fee)} aria-label="Clear date"><IconX size={16} /></button>
             )}
             <button type="button" className="hp-btn hp-btn-outline" style={{ flex: 1 }} onClick={onClose}>Cancel</button>
-            <button type="button" className="hp-btn hp-btn-primary" style={{ flex: 1.4 }} disabled={saving || !date || unchanged} onClick={() => go(date, slot)}>{saving ? 'Saving…' : 'Save & notify'}</button>
+            <button type="button" className="hp-btn hp-btn-primary" style={{ flex: 1.4 }} disabled={saving || !date || unchanged} onClick={() => go(date, slot, fee)}>{saving ? 'Saving…' : notify && dateDirty ? 'Save & notify' : 'Save'}</button>
           </div>
         </div>
       </div>
     </Portal>
+  );
+}
+
+// Fee + installer line shared by order cards and converted-lead cards.
+function InstallMeta({ date, fee, partnerId, installer, city, done, busy, onRelease }) {
+  if (done && !partnerId && !(Number(fee) > 0)) return null;
+  const hasFee = Number(fee) > 0;
+  return (
+    <div className="ops-line" style={{ marginTop: 8 }}>
+      <span style={{ color: hasFee ? 'var(--hp-orange)' : 'var(--hp-text-faint)', fontWeight: 700 }}>{hasFee ? `Installer fee ${money(fee)}` : 'No installer fee set'}</span>
+      {partnerId ? (
+        <>
+          {' · '}<span style={{ color: '#fff' }}>Installer: {installer?.name || 'assigned'}{installer?.phone ? ` (${installer.phone})` : ''}</span>
+          {!done && <>{' · '}<button type="button" className="ops-link-btn" disabled={busy} onClick={onRelease}>Release</button></>}
+        </>
+      ) : !done && date && hasFee ? ` · Open for installers${city ? ` in ${city}` : ''}`
+        : !done && date ? ' · Add a fee to open it to installers' : ''}
+    </div>
   );
 }
 
@@ -342,5 +380,147 @@ function NotesSheet({ order, onClose, onSave }) {
         </div>
       </div>
     </Portal>
+  );
+}
+
+// ── Converted leads (closed deals) awaiting installation ───────────────────────────────────
+const LEAD_TABS = [
+  { key: 'plan', tab: 'To schedule' },
+  { key: 'open', tab: 'Open for installers' },
+  { key: 'claimed', tab: 'Claimed' },
+  { key: 'done', tab: 'Installed' },
+];
+const LEADS_URL = '/api/admin/installations/leads';
+function leadBucket(j) {
+  if (j.done) return 'done';
+  if (j.partnerId) return 'claimed';
+  return j.installDate && Number(j.fee) > 0 ? 'open' : 'plan';
+}
+
+function LeadInstallsView({ pmap }) {
+  const { data: jobs, loading, refresh } = useApiResource(LEADS_URL, { pollMs: 30000 });
+  const [tab, setTab] = useState('plan');
+  const [q, setQ] = useState('');
+  const [busy, setBusy] = useState('');
+  const [toast, setToast] = useState('');
+  const [sheet, setSheet] = useState(null);
+  function flash(msg) { setToast(msg); setTimeout(() => setToast(''), 3500); }
+
+  const counts = useMemo(() => { const c = { plan: 0, open: 0, claimed: 0, done: 0 }; for (const j of jobs) c[leadBucket(j)] += 1; return c; }, [jobs]);
+  const rows = useMemo(() => {
+    const s = q.trim().toLowerCase();
+    return jobs
+      .filter((j) => (s ? `${j.ref} ${j.customerName} ${j.phone} ${j.city}`.toLowerCase().includes(s) : leadBucket(j) === tab))
+      .sort((a, b) => (a.installDate && b.installDate ? (a.installDate < b.installDate ? -1 : 1) : a.installDate ? 1 : b.installDate ? -1 : 0));
+  }, [jobs, tab, q]);
+
+  async function patch(job, body) {
+    setBusy(job.id);
+    try {
+      const res = await fetch(`${LEADS_URL}/${job.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      const data = await res.json().catch(() => ({}));
+      await invalidate(LEADS_URL);
+      refresh();
+      if (!res.ok) { flash(data.error || 'Could not save — try again'); return null; }
+      return data;
+    } catch { flash('Network problem — try again'); return null; } finally { setBusy(''); }
+  }
+  async function save(job, date, slot, fee) {
+    const r = await patch(job, { date, slot, fee: fee === '' ? null : Number(fee) });
+    if (r) flash(date ? `Installation saved for ${fmtDate(date)}` : 'Installation date cleared');
+    return !!r;
+  }
+  async function release(job) {
+    if (!window.confirm('Take this job back from the installer? It becomes available to other installers again.')) return;
+    if (await patch(job, { releaseInstaller: true })) flash('Installer released');
+  }
+  async function complete(job) {
+    if (!window.confirm(`Mark the installation for ${job.customerName || job.ref} as done?${job.partnerId ? ' The installer’s fee goes to payouts.' : ''}`)) return;
+    if (await patch(job, { complete: true })) flash('Marked installed');
+  }
+
+  return (
+    <>
+      <div className="hp-search-wrap">
+        <div className="hp-input-wrap">
+          <span className="hp-input-icon"><IconSearch size={16} /></span>
+          <input className="hp-input" placeholder="Search name, phone or city…" value={q} onChange={(e) => setQ(e.target.value)} />
+        </div>
+      </div>
+      <div className="hp-tabs">
+        {LEAD_TABS.map((t) => (
+          <button key={t.key} type="button" className={`hp-tab${tab === t.key && !q.trim() ? ' active' : ''}`} onClick={() => { setTab(t.key); setQ(''); }}>
+            {t.tab} <span className="ops-count">{counts[t.key]}</span>
+          </button>
+        ))}
+      </div>
+
+      {loading ? (
+        <div className="hp-empty"><div className="hp-empty-sub">Loading…</div></div>
+      ) : rows.length === 0 ? (
+        <div className="hp-empty">
+          <div className="hp-empty-icon"><IconOrders size={24} /></div>
+          <div className="hp-empty-title">{q.trim() ? 'No deals match' : 'Nothing here'}</div>
+          <div className="hp-empty-sub">Deals closed by sales engineers appear here for installation planning.</div>
+        </div>
+      ) : (
+        <div className="ops-list">
+          {rows.map((j) => {
+            const done = j.done;
+            const due = j.installDate && !done ? dueTag(j.installDate) : '';
+            return (
+              <div className="ops-card" key={j.id}>
+                <div className="ops-card-top">
+                  <div><div className="ops-id">{j.ref} · {j.city || 'No city'}</div><div className="ops-name">{j.customerName || 'Customer'}</div></div>
+                  {j.finalPrice ? <span className="ops-total">{money(j.finalPrice)}</span> : null}
+                </div>
+                <div className="ops-contact">
+                  <a className="ops-contact-btn" href={telHref(j.phone)}><IconPhone size={15} /> Call</a>
+                  <a className="ops-contact-btn" href={waHref(j.phone)} target="_blank" rel="noreferrer"><IconWhatsApp size={15} /> WhatsApp</a>
+                  <span className="ops-phone">{j.phone}</span>
+                </div>
+                {j.address && <div className="ops-line">{j.address}</div>}
+                {j.items.length > 0 && <div className="ops-line ops-items">{j.items.map((i) => `${i.name}${i.qty > 1 ? ` × ${i.qty}` : ''}`).join(', ')}</div>}
+                {j.installDate ? (
+                  <div className={`ops-install ${due}`}><IconCalendar size={14} /><span>{done ? 'Installed' : 'Install'}: {fmtDate(j.installDate)}{j.installSlot ? ` · ${j.installSlot}` : ''}{due === 'overdue' ? ' · overdue' : due === 'today' ? ' · today' : ''}</span></div>
+                ) : (!done && <div className="ops-install none"><IconCalendar size={14} /><span>No installation date yet — call the customer</span></div>)}
+                <InstallMeta date={j.installDate} fee={j.fee} partnerId={j.partnerId} installer={pmap[j.partnerId]} city={j.city} done={done} busy={busy === j.id} onRelease={() => release(j)} />
+                {!done && (
+                  <div className="ops-actions">
+                    <button type="button" className="hp-btn hp-btn-primary hp-btn-sm" disabled={busy === j.id} onClick={() => setSheet({ job: j })}>{j.installDate ? 'Edit date & fee' : 'Set date & fee'}</button>
+                    <button type="button" className="hp-btn hp-btn-outline hp-btn-sm" disabled={busy === j.id} onClick={() => complete(j)}>Mark installed</button>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {sheet && (
+        <ScheduleSheet
+          order={{ id: sheet.job.ref, customerName: sheet.job.customerName, phone: sheet.job.phone, installDate: sheet.job.installDate, installSlot: sheet.job.installSlot, installFee: sheet.job.fee }}
+          onClose={() => setSheet(null)}
+          onSave={async (d, sl, f) => { if (await save(sheet.job, d, sl, f)) setSheet(null); }}
+        />
+      )}
+      {toast && <div className="hp-toast">{toast}</div>}
+    </>
+  );
+}
+
+export default function OperationsOrdersScreen() {
+  const [mode, setMode] = useState('orders');
+  const { data: partners } = useApiResource('/api/admin/partners', { pollMs: 60000 });
+  const pmap = useMemo(() => Object.fromEntries(partners.map((p) => [p.id, p])), [partners]);
+  return (
+    <>
+      <ScreenHeader title="Operations" backHref="/team/home" />
+      <div className="hp-tabs" style={{ paddingBottom: 10 }}>
+        <button type="button" className={`hp-tab${mode === 'orders' ? ' active' : ''}`} onClick={() => setMode('orders')}>Orders</button>
+        <button type="button" className={`hp-tab${mode === 'leads' ? ' active' : ''}`} onClick={() => setMode('leads')}>Converted leads</button>
+      </div>
+      {mode === 'orders' ? <OrdersView pmap={pmap} /> : <LeadInstallsView pmap={pmap} />}
+    </>
   );
 }

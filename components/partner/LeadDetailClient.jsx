@@ -8,9 +8,10 @@
 // waits on the network.
 import { useEffect, useState } from 'react';
 import LeadDetailScreen from './LeadDetailScreen';
-import { ScreenHeader } from './ui';
+import { ScreenHeader, useAppBase } from './ui';
 
 export default function LeadDetailClient({ id }) {
+  const base = useAppBase();
   const [state, setState] = useState({ status: 'loading', lead: null });
 
   useEffect(() => {
@@ -31,7 +32,7 @@ export default function LeadDetailClient({ id }) {
   if (state.status === 'loading') {
     return (
       <>
-        <ScreenHeader title="Lead Detail" backHref="/partner/home?tab=leads" />
+        <ScreenHeader title="Lead Detail" backHref={`${base}/home?tab=leads`} />
         <div className="hp-empty"><div className="hp-empty-sub">Loading…</div></div>
       </>
     );
@@ -39,7 +40,7 @@ export default function LeadDetailClient({ id }) {
   if (state.status === 'error') {
     return (
       <>
-        <ScreenHeader title="Lead Detail" backHref="/partner/home?tab=leads" />
+        <ScreenHeader title="Lead Detail" backHref={`${base}/home?tab=leads`} />
         <div className="hp-empty"><div className="hp-empty-sub">This lead couldn't be found.</div></div>
       </>
     );

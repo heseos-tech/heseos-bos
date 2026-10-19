@@ -2,7 +2,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { Avatar, StatusBadge } from './ui';
+import { Avatar, StatusBadge, useAppBase } from './ui';
 import { IconPlus, IconLeads } from './icons';
 import { fmtDateTime } from '@/lib/date';
 import { partnerStatusOf, PROPERTY_TYPE_LABEL } from '@/lib/partnerMock';
@@ -19,6 +19,7 @@ const TABS = [
 // useApiResource (lib/useApiResource.js), instead of each independently fetching the same
 // /api/leads on its own first visit.
 export default function MyLeadsScreen() {
+  const base = useAppBase();
   const searchParams = useSearchParams();
   const { data: leads, loading } = useApiResource('/api/leads', { pollMs: 20000 });
   const [tab, setTab] = useState(searchParams.get('status') || 'all');
@@ -72,7 +73,7 @@ export default function MyLeadsScreen() {
       ) : (
         <div className="hp-lead-list">
           {filtered.map((l) => (
-            <Link key={l.id} href={`/partner/leads/${l.id}`} className="hp-lead-card">
+            <Link key={l.id} href={`${base}/leads/${l.id}`} className="hp-lead-card">
               <Avatar name={l.name} />
               <div className="hp-lead-info">
                 <div className="hp-lead-name">{l.name}</div>
@@ -88,7 +89,7 @@ export default function MyLeadsScreen() {
       )}
 
       <div className="hp-cta-block">
-        <Link href="/partner/leads/new" className="hp-btn hp-btn-primary hp-btn-block"><IconPlus size={18} /> Punch New Lead</Link>
+        <Link href={`${base}/leads/new`} className="hp-btn hp-btn-primary hp-btn-block"><IconPlus size={18} /> Punch New Lead</Link>
       </div>
     </>
   );

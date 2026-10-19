@@ -4,7 +4,7 @@
 // pulled from what this app can really do (QR claiming, lead tagging, payout timing) rather than
 // generic filler.
 import { useState } from 'react';
-import { ScreenHeader } from './ui';
+import { ScreenHeader, useAppBase } from './ui';
 import { IconPhone, IconMail, IconMapPin, IconChevronDown } from './icons';
 
 const CONTACT = {
@@ -51,9 +51,10 @@ function FaqItem({ faq }) {
 }
 
 export default function HelpSupportScreen() {
+  const base = useAppBase();
   return (
     <>
-      <ScreenHeader title="Help & Support" backHref="/partner/home?tab=profile" />
+      <ScreenHeader title="Help & Support" backHref={`${base}/home?tab=profile`} />
 
       <div style={{ padding: '0 16px' }}>
         <div className="hp-card">

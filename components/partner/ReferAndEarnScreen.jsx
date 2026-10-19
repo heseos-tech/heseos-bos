@@ -9,7 +9,7 @@
 // QR-code self-service used to live here too, but partners now get a pre-printed QR code
 // assigned at onboarding instead of generating their own — see lib/attribution.js.
 import { useEffect, useState } from 'react';
-import { ScreenHeader } from './ui';
+import { ScreenHeader, useAppBase } from './ui';
 import { IconCopy, IconShare, IconLink } from './icons';
 
 function LinkCard({ title, hint, icon, link, visitLabel, onToast }) {
@@ -67,6 +67,7 @@ function LinkCard({ title, hint, icon, link, visitLabel, onToast }) {
 }
 
 export default function ReferAndEarnScreen() {
+  const base = useAppBase();
   const [data, setData] = useState(null);
   const [toast, setToast] = useState('');
 
@@ -78,7 +79,7 @@ export default function ReferAndEarnScreen() {
 
   return (
     <>
-      <ScreenHeader title="Referral Link" backHref="/partner/home?tab=profile" />
+      <ScreenHeader title="Referral Link" backHref={`${base}/home?tab=profile`} />
 
       <div style={{ padding: '0 16px' }}>
         {!data?.referral?.url && data !== null && (

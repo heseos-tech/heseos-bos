@@ -35,7 +35,7 @@ export async function POST(request) {
     );
   }
 
-  const res = NextResponse.json({ success: true, partner: { id: acct.id, name: acct.name, phone: acct.phone, businessName: acct.businessName } });
+  const res = NextResponse.json({ success: true, partner: { id: acct.id, name: acct.name, phone: acct.phone, businessName: acct.businessName, type: acct.type } });
   res.cookies.set(PARTNER_COOKIE, token, {
     httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', path: '/', maxAge: 60 * 60 * 24 * 30,
   });

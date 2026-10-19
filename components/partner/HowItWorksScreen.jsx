@@ -4,7 +4,7 @@
 // the first time, not a hint per screen. Kept in terms of what's actually true in this codebase
 // (QR/referral link → WhatsApp lead → tiered payout on conversion) rather than any invented
 // numbers — the live rate always lives on the Rewards tab since it's admin-configurable.
-import { ScreenHeader } from './ui';
+import { ScreenHeader, useAppBase } from './ui';
 import { IconQrCode, IconLeads, IconWallet, IconBank, IconCheck } from './icons';
 
 const STEPS = [
@@ -36,9 +36,10 @@ const STEPS = [
 ];
 
 export default function HowItWorksScreen() {
+  const base = useAppBase();
   return (
     <>
-      <ScreenHeader title="How It Works" backHref="/partner/home?tab=profile" />
+      <ScreenHeader title="How It Works" backHref={`${base}/home?tab=profile`} />
 
       <div style={{ padding: '0 16px' }}>
         <div className="hp-card">

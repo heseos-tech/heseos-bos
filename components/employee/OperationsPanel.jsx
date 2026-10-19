@@ -32,6 +32,13 @@ const CANCELLABLE = new Set(['confirmed', 'packed', 'shipped']);
 const NAV = [
   { key: 'orders', label: 'Orders', Icon: IconOrders },
   { key: 'schedule', label: 'Installations', Icon: IconDemo },
+  { key: 'leads', label: 'Converted Leads', Icon: IconLeads },
+];
+const LEADS_URL = '/api/admin/installations/leads';
+const leadBucket = (j) => (j.done ? 'done' : j.partnerId ? 'claimed' : j.installDate && Number(j.fee) > 0 ? 'open' : 'plan');
+const LEAD_TABS = [
+  { key: 'plan', tab: 'To schedule' }, { key: 'open', tab: 'Open for installers' },
+  { key: 'claimed', tab: 'Claimed' }, { key: 'done', tab: 'Installed' },
 ];
 
 const money = (n) => `₹${Number(n || 0).toLocaleString('en-IN')}`;
@@ -51,6 +58,12 @@ const ts = (x) => new Date(x || 0).getTime();
 
 export default function OperationsPanel({ employee }) {
   const { data: orders, loading } = useApiResource(ORDERS_URL, { pollMs: 20000 });
+  const { data: leadJobs, loading: leadsLoading } = useApiResource(LEADS_URL, { pollMs: 30000 });
+  const { data: partners } = useApiResource('/api/admin/partners', { pollMs: 60000 });
+  const pmap = useMemo(() => Object.fromEntries(partners.map((p) => [p.id, p])), [partners]);
+  const [leadTab, setLeadTab] = useState('plan');
+  const [leadModalId, setLeadModalId] = useState(null);
+  const [lq, setLq] = useState('');
   const [section, setSection] = useState('orders');
   const [tab, setTab] = useState('confirmed');
   const [q, setQ] = useState('');
@@ -88,6 +101,14 @@ export default function OperationsPanel({ employee }) {
   const schedule = useMemo(() => open.filter((o) => o.installDate).sort((a, b) => (a.installDate < b.installDate ? -1 : a.installDate > b.installDate ? 1 : ts(a.createdAt) - ts(b.createdAt))), [open]);
   const unscheduled = useMemo(() => open.filter((o) => !o.installDate).sort((a, b) => ts(a.createdAt) - ts(b.createdAt)), [open]);
 
+  const leadCounts = useMemo(() => { const c = { plan: 0, open: 0, claimed: 0, done: 0 }; for (const j of leadJobs) c[leadBucket(j)] += 1; return c; }, [leadJobs]);
+  const leadRows = useMemo(() => {
+    const t = lq.trim().toLowerCase();
+    return leadJobs.filter((j) => (t ? `${j.ref} ${j.customerName} ${j.phone} ${j.city}`.toLowerCase().includes(t) : leadBucket(j) === leadTab))
+      .sort((a, b) => (a.installDate && b.installDate ? (a.installDate < b.installDate ? -1 : 1) : a.installDate ? 1 : b.installDate ? -1 : 0));
+  }, [leadJobs, leadTab, lq]);
+  const leadModal = leadModalId ? leadJobs.find((j) => j.id === leadModalId) : null;
+
   const modalOrder = modalId ? orders.find((o) => o.id === modalId) : null;
 
   async function patch(order, body) {
@@ -120,11 +141,40 @@ export default function OperationsPanel({ employee }) {
     const r = await patch(order, { status: 'cancelled' });
     if (r) { setModalId(null); flash(`Order ${order.id} cancelled${r.whatsappSent ? ' — customer notified on WhatsApp' : ' — WhatsApp message could not be sent'}`); }
   }
-  async function saveSchedule(order, date, slot) {
-    const r = await patch(order, { installation: { date, slot } });
+  async function saveSchedule(order, date, slot, fee) {
+    const r = await patch(order, { installation: { date, slot, fee: fee === '' ? null : Number(fee) } });
     if (!r) return false;
-    flash(date ? `Installation set for ${fmtDate(date)}${r.whatsappSent ? ' — customer notified on WhatsApp' : ' — saved (WhatsApp message could not be sent)'}` : 'Installation date cleared');
+    flash(date ? `Installation saved for ${fmtDate(date)}${r.whatsappSent ? ' — customer notified on WhatsApp' : ''}` : 'Installation date cleared');
     return true;
+  }
+  async function releaseInstaller(order) {
+    if (!window.confirm('Take this job back from the installer? It becomes available to other installers again.')) return;
+    if (await patch(order, { installation: { releaseInstaller: true } })) flash('Installer released');
+  }
+
+  // Converted leads (closed deals) — separate endpoint, same idea.
+  async function patchLead(job, body) {
+    setBusy(job.id);
+    try {
+      const res = await fetch(`${LEADS_URL}/${job.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      const data = await res.json().catch(() => ({}));
+      await invalidate(LEADS_URL);
+      if (!res.ok) { flash(data.error || 'Could not save — try again'); return null; }
+      return data;
+    } catch { flash('Network problem — try again'); return null; } finally { setBusy(''); }
+  }
+  async function saveLead(job, date, slot, fee) {
+    const r = await patchLead(job, { date, slot, fee: fee === '' ? null : Number(fee) });
+    if (r) flash(date ? `Installation saved for ${fmtDate(date)}` : 'Installation date cleared');
+    return !!r;
+  }
+  async function releaseLead(job) {
+    if (!window.confirm('Take this job back from the installer? It becomes available to other installers again.')) return;
+    if (await patchLead(job, { releaseInstaller: true })) flash('Installer released');
+  }
+  async function completeLead(job) {
+    if (!window.confirm(`Mark the installation for ${job.customerName || job.ref} as done?${job.partnerId ? ' The installer’s fee goes to payouts.' : ''}`)) return;
+    if (await patchLead(job, { complete: true })) { setLeadModalId(null); flash('Marked installed'); }
   }
   async function saveNotes(order, notes) {
     if (!(await patch(order, { notes }))) return false;
@@ -136,10 +186,11 @@ export default function OperationsPanel({ employee }) {
     <EmployeeShell employee={employee} section={section} onSection={(k) => { setSection(k); setModalId(null); }} navItems={NAV}>
       <div className="adm-page-head">
         <div>
-          <h1 className="adm-h1">{section === 'orders' ? 'Orders' : 'Installations'}</h1>
+          <h1 className="adm-h1">{section === 'orders' ? 'Orders' : section === 'schedule' ? 'Installations' : 'Converted Leads'}</h1>
           <p className="adm-page-sub">{section === 'orders'
             ? 'Confirmed orders through to installation — pack, dispatch, deliver, then call the customer and fix an installation date'
-            : 'Installation dates agreed with customers, soonest first — and the orders still waiting for a date'}</p>
+            : section === 'schedule' ? 'Installation dates agreed with customers, soonest first — and the orders still waiting for a date'
+            : 'Deals closed by sales engineers — set the installation date and the installer’s fee, then installers in the city can claim the job'}</p>
         </div>
       </div>
 
@@ -170,7 +221,7 @@ export default function OperationsPanel({ employee }) {
               <tbody>
                 {loading ? <tr><td colSpan={8} className="adm-empty">Loading…</td></tr>
                   : pageRows.length === 0 ? <tr><td colSpan={8} className="adm-empty">{q.trim() ? 'No orders match this search.' : 'Nothing here right now.'}</td></tr>
-                    : pageRows.map((o) => <OrderRow key={o.id} o={o} busy={busy === o.id} onOpen={() => setModalId(o.id)} onAdvance={() => advance(o)} />)}
+                    : pageRows.map((o) => <OrderRow key={o.id} o={o} busy={busy === o.id} onOpen={() => setModalId(o.id)} onAdvance={() => advance(o)} installer={pmap[o.installPartnerId]} />)}
               </tbody>
             </table>
           </div>
@@ -225,6 +276,54 @@ export default function OperationsPanel({ employee }) {
         </>
       )}
 
+      {section === 'leads' && (
+        <div className="adm-card">
+          <div className="adm-toolbar">
+            <div className="adm-search adm-search--inline"><IconSearch size={16} /><input placeholder="Search by name, phone, city or lead ID…" value={lq} onChange={(e) => setLq(e.target.value)} /></div>
+          </div>
+          <div className="adm-tabs">
+            {LEAD_TABS.map((t) => (
+              <button key={t.key} type="button" className={`adm-tab${leadTab === t.key && !lq.trim() ? ' active' : ''}`} onClick={() => { setLeadTab(t.key); setLq(''); }}>
+                {t.tab} <span className="adm-tab-count">{leadCounts[t.key]}</span>
+              </button>
+            ))}
+          </div>
+          <div className="adm-table-scroll">
+            <table className="adm-table">
+              <thead><tr><th>Lead</th><th>Customer</th><th>Products</th><th>Deal value</th><th>Installation</th><th>Installer</th><th></th></tr></thead>
+              <tbody>
+                {leadsLoading ? <tr><td colSpan={7} className="adm-empty">Loading…</td></tr>
+                  : leadRows.length === 0 ? <tr><td colSpan={7} className="adm-empty">Nothing here right now.</td></tr>
+                    : leadRows.map((j) => (
+                      <tr key={j.id} style={{ cursor: 'pointer' }} onClick={() => setLeadModalId(j.id)}>
+                        <td><code>{j.ref}</code></td>
+                        <td><div className="adm-lead-name">{j.customerName || '—'}</div><div className="adm-lead-sub">{j.phone}{j.city ? ` · ${j.city}` : ''}</div></td>
+                        <td>{j.items.map((i) => `${i.name}${i.qty > 1 ? ` × ${i.qty}` : ''}`).join(', ') || '—'}</td>
+                        <td>{j.finalPrice ? money(j.finalPrice) : '—'}</td>
+                        <td>{j.installDate ? <span style={{ fontWeight: 600 }}>{fmtDate(j.installDate)}{j.installSlot ? <span className="adm-lead-sub" style={{ display: 'block' }}>{j.installSlot}</span> : null}</span> : <span className="adm-lead-sub">Not set</span>}</td>
+                        <td>{Number(j.fee) > 0 ? <span style={{ fontWeight: 600 }}>{money(j.fee)}</span> : <span className="adm-lead-sub">No fee</span>}{j.partnerId && <span className="adm-lead-sub" style={{ display: 'block' }}>{pmap[j.partnerId]?.name || 'Assigned'}</span>}</td>
+                        <td className="adm-row-actions"><button className="adm-chip-btn" onClick={(e) => { e.stopPropagation(); setLeadModalId(j.id); }}>Manage</button></td>
+                      </tr>
+                    ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {leadModal && (
+        <LeadModal
+          key={leadModal.id}
+          job={leadModal}
+          installer={pmap[leadModal.partnerId]}
+          busy={busy === leadModal.id}
+          onClose={() => setLeadModalId(null)}
+          onSave={(d, s, f) => saveLead(leadModal, d, s, f)}
+          onRelease={() => releaseLead(leadModal)}
+          onComplete={() => completeLead(leadModal)}
+        />
+      )}
+
       {modalOrder && (
         <OrderModal
           key={modalOrder.id}
@@ -234,7 +333,9 @@ export default function OperationsPanel({ employee }) {
           onAdvance={() => advance(modalOrder)}
           onPaid={() => markPaid(modalOrder)}
           onCancel={() => cancel(modalOrder)}
-          onSchedule={(d, s) => saveSchedule(modalOrder, d, s)}
+          installer={pmap[modalOrder.installPartnerId]}
+          onRelease={() => releaseInstaller(modalOrder)}
+          onSchedule={(d, s, f) => saveSchedule(modalOrder, d, s, f)}
           onNotes={(n) => saveNotes(modalOrder, n)}
         />
       )}
@@ -242,7 +343,7 @@ export default function OperationsPanel({ employee }) {
   );
 }
 
-function OrderRow({ o, busy, onOpen, onAdvance }) {
+function OrderRow({ o, busy, onOpen, onAdvance, installer }) {
   const st = STAGE[o.status];
   const done = o.status === 'installed';
   const due = o.installDate && !done ? dueTag(o.installDate) : '';
@@ -258,6 +359,7 @@ function OrderRow({ o, busy, onOpen, onAdvance }) {
         {o.installDate
           ? <span style={{ fontWeight: 600, color: due === 'overdue' ? '#b91c1c' : due === 'today' ? '#9a4a00' : undefined }}>{fmtDate(o.installDate)}{o.installSlot ? <span className="adm-lead-sub" style={{ display: 'block' }}>{o.installSlot}</span> : null}{due === 'overdue' ? <span className="adm-lead-sub" style={{ display: 'block', color: '#b91c1c' }}>Overdue</span> : null}</span>
           : done ? '—' : <span className="adm-lead-sub">Not set</span>}
+        {Number(o.installFee) > 0 && <span className="adm-lead-sub" style={{ display: 'block' }}>Fee {money(o.installFee)}{o.installPartnerId ? ` · ${installer?.name || 'Installer'}` : o.installDate ? ' · open' : ''}</span>}
       </td>
       <td className="adm-row-actions" style={{ whiteSpace: 'nowrap' }}>
         {st.next && <button className="adm-chip-btn" disabled={busy} onClick={(e) => { e.stopPropagation(); onAdvance(); }}>{st.action}</button>}{' '}
@@ -267,13 +369,15 @@ function OrderRow({ o, busy, onOpen, onAdvance }) {
   );
 }
 
-function OrderModal({ order, busy, onClose, onAdvance, onPaid, onCancel, onSchedule, onNotes }) {
+function OrderModal({ order, busy, installer, onClose, onAdvance, onPaid, onCancel, onRelease, onSchedule, onNotes }) {
   const st = STAGE[order.status];
   const done = order.status === 'installed';
   const [date, setDate] = useState(order.installDate || '');
   const [slot, setSlot] = useState(order.installSlot || '');
   const [notes, setNotes] = useState(order.notes || '');
+  const [fee, setFee] = useState(order.installFee != null ? String(order.installFee) : '');
   const dateDirty = date !== (order.installDate || '') || slot !== (order.installSlot || '');
+  const feeDirty = fee !== (order.installFee != null ? String(order.installFee) : '');
   return (
     <Modal title={`Order ${order.id}`} sub={`${st.label} · placed ${order.createdAt ? new Date(order.createdAt).toLocaleString('en-IN') : '—'}`} onClose={onClose} wide>
       <div className="adm-detail-grid">
@@ -295,19 +399,14 @@ function OrderModal({ order, busy, onClose, onAdvance, onPaid, onCancel, onSched
       </div>
 
       {!done && (
-        <div style={{ marginTop: 18, paddingTop: 14, borderTop: '1px solid var(--adm-border)' }}>
-          <span className="adm-detail-label">Installation date</span>
-          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 6 }}>
-            <input className="lf-input" type="date" min={todayStr()} value={date} onChange={(e) => setDate(e.target.value)} style={{ width: 180 }} />
-            <select className="lf-input" value={slot} onChange={(e) => setSlot(e.target.value)} style={{ width: 220 }}>
-              <option value="">Any time (confirm on call)</option>
-              {INSTALL_SLOTS.map((s) => <option key={s} value={s}>{s}</option>)}
-            </select>
-            <button className="lf-btn-next" disabled={busy || !date || !dateDirty} onClick={() => onSchedule(date, slot)}>Save &amp; notify customer</button>
-            {order.installDate && <button className="lf-btn-back" disabled={busy} onClick={() => { setDate(''); setSlot(''); onSchedule('', ''); }}>Clear</button>}
-          </div>
-          <p className="adm-lead-sub" style={{ marginTop: 6 }}>The customer is sent a WhatsApp message with this date as soon as you save.</p>
-        </div>
+        <InstallForm
+          job={{ installDate: order.installDate, installFee: order.installFee, partnerId: order.installPartnerId, city: order.city }}
+          date={date} setDate={setDate} slot={slot} setSlot={setSlot} fee={fee} setFee={setFee}
+          dirty={dateDirty || feeDirty} dateDirty={dateDirty} busy={busy} installer={installer} notify
+          onSave={() => onSchedule(date, slot, fee)}
+          onClear={() => { setDate(''); setSlot(''); onSchedule('', '', fee); }}
+          onRelease={onRelease}
+        />
       )}
       {done && order.installDate && (
         <div className="adm-detail-notes" style={{ marginTop: 14 }}><span className="adm-detail-label">Installed on schedule</span>{fmtDate(order.installDate)}{order.installSlot ? ` · ${order.installSlot}` : ''}</div>
@@ -327,6 +426,83 @@ function OrderModal({ order, busy, onClose, onAdvance, onPaid, onCancel, onSched
         {st.next && <button className="lf-btn-next" style={{ flex: '1 1 100%', whiteSpace: 'nowrap' }} disabled={busy} onClick={onAdvance}>{st.action}</button>}
       </div>
       {st.next && <p className="adm-lead-sub" style={{ marginTop: 8 }}>The customer gets a WhatsApp update when you move this order forward.</p>}
+    </Modal>
+  );
+}
+
+// Date + time window + installer fee, and who (if anyone) has claimed the job — shared by the
+// order window and the converted-lead window.
+function InstallForm({ job, date, setDate, slot, setSlot, fee, setFee, dirty, dateDirty, busy, installer, notify, onSave, onClear, onRelease }) {
+  const hasFee = Number(fee) > 0;
+  return (
+    <div style={{ marginTop: 18, paddingTop: 14, borderTop: '1px solid var(--adm-border)' }}>
+      <span className="adm-detail-label">Installation</span>
+      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 6 }}>
+        <input className="lf-input" type="date" min={todayStr()} value={date} onChange={(e) => setDate(e.target.value)} style={{ width: 170 }} />
+        <select className="lf-input" value={slot} onChange={(e) => setSlot(e.target.value)} style={{ width: 210 }}>
+          <option value="">Any time (confirm on call)</option>
+          {INSTALL_SLOTS.map((s) => <option key={s} value={s}>{s}</option>)}
+        </select>
+        <input className="lf-input" type="number" min="0" placeholder="Installer fee ₹" value={fee} onChange={(e) => setFee(e.target.value)} style={{ width: 150 }} />
+        <button className="lf-btn-next" disabled={busy || !dirty || (!date && !hasFee)} onClick={onSave}>{notify && dateDirty ? 'Save & notify customer' : 'Save'}</button>
+        {job.installDate && <button className="lf-btn-back" disabled={busy} onClick={onClear}>Clear date</button>}
+      </div>
+      <p className="adm-lead-sub" style={{ marginTop: 6 }}>
+        Installers in {job.city || 'the order’s city'} can claim the job once it has a date and a fee.{notify ? ' The customer is sent a WhatsApp message whenever the date or time changes.' : ''}
+      </p>
+      {job.partnerId ? (
+        <div className="adm-detail-notes" style={{ marginTop: 8 }}>
+          <span className="adm-detail-label">Installer</span>
+          {installer?.name || 'Assigned'}{installer?.phone ? ` · ${installer.phone}` : ''}{' '}
+          <button className="adm-chip-btn" disabled={busy} onClick={onRelease}>Release</button>
+        </div>
+      ) : job.installDate && Number(job.installFee) > 0 ? (
+        <p className="adm-lead-sub" style={{ marginTop: 6, color: '#0a7d3b' }}>Open — waiting for an installer to claim it.</p>
+      ) : null}
+    </div>
+  );
+}
+
+function LeadModal({ job, installer, busy, onClose, onSave, onRelease, onComplete }) {
+  const done = job.done;
+  const [date, setDate] = useState(job.installDate || '');
+  const [slot, setSlot] = useState(job.installSlot || '');
+  const [fee, setFee] = useState(job.fee != null ? String(job.fee) : '');
+  const dateDirty = date !== (job.installDate || '') || slot !== (job.installSlot || '');
+  const dirty = dateDirty || fee !== (job.fee != null ? String(job.fee) : '');
+  return (
+    <Modal title={`Lead ${job.ref}`} sub={`${job.customerName || 'Customer'}${job.city ? ` · ${job.city}` : ''}`} onClose={onClose} wide>
+      <div className="adm-detail-grid">
+        <div><span className="adm-detail-label">Customer</span>{job.customerName || '—'}</div>
+        <div>
+          <span className="adm-detail-label">Phone</span>{job.phone}{' '}
+          <a className="adm-chip-btn" href={telHref(job.phone)} style={{ textDecoration: 'none', marginLeft: 6 }}>Call</a>{' '}
+          <a className="adm-chip-btn" href={waHref(job.phone)} target="_blank" rel="noreferrer" style={{ textDecoration: 'none' }}><IconWhatsApp size={12} /> WhatsApp</a>
+        </div>
+        <div><span className="adm-detail-label">Deal value</span>{job.finalPrice ? money(job.finalPrice) : '—'}</div>
+        <div><span className="adm-detail-label">Status</span>{done ? 'Installed' : job.partnerId ? 'Installer assigned' : 'Awaiting installer'}</div>
+      </div>
+      {job.address && <div className="adm-detail-notes" style={{ marginTop: 4 }}><span className="adm-detail-label">Site address</span>{job.address}</div>}
+      <div style={{ marginTop: 12 }}>
+        <span className="adm-detail-label">Products (from the latest quotation)</span>
+        <div style={{ marginTop: 4 }}>{job.items.length ? job.items.map((i, k) => <div key={k}>{i.name} × {i.qty}</div>) : <span className="adm-lead-sub">No itemised quotation on file</span>}</div>
+      </div>
+      {!done && (
+        <InstallForm
+          job={{ installDate: job.installDate, installFee: job.fee, partnerId: job.partnerId, city: job.city }}
+          date={date} setDate={setDate} slot={slot} setSlot={setSlot} fee={fee} setFee={setFee}
+          dirty={dirty} dateDirty={dateDirty} busy={busy} installer={installer}
+          onSave={() => onSave(date, slot, fee)}
+          onClear={() => { setDate(''); setSlot(''); onSave('', '', fee); }}
+          onRelease={onRelease}
+        />
+      )}
+      {done && job.installDate && <div className="adm-detail-notes" style={{ marginTop: 14 }}><span className="adm-detail-label">Installed on schedule</span>{fmtDate(job.installDate)}{job.installSlot ? ` · ${job.installSlot}` : ''}</div>}
+      {!done && (
+        <div className="lf-actions" style={{ marginTop: 18, flexWrap: 'wrap' }}>
+          <button className="lf-btn-next" style={{ flex: '1 1 100%', whiteSpace: 'nowrap' }} disabled={busy} onClick={onComplete}>Mark Installation Done</button>
+        </div>
+      )}
     </Modal>
   );
 }

@@ -8,7 +8,7 @@
 // Admin → Partners already has a City column for (components/admin/PartnersPage.jsx) — so
 // filling this in from here is exactly what shows up there too.
 import { useState, useEffect, useCallback } from 'react';
-import { ScreenHeader, TextField, SelectField, Button } from './ui';
+import { ScreenHeader, TextField, SelectField, Button, useAppBase } from './ui';
 import { IconBuilding, IconTag, IconUser, IconPhone, IconMapPin, IconFile } from './icons';
 import { PARTNER_CATEGORY } from '@/lib/formOptions';
 
@@ -30,6 +30,7 @@ function formatJoined(iso) {
 // own name. Renaming the field key itself would mean touching every other place that reads
 // it, so the label changes, the storage doesn't.
 export default function MyProfileScreen() {
+  const base = useAppBase();
   const [partner, setPartner] = useState(null);
   const [partnerName, setPartnerName] = useState('');
   const [shopName, setShopName] = useState('');
@@ -106,7 +107,7 @@ export default function MyProfileScreen() {
 
   return (
     <>
-      <ScreenHeader title="My Profile" backHref="/partner/home?tab=profile" />
+      <ScreenHeader title="My Profile" backHref={`${base}/home?tab=profile`} />
 
       <div style={{ padding: '0 16px' }}>
         {!partner ? (

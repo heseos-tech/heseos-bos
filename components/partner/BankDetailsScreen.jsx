@@ -5,12 +5,13 @@
 // afterwards, so these fields exist only so that admin has somewhere to look the details up
 // when that happens. Nothing here ever moves money.
 import { useState, useEffect, useCallback } from 'react';
-import { ScreenHeader, TextField, Button } from './ui';
+import { ScreenHeader, TextField, Button, useAppBase } from './ui';
 import { IconBank, IconUser } from './icons';
 
 const emptyBank = { accountHolderName: '', bankName: '', accountNumber: '', ifsc: '', upiId: '' };
 
 export default function BankDetailsScreen() {
+  const base = useAppBase();
   const [loaded, setLoaded] = useState(false);
   const [form, setForm] = useState(emptyBank);
   const [saved, setSaved] = useState(emptyBank);
@@ -65,7 +66,7 @@ export default function BankDetailsScreen() {
 
   return (
     <>
-      <ScreenHeader title="Bank Details" backHref="/partner/home?tab=profile" />
+      <ScreenHeader title="Bank Details" backHref={`${base}/home?tab=profile`} />
 
       <div style={{ padding: '0 16px' }}>
         {!loaded ? (

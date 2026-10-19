@@ -247,6 +247,7 @@ function AddPartnerModal({ onClose, onDone }) {
         <div className="lf-pills cols-3">
           {PARTNER_CATEGORY.map((c) => <button key={c.v} type="button" className={`lf-pill${type === c.v ? ' active' : ''}`} onClick={() => setType(c.v)}>{c.l}</button>)}
         </div>
+        {type === 'installer' && <div className="adm-meta-hint" style={{ marginTop: 6 }}>Installation partners sign in to the Installer app (/installer) and see installation jobs in the city selected above — so a city is required.</div>}
       </div>
       <div className="lf-field">
         <label className="lf-label">Account Manager (optional)</label>
@@ -258,7 +259,7 @@ function AddPartnerModal({ onClose, onDone }) {
       {error && <div className="lf-error">{error}</div>}
       <div className="lf-actions">
         <button className="lf-btn-back" onClick={onClose} disabled={saving}>Cancel</button>
-        <button className="lf-btn-next" onClick={submit} disabled={saving || !name || !phone || !password}>{saving ? 'Saving…' : 'Create'}</button>
+        <button className="lf-btn-next" onClick={submit} disabled={saving || !name || !phone || !password || (type === 'installer' && !city)}>{saving ? 'Saving…' : 'Create'}</button>
       </div>
     </Modal>
   );

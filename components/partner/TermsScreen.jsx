@@ -3,7 +3,7 @@
 // program actually works in this codebase (QR/referral-link leads, admin-set tiered payouts,
 // manual settlement, no payment gateway) rather than boilerplate copied from elsewhere. This is
 // a starting point for the business, not legal advice — see the disclaimer at the bottom.
-import { ScreenHeader } from './ui';
+import { ScreenHeader, useAppBase } from './ui';
 
 const SECTIONS = [
   {
@@ -49,9 +49,10 @@ const SECTIONS = [
 ];
 
 export default function TermsScreen() {
+  const base = useAppBase();
   return (
     <>
-      <ScreenHeader title="Terms & Conditions" backHref="/partner/home?tab=profile" />
+      <ScreenHeader title="Terms & Conditions" backHref={`${base}/home?tab=profile`} />
 
       <div style={{ padding: '0 16px' }}>
         <div className="hp-card">

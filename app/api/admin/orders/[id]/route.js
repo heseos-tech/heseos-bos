@@ -3,7 +3,8 @@
 import { dbGetById } from '@/lib/db';
 import { getEmployee } from '@/lib/auth';
 import { dbPatch } from '@/lib/db';
-import { advanceOrderStatus, markOrderPaid, setInstallationSchedule, ORDER_STATUSES } from '@/lib/heseosOrders';
+import { advanceOrderStatus, markOrderPaid, setInstallationSchedule, cleanInstallFee, ORDER_STATUSES } from '@/lib/heseosOrders';
+import { releaseJob, ensureInstallPayout } from '@/lib/installJobs';
 import { notifyHeseosOrderStatus, notifyHeseosInstallationScheduled } from '@/lib/heseosNotify';
 
 export const dynamic = 'force-dynamic';
@@ -30,16 +31,30 @@ export async function PATCH(request, { params }) {
   const actorLabel = employee.name || 'Admin';
 
   // Operations: record the installation date agreed with the customer on the phone (and, optionally,
-  // a time window). The customer is told on WhatsApp whenever it actually changes.
+  // a time window) plus the fee the installation partner earns for the job. The customer is told
+  // on WhatsApp whenever the date/window actually changes; a fee-only edit never texts them.
+  // `releaseInstaller: true` takes the job back from the partner who claimed it.
   if (body.installation !== undefined) {
     if (existing.status === 'cancelled' || existing.status === 'placed') {
       return Response.json({ error: 'Installation can only be scheduled for a confirmed order' }, { status: 400 });
     }
-    const wanted = String(body.installation?.date || '');
+    if (existing.status === 'installed') {
+      return Response.json({ error: 'This installation is already complete' }, { status: 400 });
+    }
+    const inst = body.installation || {};
+    if (inst.releaseInstaller) {
+      const rel = await releaseJob(null, 'order', id, { byOps: true, actor: actorLabel });
+      if (!rel.ok) return Response.json({ error: rel.error }, { status: rel.status });
+      return Response.json({ ...(await dbGetById('orders', id)), whatsappSent: false });
+    }
+    const wanted = String(inst.date || '');
     if (wanted && !/^\d{4}-\d{2}-\d{2}$/.test(wanted)) {
       return Response.json({ error: 'Pick a valid installation date' }, { status: 400 });
     }
-    const r = await setInstallationSchedule(id, body.installation || {}, actorLabel);
+    if (inst.fee !== undefined && Number.isNaN(cleanInstallFee(inst.fee))) {
+      return Response.json({ error: 'Enter a valid installation fee (₹0 – ₹10,00,000)' }, { status: 400 });
+    }
+    const r = await setInstallationSchedule(id, inst, actorLabel);
     let whatsappSent = false;
     if (r?.changed && r.order?.installDate) whatsappSent = !!(await notifyHeseosInstallationScheduled(r.order))?.ok;
     return Response.json({ ...r.order, whatsappSent });
@@ -65,6 +80,8 @@ export async function PATCH(request, { params }) {
     // retry never texts them twice) and only for the steps that have a message
     // (Packed / Dispatched / Delivered / Installation Done / Cancelled). Best-effort: a failed send never
     // undoes the status change; the admin just sees "WhatsApp message could not be sent".
+    // Operations moving an order to Installation Done while an installer holds the job: they get paid.
+    if (updated && body.status === 'installed' && existing.status !== 'installed' && updated.installPartnerId) await ensureInstallPayout('order', id);
     let whatsappSent = false;
     if (updated && existing.status !== body.status) {
       const wa = await notifyHeseosOrderStatus(updated, body.status);

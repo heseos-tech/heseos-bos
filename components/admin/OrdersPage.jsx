@@ -43,6 +43,7 @@ function nextForwardStatus(status) {
 
 export default function OrdersPage() {
   const { data: orders, loading, refresh } = useApiResource(ORDERS_URL, { pollMs: 20000 });
+  const { data: partners } = useApiResource('/api/admin/partners', { pollMs: 60000 });
   const [status, setStatus] = useState('placed');
   const [q, setQ] = useState('');
   const [page, setPage] = useState(1);
@@ -158,6 +159,7 @@ export default function OrdersPage() {
       {modal?.type === 'view' && (
         <OrderDetailModal
           order={modal.order}
+          installer={partners.find((p) => p.id === modal.order.installPartnerId)}
           onClose={() => setModal(null)}
           onAdvance={() => advance(modal.order)}
           onCancel={() => cancel(modal.order)}
@@ -168,7 +170,7 @@ export default function OrdersPage() {
   );
 }
 
-function OrderDetailModal({ order, onClose, onAdvance, onCancel, onMarkPaid }) {
+function OrderDetailModal({ order, installer, onClose, onAdvance, onCancel, onMarkPaid }) {
   const next = nextForwardStatus(order.status);
   const canCancel = CANCELLABLE.has(order.status);
   return (
@@ -184,6 +186,8 @@ function OrderDetailModal({ order, onClose, onAdvance, onCancel, onMarkPaid }) {
           <span className="adm-detail-label">Installation</span>
           {new Date(`${order.installDate}T00:00:00Z`).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })}
           {order.installSlot ? ` · ${order.installSlot}` : ''}
+          {Number(order.installFee) > 0 ? ` · installer fee ${money(order.installFee)}` : ''}
+          {order.installPartnerId ? ` · installer: ${installer?.name || 'assigned'}${installer?.phone ? ` (${installer.phone})` : ''}` : ''}
         </div>
       )}
       {order.notes ? (

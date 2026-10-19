@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { ScreenHeader, ProgressSteps, TextField, SelectField, TextareaField, Button } from './ui';
+import { ScreenHeader, ProgressSteps, TextField, SelectField, TextareaField, Button, useAppBase } from './ui';
 import {
   IconUser, IconPhone, IconMapPin, IconBuilding, IconLayers, IconWallet, IconCalendar, IconSource, IconNote,
   IconCheck, IconCopy, IconHome, IconAlertTriangle,
@@ -18,6 +18,7 @@ const empty = {
 };
 
 export default function LeadWizard() {
+  const base = useAppBase();
   const router = useRouter();
   const [step, setStep] = useState(0); // 0,1,2 = form steps; 3 = success
   const [form, setForm] = useState(empty);
@@ -113,14 +114,14 @@ export default function LeadWizard() {
           <div className="hp-check-item"><IconCheck size={16} /> You will get updates on lead progress</div>
         </div>
 
-        <Button block onClick={() => router.push('/partner/home')}><IconHome size={16} /> Back to Dashboard</Button>
+        <Button block onClick={() => router.push(`${base}/home`)}><IconHome size={16} /> Back to Dashboard</Button>
       </div>
     );
   }
 
   return (
     <>
-      <ScreenHeader title="Punch New Lead" onBack={() => (step === 0 ? router.push('/partner/home') : setStep((s) => s - 1))} />
+      <ScreenHeader title="Punch New Lead" onBack={() => (step === 0 ? router.push(`${base}/home`) : setStep((s) => s - 1))} />
       <ProgressSteps step={step} total={3} />
 
       {dupe && (

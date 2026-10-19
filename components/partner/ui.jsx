@@ -163,6 +163,12 @@ export function useNavHeightVar(ref) {
 // the dashboard entirely (Add Lead) still needs a real navigation, and a tap that lands back on
 // it from a different route (a shared link, browser back/forward) still resolves the tab from
 // the URL — see AppShell/TeamAppShell below.
+// Base path the screens below link under. The Partner app is '/partner'; the Installer app
+// (app/installer) reuses these same screens (leads, referral link, QR, payouts, profile, ...) with
+// '/installer' as its base, so every link stays inside whichever app the user is in.
+export const AppBaseContext = createContext('/partner');
+export function useAppBase() { return useContext(AppBaseContext); }
+
 export const DashboardTabContext = createContext(null);
 export function useDashboardTab() {
   const ctx = useContext(DashboardTabContext);
@@ -323,6 +329,8 @@ export function AppShell({ children }) {
     authEndpoint: '/api/auth/partner',
     userKey: 'partner',
     loginHref: '/partner/login',
+    // Installation partners have their own app (app/installer).
+    resolveRedirect: (partner) => (partner && partner.type === 'installer' ? '/installer/home' : null),
   });
   const ready = session.status === 'authenticated';
   return (

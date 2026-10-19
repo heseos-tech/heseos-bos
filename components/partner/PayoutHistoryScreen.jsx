@@ -6,7 +6,7 @@
 // happened underneath it. No invented numbers, no fake history — if nothing's been settled yet,
 // this is empty, honestly.
 import { useState, useEffect, useCallback } from 'react';
-import { ScreenHeader } from './ui';
+import { ScreenHeader, useAppBase } from './ui';
 import { IconHistory } from './icons';
 
 const STATUS_LABEL = { pending: 'Pending', processing: 'Processing', paid: 'Paid' };
@@ -22,6 +22,7 @@ function formatDate(iso) {
 }
 
 export default function PayoutHistoryScreen() {
+  const base = useAppBase();
   const [payouts, setPayouts] = useState(null);
 
   const load = useCallback(() => {
@@ -31,7 +32,7 @@ export default function PayoutHistoryScreen() {
 
   return (
     <>
-      <ScreenHeader title="Payout History" backHref="/partner/home?tab=profile" />
+      <ScreenHeader title="Payout History" backHref={`${base}/home?tab=profile`} />
 
       <div style={{ padding: '0 16px' }}>
         {payouts === null ? (

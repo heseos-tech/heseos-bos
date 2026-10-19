@@ -1,11 +1,12 @@
 'use client';
 import { useState } from 'react';
-import { Avatar, StatusBadge, ScreenHeader, Button } from './ui';
+import { Avatar, StatusBadge, ScreenHeader, Button, useAppBase } from './ui';
 import { IconPhone, IconMapPin, IconBuilding, IconLayers, IconWallet, IconCalendar, IconSource, IconNote, IconShare, IconCheck } from './icons';
 import { fmtDateTime } from '@/lib/date';
 import { partnerStatusOf, PROPERTY_TYPE_LABEL, CONFIGURATION_LABEL, TIMELINE_LABEL, REFERRAL_SOURCE_LABEL, budgetLabel } from '@/lib/partnerMock';
 
 export default function LeadDetailScreen({ lead }) {
+  const base = useAppBase();
   const [shared, setShared] = useState(false);
   const status = partnerStatusOf(lead);
   const history = Array.isArray(lead.history) && lead.history.length ? lead.history : [{ at: lead.createdAt, event: 'Lead Punched', by: 'You', note: '' }];
@@ -33,7 +34,7 @@ export default function LeadDetailScreen({ lead }) {
 
   return (
     <>
-      <ScreenHeader title="Lead Details" backHref="/partner/home?tab=leads" />
+      <ScreenHeader title="Lead Details" backHref={`${base}/home?tab=leads`} />
 
       <div className="hp-detail-hero">
         <Avatar name={lead.name} size="lg" />
