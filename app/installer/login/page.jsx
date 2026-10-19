@@ -1,12 +1,13 @@
 'use client';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { Button, TextField } from '@/components/partner/ui';
 import { IconPhone, IconLock } from '@/components/partner/icons';
 
 // Installer app sign-in — phone + password, same accounts as the Partner app (an installation
-// partner is a partner of type 'installer', added by Heseos). Accounts of any other type are sent
-// on to the Partner app after signing in.
+// partner is a partner of type 'installer' — they create their own account at /installer/signup,
+// or Admin can add one). Accounts of any other type are sent on to the Partner app after signing in.
 export default function InstallerLoginPage() {
   const router = useRouter();
   const [phone, setPhone] = useState('');
@@ -53,7 +54,7 @@ export default function InstallerLoginPage() {
               {error && <div className="hp-error">{error}</div>}
               <Button type="submit" block disabled={loading}>{loading ? 'Signing in…' : 'Login'}</Button>
             </form>
-            <p className="hp-footnote">Not an installation partner yet? Ask your Heseos contact to add you.</p>
+            <p className="hp-footnote">New installer? <Link href="/installer/signup" className="hp-link-accent">Create an account</Link></p>
           </div>
         </div>
       </div>
