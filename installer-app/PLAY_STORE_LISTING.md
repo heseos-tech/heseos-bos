@@ -27,7 +27,7 @@ Package name: `com.heseos.installer`
 **Privacy policy URL**: same as the Partner app listing.
 
 **App icon**: `assets/icon.png` (512×512).
-**Feature graphic** (1024×500) and **phone screenshots**: still to be produced (take screenshots of Home, Jobs → Available, a claimed job, and Earnings from the live app).
+**Feature graphic** (1024×500): `store-assets/feature-graphic.png` (ready). **Phone screenshots**: still to be produced (take screenshots of Home, Jobs → Available, a claimed job, and Earnings from the live app).
 
 ## App access (Play Console → App content → App access)
 Login is required. Provide a reviewer test account: an installer with a city (create it in the app via
