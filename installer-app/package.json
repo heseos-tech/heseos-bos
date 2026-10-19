@@ -1,0 +1,23 @@
+{
+  "name": "heseos-installer-app",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Native Capacitor (Android) shell for the Heseos Installer web app (/installer).",
+  "scripts": {
+    "sync": "cap sync android",
+    "open": "cap open android",
+    "bundle": "cd android && ./gradlew bundleRelease",
+    "apk": "cd android && ./gradlew assembleRelease"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.5.1",
+    "@capacitor/core": "^8.5.1",
+    "@capacitor/filesystem": "^8.1.5",
+    "@capacitor/share": "^8.0.3",
+    "@capacitor/splash-screen": "^8.0.2",
+    "@capacitor/status-bar": "^8.0.3"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^8.5.1"
+  }
+}
