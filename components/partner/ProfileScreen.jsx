@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Avatar, useAppBase } from './ui';
-import { IconUser, IconBank, IconHistory, IconHelp, IconFile, IconShield, IconLogout, IconChevronRight, IconLink, IconQrCode } from './icons';
+import { IconUser, IconBank, IconHistory, IconHelp, IconFile, IconShield, IconLogout, IconChevronRight, IconLink, IconQrCode, IconAlertTriangle } from './icons';
 
 const menuFor = (base) => [
   { icon: IconUser, label: 'My Profile', href: `${base}/my-profile` },
@@ -60,6 +60,10 @@ export default function ProfileScreen({ partner }) {
           <span className="hp-menu-icon"><IconLogout size={17} /></span>
           <span className="hp-menu-label">{loggingOut ? 'Logging out…' : 'Logout'}</span>
         </button>
+        <Link href={`${base}/delete-account`} className="hp-menu-item danger">
+          <span className="hp-menu-icon"><IconAlertTriangle size={17} /></span>
+          <span className="hp-menu-label">Delete Account</span>
+        </Link>
       </div>
 
     </>

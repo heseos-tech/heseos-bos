@@ -14,7 +14,7 @@ export const metadata = {
 const SECTIONS = [
   {
     title: '1. Who this applies to',
-    body: 'This policy covers heseos.com and the Heseos platform generally, including the public website and lead enquiry forms, the Partner app and portal, the Team (Pre-sales / Sales Engineer) app, and the internal Admin panel. It applies whether you’re a customer submitting an enquiry, a Partner referring customers to us, or a Heseos employee using the internal tools.',
+    body: 'This policy covers heseos.com and the Heseos platform generally, including the public website and lead enquiry forms, the Partner app and portal, the Installer app, the Team (Pre-sales / Sales Engineer) app, and the internal Admin panel. It applies whether you’re a customer submitting an enquiry, a Partner referring customers to us, or a Heseos employee using the internal tools.',
   },
   {
     title: '2. Information we collect',
@@ -38,11 +38,11 @@ const SECTIONS = [
   },
   {
     title: '7. Data retention',
-    body: 'We retain account information for as long as your Partner, Team or Admin account is active, and lead/customer information for as long as reasonably needed to service the enquiry and maintain accurate business records. You can ask us to delete your Partner account and associated data by contacting support, subject to any records we’re required to keep for accounting or legal reasons.',
+    body: 'We retain account information for as long as your Partner, Team or Admin account is active, and lead/customer information for as long as reasonably needed to service the enquiry and maintain accurate business records. You can delete your Partner or Installer account and its personal data yourself — in the app under Profile → Delete Account, or at heseos.com’s /delete-account page — or by contacting support. Leads, orders and payout records linked to the account are kept for accounting and business purposes with your personal details removed, and an account with unpaid earnings can only be deleted once they are settled.',
   },
   {
     title: '8. Your choices',
-    body: 'You can review and update your own Partner profile details (including business/partner details, address and bank details) directly from the app’s My Profile screen at any time. For any other request — including account deletion — contact us using the details below.',
+    body: 'You can review and update your own Partner profile details (including business/partner details, address and bank details) directly from the app’s My Profile screen at any time. To delete your account use Profile → Delete Account in the app or the /delete-account page; for any other request, contact us using the details below.',
   },
   {
     title: '9. Security',
