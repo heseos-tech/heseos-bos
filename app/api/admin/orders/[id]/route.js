@@ -56,8 +56,22 @@ export async function PATCH(request, { params }) {
     }
     const r = await setInstallationSchedule(id, inst, actorLabel);
     let whatsappSent = false;
-    if (r?.changed && r.order?.installDate) whatsappSent = !!(await notifyHeseosInstallationScheduled(r.order))?.ok;
-    return Response.json({ ...r.order, whatsappSent });
+    // A date the CUSTOMER picked on the "Book installation" page (lib/installBooking.js) is only a
+    // request until Operations save it here — that save confirms it to the customer once, even if
+    // they keep the customer's date/window as is (so nothing "changed").
+    const o = r.order;
+    const confirmsCustomerBooking = !!(o?.installDate && o.installRequestSource === 'customer' && !o.installConfirmedAt);
+    let order = o;
+    if (o?.installDate && (r.changed || confirmsCustomerBooking)) whatsappSent = !!(await notifyHeseosInstallationScheduled(o))?.ok;
+    if (confirmsCustomerBooking) {
+      const now = new Date().toISOString();
+      order = await dbPatch('orders', id, {
+        installConfirmedAt: now,
+        history: [...(o.history || []), { status: 'Installation confirmed to the customer', at: now, by: actorLabel }],
+        updatedAt: now,
+      });
+    }
+    return Response.json({ ...order, whatsappSent });
   }
 
   // Internal notes (e.g. "customer asked to call after 6 pm") — shown to the team, never the customer.

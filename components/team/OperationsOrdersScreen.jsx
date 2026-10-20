@@ -216,6 +216,9 @@ function OrdersView({ pmap }) {
   );
 }
 
+// A date the customer picked via the "Book installation" button that Operations haven't confirmed yet.
+const awaitingConfirm = (o) => !!(o && o.installDate && o.installRequestSource === 'customer' && !o.installConfirmedAt);
+
 function OrderCard({ order: o, busy, onAdvance, onPaid, onSchedule, onNotes, onCancel, installer, onRelease }) {
   const st = STAGE[o.status];
   const [color, bg] = BADGE_COLOR[o.status] || BADGE_COLOR.confirmed;
@@ -259,6 +262,13 @@ function OrderCard({ order: o, busy, onAdvance, onPaid, onSchedule, onNotes, onC
         <div className="ops-install none"><IconCalendar size={14} /><span>No installation date yet — call the customer</span></div>
       ))}
 
+      {!done && awaitingConfirm(o) && (
+        <div className="ops-note" style={{ color: 'var(--hp-orange)' }}>
+          <IconCalendar size={13} /> Customer booked this date — tap “{o.installDate ? 'Change date' : 'Set install date'}” to confirm it and add the installer fee.
+          {o.installCustomerNote ? <span style={{ display: 'block', color: 'var(--hp-text-soft)', marginTop: 4 }}>Customer note: {o.installCustomerNote}</span> : null}
+        </div>
+      )}
+
       <InstallMeta date={o.installDate} fee={o.installFee} partnerId={o.installPartnerId} installer={installer} city={o.city} done={done} busy={busy} onRelease={onRelease} />
 
       {o.notes ? <div className="ops-note"><IconNote size={13} /> {o.notes}</div> : null}
@@ -293,6 +303,7 @@ function ScheduleSheet({ order, onClose, onSave, notify = false }) {
   const [saving, setSaving] = useState(false);
   const unchanged = date === (order.installDate || '') && slot === (order.installSlot || '') && fee === (order.installFee != null ? String(order.installFee) : '');
   const dateDirty = date !== (order.installDate || '') || slot !== (order.installSlot || '');
+  const awaiting = awaitingConfirm(order);
   async function go(d, s, f) { setSaving(true); await onSave(d, s, f); setSaving(false); }
   return (
     <Portal>
@@ -332,7 +343,7 @@ function ScheduleSheet({ order, onClose, onSave, notify = false }) {
               <button type="button" className="hp-btn hp-btn-outline" disabled={saving} onClick={() => go('', '', fee)} aria-label="Clear date"><IconX size={16} /></button>
             )}
             <button type="button" className="hp-btn hp-btn-outline" style={{ flex: 1 }} onClick={onClose}>Cancel</button>
-            <button type="button" className="hp-btn hp-btn-primary" style={{ flex: 1.4 }} disabled={saving || !date || unchanged} onClick={() => go(date, slot, fee)}>{saving ? 'Saving…' : notify && dateDirty ? 'Save & notify' : 'Save'}</button>
+            <button type="button" className="hp-btn hp-btn-primary" style={{ flex: 1.4 }} disabled={saving || !date || (unchanged && !awaiting)} onClick={() => go(date, slot, fee)}>{saving ? 'Saving…' : notify && (dateDirty || awaiting) ? (awaiting && !dateDirty ? 'Confirm & notify' : 'Save & notify') : 'Save'}</button>
           </div>
         </div>
       </div>

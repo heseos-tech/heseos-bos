@@ -167,6 +167,20 @@ const CATALOGUE = [
     examples: ['Rahul', 'ORD12345678'],
   },
   {
+    // Sent when the order is delivered and no installation date is agreed yet: the button opens the
+    // customer's "Book installation" page (app/book-installation/[token]). Needs PUBLIC_BASE_URL set to
+    // your real public address when you run this script — Meta stores the button's link prefix.
+    name: 'order_delivered_book',
+    body: 'Hi {{1}}, your HESEOS order {{2}} has been delivered.\n\nTap the button below to book your installation — pick a date and time that suits you.\n\n— Team HESEOS',
+    examples: ['Rahul', 'ORD12345678'],
+    button: { text: 'Book installation', path: '/book-installation/', example: 'ORD12345678.kQ9fAbC1dEfGhIjKlMnOpQr' },
+  },
+  {
+    name: 'installation_scheduled',
+    body: 'Hi {{1}}, installation for your HESEOS order {{2}} is scheduled for {{3}} ({{4}}).\n\nOur technician will visit your address then — please keep someone available at home.\n— Team HESEOS',
+    examples: ['Rahul', 'ORD12345678', 'Mon, 26 Oct 2026', 'Morning (9 am – 12 pm)'],
+  },
+  {
     name: 'order_installed',
     body: 'Hi {{1}}, installation for your HESEOS order {{2}} is complete. Thank you for choosing HESEOS!\n\n— Team HESEOS',
     examples: ['Rahul', 'ORD12345678'],
@@ -275,6 +289,14 @@ async function buildComponents(t) {
     text: t.body,
     ...(t.examples.length ? { example: { body_text: [t.examples] } } : {}),
   });
+  if (t.button) {
+    const base = (process.env.PUBLIC_BASE_URL || '').replace(/\/$/, '');
+    if (!/^https:\/\//.test(base)) die(`${t.name} needs PUBLIC_BASE_URL set to your public https:// address (e.g. PUBLIC_BASE_URL=https://bos.heseos.com) — Meta stores the button's link.`);
+    components.push({
+      type: 'BUTTONS',
+      buttons: [{ type: 'URL', text: t.button.text, url: `${base}${t.button.path}{{1}}`, example: [`${base}${t.button.path}${t.button.example}`] }],
+    });
+  }
   return { components };
 }
 

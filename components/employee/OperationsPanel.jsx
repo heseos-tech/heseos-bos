@@ -359,6 +359,7 @@ function OrderRow({ o, busy, onOpen, onAdvance, installer }) {
         {o.installDate
           ? <span style={{ fontWeight: 600, color: due === 'overdue' ? '#b91c1c' : due === 'today' ? '#9a4a00' : undefined }}>{fmtDate(o.installDate)}{o.installSlot ? <span className="adm-lead-sub" style={{ display: 'block' }}>{o.installSlot}</span> : null}{due === 'overdue' ? <span className="adm-lead-sub" style={{ display: 'block', color: '#b91c1c' }}>Overdue</span> : null}</span>
           : done ? '—' : <span className="adm-lead-sub">Not set</span>}
+        {awaitingConfirm(o) && <span className="adm-lead-sub" style={{ display: 'block', color: '#9a4a00', fontWeight: 600 }}>Customer booked — confirm</span>}
         {Number(o.installFee) > 0 && <span className="adm-lead-sub" style={{ display: 'block' }}>Fee {money(o.installFee)}{o.installPartnerId ? ` · ${installer?.name || 'Installer'}` : o.installDate ? ' · open' : ''}</span>}
       </td>
       <td className="adm-row-actions" style={{ whiteSpace: 'nowrap' }}>
@@ -368,6 +369,9 @@ function OrderRow({ o, busy, onOpen, onAdvance, installer }) {
     </tr>
   );
 }
+
+// A date the customer picked via the "Book installation" button that Operations haven't confirmed yet.
+const awaitingConfirm = (o) => !!(o && o.installDate && o.installRequestSource === 'customer' && !o.installConfirmedAt);
 
 function OrderModal({ order, busy, installer, onClose, onAdvance, onPaid, onCancel, onRelease, onSchedule, onNotes }) {
   const st = STAGE[order.status];
@@ -402,7 +406,7 @@ function OrderModal({ order, busy, installer, onClose, onAdvance, onPaid, onCanc
         <InstallForm
           job={{ installDate: order.installDate, installFee: order.installFee, partnerId: order.installPartnerId, city: order.city }}
           date={date} setDate={setDate} slot={slot} setSlot={setSlot} fee={fee} setFee={setFee}
-          dirty={dateDirty || feeDirty} dateDirty={dateDirty} busy={busy} installer={installer} notify
+          dirty={dateDirty || feeDirty} dateDirty={dateDirty} awaiting={awaitingConfirm(order)} customerNote={order.installCustomerNote} busy={busy} installer={installer} notify
           onSave={() => onSchedule(date, slot, fee)}
           onClear={() => { setDate(''); setSlot(''); onSchedule('', '', fee); }}
           onRelease={onRelease}
@@ -432,11 +436,17 @@ function OrderModal({ order, busy, installer, onClose, onAdvance, onPaid, onCanc
 
 // Date + time window + installer fee, and who (if anyone) has claimed the job — shared by the
 // order window and the converted-lead window.
-function InstallForm({ job, date, setDate, slot, setSlot, fee, setFee, dirty, dateDirty, busy, installer, notify, onSave, onClear, onRelease }) {
+function InstallForm({ job, date, setDate, slot, setSlot, fee, setFee, dirty, dateDirty, awaiting = false, customerNote = '', busy, installer, notify, onSave, onClear, onRelease }) {
   const hasFee = Number(fee) > 0;
   return (
     <div style={{ marginTop: 18, paddingTop: 14, borderTop: '1px solid var(--adm-border)' }}>
       <span className="adm-detail-label">Installation</span>
+      {awaiting && (
+        <p className="adm-lead-sub" style={{ marginTop: 6, color: '#9a4a00', fontWeight: 600 }}>
+          The customer booked this date from the WhatsApp “Book installation” button. Confirm it (change it if needed) and add the installer fee.
+          {customerNote ? <span style={{ display: 'block', fontWeight: 400 }}>Customer note: {customerNote}</span> : null}
+        </p>
+      )}
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 6 }}>
         <input className="lf-input" type="date" min={todayStr()} value={date} onChange={(e) => setDate(e.target.value)} style={{ width: 170 }} />
         <select className="lf-input" value={slot} onChange={(e) => setSlot(e.target.value)} style={{ width: 210 }}>
@@ -444,7 +454,7 @@ function InstallForm({ job, date, setDate, slot, setSlot, fee, setFee, dirty, da
           {INSTALL_SLOTS.map((s) => <option key={s} value={s}>{s}</option>)}
         </select>
         <input className="lf-input" type="number" min="0" placeholder="Installer fee ₹" value={fee} onChange={(e) => setFee(e.target.value)} style={{ width: 150 }} />
-        <button className="lf-btn-next" disabled={busy || !dirty || (!date && !hasFee)} onClick={onSave}>{notify && dateDirty ? 'Save & notify customer' : 'Save'}</button>
+        <button className="lf-btn-next" disabled={busy || (!dirty && !awaiting) || (!date && !hasFee)} onClick={onSave}>{notify && awaiting && !dateDirty ? 'Confirm & notify customer' : notify && dateDirty ? 'Save & notify customer' : 'Save'}</button>
         {job.installDate && <button className="lf-btn-back" disabled={busy} onClick={onClear}>Clear date</button>}
       </div>
       <p className="adm-lead-sub" style={{ marginTop: 6 }}>
