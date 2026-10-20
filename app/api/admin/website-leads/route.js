@@ -3,7 +3,6 @@
 // for storage and app/api/leads/website/route.js for the endpoint the key actually protects.
 import { getEmployee } from '@/lib/auth';
 import { getWebsiteLeadSettings, saveWebsiteLeadSettings, generateApiKey } from '@/lib/websiteLeads';
-import { publicBaseUrl } from '@/lib/publicUrl';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,7 +16,7 @@ async function requireAdmin() {
 // it's not a third-party secret being proxied, so it's safe (and useful) to keep showing it
 // back to the admin rather than a one-time reveal.
 function endpointUrl() {
-  const base = publicBaseUrl();
+  const base = (process.env.PUBLIC_BASE_URL || '').replace(/\/$/, '');
   return `${base}/api/leads/website`;
 }
 
