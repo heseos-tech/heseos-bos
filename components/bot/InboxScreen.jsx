@@ -31,6 +31,8 @@ export default function InboxScreen({ tenant }) {
   const [tplOpen, setTplOpen] = useState(false);
   const [tplList, setTplList] = useState(null);
   const [tplNote, setTplNote] = useState('');
+  const [tplCtx, setTplCtx] = useState(null); // { orderId, firstName, blocked } for the open chat
+  const [tplChat, setTplChat] = useState(null); // chat the cached template list was loaded for
   const [tplSel, setTplSel] = useState(null);
   const [tplParams, setTplParams] = useState([]);
   const [tplSending, setTplSending] = useState(false);
@@ -94,12 +96,14 @@ export default function InboxScreen({ tenant }) {
 
   async function openTemplates() {
     setTplOpen(true); setTplSel(null); setTplError('');
-    if (tplList) return;
+    if (tplList && tplChat === activeId) return;
     try {
-      const res = await fetch('/api/bot/templates');
+      const res = await fetch(`/api/bot/templates?chat=${encodeURIComponent(activeId || '')}`);
       const d = res.ok ? await res.json() : { templates: [] };
       setTplList(d.templates || []);
       setTplNote(d.note || '');
+      setTplCtx(d.context || null);
+      setTplChat(activeId);
     } catch { setTplList([]); setTplNote('Could not load templates.'); }
   }
 
@@ -108,7 +112,10 @@ export default function InboxScreen({ tenant }) {
     const looksLikeName = first && !/^\d+$/.test(first);
     setTplSel(t);
     setTplError('');
-    setTplParams(Array.from({ length: t.params }, (_, i) => (i === 0 && looksLikeName ? first : '')));
+    setTplParams(Array.from({ length: t.params }, (_, i) => {
+      if (t.bookingButton && tplCtx) { if (i === 0) return tplCtx.firstName || (looksLikeName ? first : ''); if (i === 1) return tplCtx.orderId || ''; }
+      return i === 0 && looksLikeName ? first : '';
+    }));
   }
 
   async function sendTemplate() {
@@ -117,7 +124,7 @@ export default function InboxScreen({ tenant }) {
     try {
       const res = await fetch(`/api/bot/chats/${encodeURIComponent(activeId)}/messages`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ template: { name: tplSel.name, language: tplSel.language, body: tplSel.body, params: tplParams } }),
+        body: JSON.stringify({ template: { name: tplSel.name, language: tplSel.language, body: tplSel.body, params: tplParams, ...(tplSel.bookingButton ? { bookingButton: true, buttonLabel: tplSel.buttonLabel } : {}) } }),
       });
       const d = await res.json().catch(() => ({}));
       if (!res.ok) { setTplError(d.error || 'Could not send'); }
@@ -257,11 +264,16 @@ export default function InboxScreen({ tenant }) {
                           </div>
                         ))}
                         <div className="bc-tpl-sub" style={{ marginTop: 10 }}>Preview</div>
-                        <div className="bc-tpl-preview">{renderTemplate(tplSel.body, tplParams)}</div>
+                        <div className="bc-tpl-preview">{renderTemplate(tplSel.body, tplParams)}{tplSel.bookingButton ? `\n\n[ ${tplSel.buttonLabel || 'Book installation'} ]` : ''}</div>
+                        {tplSel.bookingButton && (
+                          <div className="bc-tpl-sub" style={{ marginTop: 8 }}>
+                            {tplCtx?.blocked ? `Can't send: ${tplCtx.blocked}` : `The button opens this customer's booking page for order ${tplParams[1] || tplCtx?.orderId || ''} — the link is added automatically.`}
+                          </div>
+                        )}
                         {tplError && <div className="bc-tpl-error">{tplError}</div>}
                         <div className="bc-tpl-actions">
                           <button className="bc-btn bc-btn-outline bc-btn-sm" onClick={() => setTplSel(null)} disabled={tplSending}>Back</button>
-                          <button className="bc-btn bc-btn-primary bc-btn-sm" onClick={sendTemplate} disabled={tplSending || tplParams.some((p) => !String(p).trim())}>{tplSending ? 'Sending…' : 'Send template'}</button>
+                          <button className="bc-btn bc-btn-primary bc-btn-sm" onClick={sendTemplate} disabled={tplSending || tplParams.some((p) => !String(p).trim()) || (tplSel.bookingButton && !!tplCtx?.blocked)}>{tplSending ? 'Sending…' : 'Send template'}</button>
                         </div>
                       </div>
                     )}

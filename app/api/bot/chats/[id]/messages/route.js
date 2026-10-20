@@ -6,6 +6,8 @@ import { dbWhere, dbInsert, dbPatch, dbGetById } from '@/lib/db';
 import { getBotTenant } from '@/lib/auth';
 import { botSendText, botSendTemplate } from '@/lib/botWhatsapp';
 import { renderTemplate, paramCount } from '@/lib/botTemplates';
+import { getHeseosBotTenant } from '@/lib/attribution';
+import { findOrderForChat, buildInstallBookingToken } from '@/lib/installBooking';
 
 export const dynamic = 'force-dynamic';
 
@@ -44,11 +46,25 @@ export async function POST(request, { params }) {
     if (params.length < paramCount(tplBody) || params.slice(0, paramCount(tplBody)).some((p) => !p)) {
       return Response.json({ error: 'Fill in every variable before sending' }, { status: 400 });
     }
+    // "Book installation" button templates: the URL variable is this customer's signed booking token,
+    // built here (never taken from the browser). HESEOS's own bot only, and only for an order that
+    // belongs to this chat's phone number and can still be booked.
+    let buttons = [];
+    let buttonLabel = '';
+    if (payload.template.bookingButton) {
+      const heseos = await getHeseosBotTenant();
+      if (!heseos || heseos.id !== tenant.id) return Response.json({ error: 'This template is only available on the HESEOS account' }, { status: 403 });
+      const found = await findOrderForChat(chatId, params[1]);
+      if (!found || found.order.id !== params[1]) return Response.json({ error: 'That order ID does not belong to this customer' }, { status: 400 });
+      if (found.blocked) return Response.json({ error: found.blocked }, { status: 409 });
+      buttons = [{ type: 'url', text: buildInstallBookingToken(found.order.id) }];
+      buttonLabel = String(payload.template.buttonLabel || 'Book installation').slice(0, 25);
+    }
     const now = new Date().toISOString();
     const msgId = `${chatId}_M${Date.now()}`;
     const sender = tenant.contactName || tenant.businessName || 'Agent';
-    const logBody = renderTemplate(tplBody, params) || `[Template: ${name}]`;
-    const sent = await botSendTemplate({ phoneNumberId: tenant.waPhoneNumberId, token: tenant.waAccessToken }, chatId, { name: String(name), language: String(language), params });
+    const logBody = (renderTemplate(tplBody, params) || `[Template: ${name}]`) + (buttons.length ? `\n\n[ ${buttonLabel} ]` : '');
+    const sent = await botSendTemplate({ phoneNumberId: tenant.waPhoneNumberId, token: tenant.waAccessToken }, chatId, { name: String(name), language: String(language), params, buttons });
     await dbInsert('bot_messages', msgId, {
       id: msgId, tenantId: tenant.id, chatId, direction: 'out', body: logBody, ts: now, sender,
       status: sent.ok ? 'sent' : 'failed', error: sent.ok ? null : sent.error,
