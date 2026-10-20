@@ -15,9 +15,10 @@ import { PRODUCT_INTEREST, PROPERTY_TYPE, LEAD_SOURCES } from '@/lib/formOptions
 import { windowDelta } from '@/lib/adminMetrics';
 import { useApiResource } from '@/lib/useApiResource';
 import { IconLeads, IconPhone, IconDemo, IconConversions, IconSearch, IconEye } from '@/components/admin/icons';
+import CardFollowups from '@/components/employee/CardFollowups';
 import { Pagination } from '@/components/admin/ui';
 import {
-  EmployeeShell, TrendKpiCard, sourceLabelFor, sourceIconFor, attributionFor, attributionDetailFor,
+  EmployeeShell, EMPLOYEE_NAV_ITEMS, TrendKpiCard, sourceLabelFor, sourceIconFor, attributionFor, attributionDetailFor,
   AttributionDetail, partnerDisplayName, timelineLabelFor, budgetLabelFor,
   SOURCE_FILTER_OPTIONS, matchesSourceFilter, RowActionsMenu,
 } from '@/components/employee/ui';
@@ -26,14 +27,12 @@ const PI_LABEL = Object.fromEntries(PRODUCT_INTEREST.map((p) => [p.v, p.l]));
 const PT_LABEL = Object.fromEntries(PROPERTY_TYPE.map((p) => [p.v, p.l]));
 const PAGE_SIZE = 8;
 
-const CARD_PAGE_LABEL = { door_lock: 'Door Lock', smart_home: 'Smart Home' };
-function cardSentAt(iso) {
-  return iso ? new Date(iso).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—';
-}
-function cardWaLink(phone) {
-  const d = String(phone || '').replace(/\D/g, '');
-  return d ? `https://wa.me/${d.length === 10 ? `91${d}` : d}` : '#';
-}
+// Pre-sales has one extra destination: the WhatsApp cards customers never opened (call list).
+const PRESALES_NAV = [
+  ...EMPLOYEE_NAV_ITEMS.slice(0, 3),
+  { key: 'cards', label: 'Cards Not Opened', Icon: IconConversions },
+  ...EMPLOYEE_NAV_ITEMS.slice(3),
+];
 
 export default function PresalesPanel({ employee }) {
   // Shared via useApiResource (lib/useApiResource.js) — refresh is aliased to fetchLeads so
@@ -46,10 +45,6 @@ export default function PresalesPanel({ employee }) {
   const { data: partners } = useApiResource('/api/admin/partners', { pollMs: 30000 });
   const { data: employees } = useApiResource('/api/admin/employees', { pollMs: 30000 });
   const { data: links } = useApiResource('/api/admin/attribution', { pollMs: 30000 });
-  // Landing-page cards (WhatsApp "Know More") sent >15 min ago that were never opened — same list
-  // as Admin → Landing Activity, shown here as a tab so pre-sales can nudge / call those customers.
-  const { data: landing } = useApiResource('/api/admin/landing-activity?days=30&page=all', { pollMs: 60000 });
-  const notOpened = useMemo(() => (Array.isArray(landing?.notOpened) ? landing.notOpened : []), [landing]);
 
   const [section, setSection] = useState('leads'); // 'leads' | 'analytics' | 'settings'
   const [tab, setTab] = useState('new');
@@ -66,7 +61,7 @@ export default function PresalesPanel({ employee }) {
   // (however it got there — sidebar or a pill click) decides which nav item looks active, so
   // the two stay in sync without duplicating state.
   function goSection(key) {
-    if (key === 'analytics' || key === 'settings') { setSection(key); return; }
+    if (key === 'analytics' || key === 'settings' || key === 'cards') { setSection(key); return; }
     setSection('leads');
     setPage(1);
     if (key === 'followups') setTab('followup');
@@ -98,11 +93,9 @@ export default function PresalesPanel({ employee }) {
     { key: 'converted', label: 'Converted', list: groups.converted },
     { key: 'rejected', label: 'Rejected', list: groups.rejected },
     { key: 'all', label: 'All Mine', list: groups.all },
-    { key: 'unopened', label: 'Card Not Opened', list: notOpened },
   ];
   const active = TABS.find((t) => t.key === tab) || TABS[0];
   const canWork = tab === 'new' || tab === 'followup';
-  const isUnopened = tab === 'unopened';
 
   // Partner filter's options are built from partners who actually show up in MY leads, not
   // the company's whole partner list — this view is already scoped to "mine", so a dropdown
@@ -117,10 +110,6 @@ export default function PresalesPanel({ employee }) {
   }, [mine, partners]);
 
   const filtered = useMemo(() => {
-    if (tab === 'unopened') {
-      const s = q.trim().toLowerCase();
-      return s ? notOpened.filter((c) => `${c.phone} ${CARD_PAGE_LABEL[c.page] || c.page}`.toLowerCase().includes(s)) : notOpened;
-    }
     return active.list.filter((l) => {
       if (!matchesSourceFilter(l, sourceFilter)) return false;
       if (partnerFilter !== 'all' && l.partnerId !== partnerFilter) return false;
@@ -130,7 +119,7 @@ export default function PresalesPanel({ employee }) {
       }
       return true;
     });
-  }, [tab, notOpened, active.list, q, sourceFilter, partnerFilter]);
+  }, [active.list, q, sourceFilter, partnerFilter]);
   const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const pageRows = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
@@ -147,7 +136,7 @@ export default function PresalesPanel({ employee }) {
   function setTabAndReset(key) { setTab(key); setPage(1); }
 
   return (
-    <EmployeeShell employee={employee} section={activeNavKey} onSection={goSection}>
+    <EmployeeShell employee={employee} section={activeNavKey} onSection={goSection} navItems={PRESALES_NAV}>
       {section === 'leads' && (
         <>
           <div className="adm-page-head">
@@ -167,12 +156,12 @@ export default function PresalesPanel({ employee }) {
 
           <div className="adm-card">
             <div className="adm-toolbar">
-              <div className="adm-search adm-search--inline"><IconSearch size={16} /><input placeholder={isUnopened ? 'Search by phone…' : 'Search by name, phone or interest…'} value={q} onChange={(e) => { setQ(e.target.value); setPage(1); }} /></div>
-              {!isUnopened && <select value={sourceFilter} onChange={(e) => { setSourceFilter(e.target.value); setPage(1); }}>
+              <div className="adm-search adm-search--inline"><IconSearch size={16} /><input placeholder="Search by name, phone or interest…" value={q} onChange={(e) => { setQ(e.target.value); setPage(1); }} /></div>
+              <select value={sourceFilter} onChange={(e) => { setSourceFilter(e.target.value); setPage(1); }}>
                 <option value="all">All Sources</option>
                 {SOURCE_FILTER_OPTIONS.map(({ v, l }) => <option key={v} value={v}>{l}</option>)}
-              </select>}
-              {!isUnopened && partnerOptions.length > 0 && (
+              </select>
+              {partnerOptions.length > 0 && (
                 <select value={partnerFilter} onChange={(e) => { setPartnerFilter(e.target.value); setPage(1); }}>
                   <option value="all">All Partners</option>
                   {partnerOptions.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
@@ -188,33 +177,7 @@ export default function PresalesPanel({ employee }) {
               ))}
             </div>
 
-            {isUnopened ? (
-              <>
-                <div className="adm-card-sub" style={{ marginBottom: 10 }}>Customers who got the WhatsApp link over 15 minutes ago and never opened it — a good list to nudge or call</div>
-                {pageRows.length === 0 ? (
-                  <div className="adm-empty">Nobody waiting — every card sent has been opened.</div>
-                ) : (
-                  <div className="adm-table-scroll">
-                    <table className="adm-table">
-                      <thead><tr><th>Phone</th><th>Page</th><th>Card sent</th><th></th></tr></thead>
-                      <tbody>
-                        {pageRows.map((c) => (
-                          <tr key={`${c.phone}${c.page}`}>
-                            <td>{c.phone}</td>
-                            <td>{CARD_PAGE_LABEL[c.page] || c.page}</td>
-                            <td>{cardSentAt(c.sentAt)}</td>
-                            <td className="adm-row-actions">
-                              <a className="adm-chip-btn" href={`tel:${c.phone}`} style={{ marginRight: 6 }}>Call</a>
-                              <a className="adm-chip-btn" href={cardWaLink(c.phone)} target="_blank" rel="noreferrer">WhatsApp</a>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </>
-            ) : loading ? (
+            {loading ? (
               <div className="adm-empty">Loading your leads…</div>
             ) : pageRows.length === 0 ? (
               <div className="adm-empty">
@@ -292,6 +255,7 @@ export default function PresalesPanel({ employee }) {
         </>
       )}
 
+      {section === 'cards' && <CardFollowups />}
       {section === 'analytics' && <AnalyticsSection mine={mine} groups={groups} />}
       {section === 'settings' && <SettingsSection employee={employee} />}
 

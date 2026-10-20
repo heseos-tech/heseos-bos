@@ -192,6 +192,17 @@ export default function TeamHomeScreen({ employee }) {
 
       {employee.role === "operations" && <OpsOrdersCard />}
 
+      {isPresales && (
+        <Link href="/team/home?tab=cards" className="hp-card" style={{ display: "flex", alignItems: "center", gap: 12, textDecoration: "none" }}>
+          <div className="hp-stat-icon" style={{ width: 38, height: 38, flexShrink: 0, margin: 0 }}><IconLeads size={19} /></div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 14, fontWeight: 700, color: "#fff" }}>Cards Not Opened</div>
+            <div style={{ fontSize: 12, color: "var(--hp-text-soft)" }}>Customers who got the WhatsApp link but never opened it — call them &amp; mark the outcome</div>
+          </div>
+          <IconChevronRight size={18} style={{ color: "var(--hp-text-faint)", flexShrink: 0 }} />
+        </Link>
+      )}
+
       <Link href="/team/catalogue" className="hp-card" style={{ display: "flex", alignItems: "center", gap: 12, textDecoration: "none" }}>
         <div className="hp-stat-icon" style={{ width: 38, height: 38, flexShrink: 0, margin: 0 }}><IconProducts size={19} /></div>
         <div style={{ flex: 1 }}>

@@ -13,12 +13,14 @@ import TeamHomeScreen from "./HomeScreen";
 import TeamLeadsScreen from "./LeadsScreen";
 import TeamProfileScreen from "./ProfileScreen";
 import TeamRewardsScreen from "./RewardsScreen";
+import CardFollowupsScreen from "./CardFollowupsScreen";
 
-const KNOWN_TABS = new Set(["home", "leads", "rewards", "profile"]);
+const KNOWN_TABS = new Set(["home", "leads", "cards", "rewards", "profile"]);
 
 function renderTab(tab, employee) {
   switch (tab) {
     case "leads": return <TeamLeadsScreen employee={employee} />;
+    case "cards": return <CardFollowupsScreen employee={employee} />;
     case "rewards": return <TeamRewardsScreen employee={employee} />;
     case "profile": return <TeamProfileScreen employee={employee} />;
     default: return <TeamHomeScreen employee={employee} />;
@@ -32,7 +34,7 @@ export default function TeamHome() {
   // navItemsFor in components/team/ui.jsx) — guard against reaching it via a stale/typed
   // ?tab=leads URL too, since LeadsScreen assumes an assigned presales/sales_engineer pipeline.
   const isGenericRole = GENERIC_ROLES.includes(employee?.role);
-  const active = KNOWN_TABS.has(rawTab) && !(rawTab === "leads" && isGenericRole) ? rawTab : "home";
+  const active = KNOWN_TABS.has(rawTab) && !((rawTab === "leads" || rawTab === "cards") && (isGenericRole || (rawTab === "cards" && employee?.role !== "presales"))) ? rawTab : "home";
 
   const [visited, setVisited] = useState(() => new Set([active]));
   useEffect(() => {
