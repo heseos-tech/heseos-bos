@@ -2,7 +2,7 @@
 import { notFound } from 'next/navigation';
 import { dbGetById } from '@/lib/db';
 import {
-  verifyInstallBookingToken, bookingBlockReason, istDate, BOOKING_MIN_DAYS, BOOKING_MAX_DAYS, BOOKING_SLOTS,
+  verifyInstallBookingToken, bookingBlockReason, istDate, earliestBookingDate, bookableDates, BOOKING_MAX_DAYS, BOOKING_SLOTS,
 } from '@/lib/installBooking';
 import BookInstallationForm from '@/components/BookInstallationForm';
 
@@ -28,7 +28,8 @@ export default async function BookInstallationPage({ params }) {
         address={order.deliveryAddress || ''}
         blocked={bookingBlockReason(order)}
         current={order.installDate ? { date: order.installDate, slot: order.installSlot || '' } : null}
-        minDate={istDate(BOOKING_MIN_DAYS)}
+        minDate={earliestBookingDate()}
+        quickDates={bookableDates(12)}
         maxDate={istDate(BOOKING_MAX_DAYS)}
         slots={BOOKING_SLOTS}
       />
