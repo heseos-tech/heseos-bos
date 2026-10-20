@@ -3,6 +3,7 @@
 // for storage and app/api/leads/google-ads-webhook/route.js for the endpoint the key protects.
 import { getEmployee } from '@/lib/auth';
 import { getGoogleAdsLeadSettings, saveGoogleAdsLeadSettings, generateWebhookKey } from '@/lib/googleAdsLeads';
+import { publicBaseUrl } from '@/lib/publicUrl';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,7 +17,7 @@ async function requireAdmin() {
 // to hand out (to Google Ads' own UI, in this case), not a third-party secret being proxied —
 // safe to keep showing back to the admin rather than a one-time reveal.
 function webhookUrl() {
-  const base = (process.env.PUBLIC_BASE_URL || '').replace(/\/$/, '');
+  const base = publicBaseUrl();
   return `${base}/api/leads/google-ads-webhook`;
 }
 
