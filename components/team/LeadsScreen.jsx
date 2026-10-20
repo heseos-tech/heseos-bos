@@ -14,6 +14,11 @@ import { PROPERTY_TYPE } from "@/lib/formOptions";
 import { useApiResource } from "@/lib/useApiResource";
 
 const PT_LABEL = Object.fromEntries(PROPERTY_TYPE.map((p) => [p.v, p.l]));
+const CARD_PAGE_LABEL = { door_lock: "Door Lock", smart_home: "Smart Home" };
+function cardWaLink(phone) {
+  const d = String(phone || "").replace(/\D/g, "");
+  return d ? `https://wa.me/${d.length === 10 ? `91${d}` : d}` : "#";
+}
 function norm(s) { return String(s || "").trim().toLowerCase(); }
 
 export default function TeamLeadsScreen({ employee }) {
@@ -23,6 +28,10 @@ export default function TeamLeadsScreen({ employee }) {
   // (lib/useApiResource.js) — Home and Leads both stay mounted together in TeamHome, so this
   // avoids two independent fetch-then-poll loops hitting /api/leads for the same data.
   const { data: leads, loading } = useApiResource("/api/leads", { pollMs: isPresales ? 20000 : 15000 });
+  // WhatsApp "Know More" cards sent >15 min ago and never opened (same list as Admin → Landing
+  // Activity) — pre-sales gets it as an extra tab so they can nudge / call those customers.
+  const { data: landing } = useApiResource(isPresales ? "/api/admin/landing-activity?days=30&page=all" : null, { pollMs: 60000 });
+  const notOpened = useMemo(() => (Array.isArray(landing?.notOpened) ? landing.notOpened : []), [landing]);
   const [tab, setTab] = useState(searchParams.get("status") || (isPresales ? "new" : "available"));
 
   // LeadsScreen stays mounted after the first visit (see TeamHome), so a fresh navigation here —
@@ -62,6 +71,7 @@ export default function TeamLeadsScreen({ employee }) {
         { key: "converted", label: "Converted", list: g.converted },
         { key: "rejected", label: "Rejected", list: g.rejected },
         { key: "all", label: "All Mine", list: mine },
+        { key: "unopened", label: "Card Not Opened", list: notOpened },
       ];
     }
     const g = { upcoming: [], reschedule: [], quoted: [], converted: [], lost: [] };
@@ -82,7 +92,7 @@ export default function TeamLeadsScreen({ employee }) {
       { key: "lost", label: "Lost", list: g.lost },
       { key: "all", label: "All Mine", list: mine },
     ];
-  }, [isPresales, mine, available]);
+  }, [isPresales, mine, available, notOpened]);
 
   const active = TABS.find((t) => t.key === tab) || TABS[0];
 
@@ -108,6 +118,31 @@ export default function TeamLeadsScreen({ employee }) {
 
       {loading ? (
         <div className="hp-empty"><div className="hp-empty-sub">Loading…</div></div>
+      ) : tab === "unopened" ? (
+        notOpened.length === 0 ? (
+          <div className="hp-empty">
+            <div className="hp-empty-icon"><IconLeads size={24} /></div>
+            <div className="hp-empty-title">Nobody waiting</div>
+            <div className="hp-empty-sub">Every WhatsApp card sent has been opened.</div>
+          </div>
+        ) : (
+          <div className="hp-lead-list">
+            <div className="hp-lead-meta" style={{ padding: "0 4px 8px" }}>Got the WhatsApp link over 15 minutes ago and never opened it — nudge or call.</div>
+            {notOpened.map((c) => (
+              <div key={`${c.phone}${c.page}`} className="hp-lead-card">
+                <Avatar name={c.phone} />
+                <div className="hp-lead-info">
+                  <div className="hp-lead-name">{c.phone}</div>
+                  <div className="hp-lead-meta">{CARD_PAGE_LABEL[c.page] || c.page} · sent {fmtDateTime(c.sentAt)}</div>
+                </div>
+                <div className="hp-lead-right" style={{ display: "flex", gap: 6 }}>
+                  <a className="hp-badge" href={`tel:${c.phone}`} style={{ color: "var(--hp-info, #38bdf8)", background: "var(--hp-info-dim)" }}>Call</a>
+                  <a className="hp-badge" href={cardWaLink(c.phone)} target="_blank" rel="noreferrer" style={{ color: "#22c55e", background: "rgba(34,197,94,.14)" }}>WhatsApp</a>
+                </div>
+              </div>
+            ))}
+          </div>
+        )
       ) : active.list.length === 0 ? (
         <div className="hp-empty">
           <div className="hp-empty-icon"><IconLeads size={24} /></div>
