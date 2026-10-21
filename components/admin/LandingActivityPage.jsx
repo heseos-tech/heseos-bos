@@ -48,6 +48,7 @@ export default function LandingActivityPage() {
   const url = `/api/admin/landing-activity?days=${days}&page=${page}`;
   const { data, loading } = useApiResource(url, { pollMs: 30000 });
   const [pageNo, setPageNo] = useState(1);
+  const [noPage, setNoPage] = useState(1); // "Sent a card but haven't opened the page" table
   const [modal, setModal] = useState(null);
 
   const r = Array.isArray(data) ? null : data;
@@ -55,6 +56,9 @@ export default function LandingActivityPage() {
   const recent = r?.recent || [];
   const pageCount = Math.max(1, Math.ceil(recent.length / PAGE_SIZE));
   const rows = recent.slice((pageNo - 1) * PAGE_SIZE, pageNo * PAGE_SIZE);
+  const notOpened = r?.notOpened || [];
+  const noPageCount = Math.max(1, Math.ceil(notOpened.length / PAGE_SIZE));
+  const noRows = notOpened.slice((Math.min(noPage, noPageCount) - 1) * PAGE_SIZE, Math.min(noPage, noPageCount) * PAGE_SIZE);
   const conv = sum.visits ? Math.round((sum.submitted / sum.visits) * 100) : 0;
   const openRate = sum.cardsSent ? Math.round((sum.cardsOpened / sum.cardsSent) * 100) : 0;
 
@@ -67,12 +71,12 @@ export default function LandingActivityPage() {
       <div className="adm-card" style={{ marginBottom: 18 }}>
         <div className="adm-tabs" style={{ marginBottom: 8 }}>
           {PAGE_TABS.map((t) => (
-            <button key={t.key} type="button" className={`adm-tab${page === t.key ? ' active' : ''}`} onClick={() => { setPage(t.key); setPageNo(1); }}>{t.label}</button>
+            <button key={t.key} type="button" className={`adm-tab${page === t.key ? ' active' : ''}`} onClick={() => { setPage(t.key); setPageNo(1); setNoPage(1); }}>{t.label}</button>
           ))}
         </div>
         <div className="adm-tabs">
           {RANGE_TABS.map((t) => (
-            <button key={t.key} type="button" className={`adm-tab${days === t.key ? ' active' : ''}`} onClick={() => { setDays(t.key); setPageNo(1); }}>{t.label}</button>
+            <button key={t.key} type="button" className={`adm-tab${days === t.key ? ' active' : ''}`} onClick={() => { setDays(t.key); setPageNo(1); setNoPage(1); }}>{t.label}</button>
           ))}
         </div>
       </div>
@@ -132,7 +136,7 @@ export default function LandingActivityPage() {
           <table className="adm-table">
             <thead><tr><th>Phone</th><th>Page</th><th>Card sent</th><th></th></tr></thead>
             <tbody>
-              {(r?.notOpened || []).length === 0 ? <tr><td colSpan={4} className="adm-empty">Nobody waiting — every card sent has been opened.</td></tr> : r.notOpened.map((c) => (
+              {notOpened.length === 0 ? <tr><td colSpan={4} className="adm-empty">Nobody waiting — every card sent has been opened.</td></tr> : noRows.map((c) => (
                 <tr key={`${c.phone}${c.page}`}>
                   <td>{c.phone}</td><td>{PAGE_LABEL[c.page] || c.page}</td><td>{when(c.sentAt)}</td>
                   <td className="adm-row-actions"><a className="adm-chip-btn" href={waLink(c.phone)} target="_blank" rel="noreferrer">WhatsApp</a></td>
@@ -141,6 +145,7 @@ export default function LandingActivityPage() {
             </tbody>
           </table>
         </div>
+        <Pagination page={Math.min(noPage, noPageCount)} pageCount={noPageCount} total={notOpened.length} pageSize={PAGE_SIZE} onPage={setNoPage} />
       </div>
 
       <div className="adm-card">
