@@ -6,7 +6,7 @@ import { useRef, useContext } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { IconHome, IconLeads, IconUser, IconPlus, IconGift } from '@/components/partner/icons';
-import { IconProducts, IconOrders } from '@/components/admin/icons';
+import { IconProducts, IconOrders, IconPayouts } from '@/components/admin/icons';
 import { useNavHeightVar, useDashboardTab, useDashboardTabState, DashboardTabContext, SessionContext, useSessionGate } from '@/components/partner/ui';
 import SplashScreen from '@/components/partner/SplashScreen';
 
@@ -48,12 +48,15 @@ function navItemsFor(role) {
   const isSE = role === 'sales_engineer';
   const isGeneric = GENERIC_ROLES.includes(role);
   const isOps = role === 'operations';
+  const isAccounts = role === 'accounts';
   return [
     { tab: 'home', href: '/team/home', label: 'Home', icon: IconHome },
     // Operations works the confirmed-order queue, so Orders takes the slot Catalogue has for the
     // other generic roles (Catalogue stays one tap away from Operations' Home).
     isOps
       ? { href: '/team/orders', label: 'Orders', icon: IconOrders, route: true, shift: 'left' }
+      : isAccounts
+      ? { href: '/team/accounts', label: 'Accounts', icon: IconPayouts, route: true, shift: 'left' }
       : isGeneric
       ? { href: '/team/catalogue', label: 'Catalogue', icon: IconProducts, route: true, shift: 'left' }
       : { tab: 'leads', href: '/team/home?tab=leads', label: isSE ? 'Demo' : 'Leads', icon: IconLeads },

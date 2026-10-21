@@ -8,7 +8,7 @@ import Link from "next/link";
 import { Avatar } from "@/components/partner/ui";
 import { GENERIC_ROLES } from "@/components/team/ui";
 import { IconBell, IconLeads, IconGift, IconCheck, IconMapPin, IconWallet } from "@/components/partner/icons";
-import { IconProducts, IconPartners, IconChevronRight, IconOrders } from "@/components/admin/icons";
+import { IconProducts, IconPartners, IconChevronRight, IconOrders, IconPayouts } from "@/components/admin/icons";
 import { fmtDateTime } from "@/lib/date";
 import { stageOf, displayStatus } from "@/lib/leadStage";
 import { activeReferrals, referralKind } from "@/lib/teamReferrals";
@@ -191,6 +191,17 @@ export default function TeamHomeScreen({ employee }) {
       )}
 
       {employee.role === "operations" && <OpsOrdersCard />}
+
+      {employee.role === "accounts" && (
+        <Link href="/team/accounts" className="hp-card" style={{ display: "flex", alignItems: "center", gap: 12, textDecoration: "none", border: "1px solid var(--hp-orange)" }}>
+          <div className="hp-stat-icon" style={{ width: 38, height: 38, flexShrink: 0, margin: 0 }}><IconPayouts size={19} /></div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 14, fontWeight: 700, color: "#fff" }}>Accounts</div>
+            <div style={{ fontSize: 12, color: "var(--hp-text-soft)" }}>Order payments (mark paid) &amp; partner payouts</div>
+          </div>
+          <IconChevronRight size={18} style={{ color: "var(--hp-text-faint)", flexShrink: 0 }} />
+        </Link>
+      )}
 
       {isPresales && (
         <Link href="/team/home?tab=cards" className="hp-card" style={{ display: "flex", alignItems: "center", gap: 12, textDecoration: "none" }}>
