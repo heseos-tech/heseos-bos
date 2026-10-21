@@ -37,16 +37,18 @@ function OrdersView() {
   const [toast, setToast] = useState("");
   const flash = (m) => { setToast(m); setTimeout(() => setToast(""), 3500); };
   const group = (o) => (o.status === "cancelled" ? "cancelled" : o.paymentStatus === "paid" ? "paid" : "unpaid");
+  // "Delivered" = goods have reached the customer (Delivered or Installation Done), paid or not.
+  const isDelivered = (o) => o.status === "delivered" || o.status === "installed";
 
   const counts = useMemo(() => {
-    const c = { unpaid: 0, paid: 0, cancelled: 0, all: orders.length };
-    for (const o of orders) c[group(o)] += 1;
+    const c = { unpaid: 0, delivered: 0, paid: 0, cancelled: 0, all: orders.length };
+    for (const o of orders) { c[group(o)] += 1; if (isDelivered(o)) c.delivered += 1; }
     return c;
   }, [orders]);
   const toCollect = useMemo(() => orders.filter((o) => group(o) === "unpaid").reduce((s, o) => s + (Number(o.subtotal) || 0), 0), [orders]);
   const rows = useMemo(() => {
     const s = q.trim().toLowerCase();
-    return orders.filter((o) => (tab === "all" || group(o) === tab) && (!s || `${o.id} ${o.customerName || ""} ${o.phone || ""}`.toLowerCase().includes(s)));
+    return orders.filter((o) => (tab === "all" || (tab === "delivered" ? isDelivered(o) : group(o) === tab)) && (!s || `${o.id} ${o.customerName || ""} ${o.phone || ""}`.toLowerCase().includes(s)));
   }, [orders, tab, q]);
 
   async function markPaid(o) {
@@ -69,7 +71,7 @@ function OrdersView() {
       </div>
       <Search value={q} onChange={setQ} placeholder="Search order ID, name or phone…" />
       <div className="hp-tabs" style={{ paddingBottom: 10 }}>
-        {[["unpaid", "Unpaid"], ["paid", "Paid"], ["cancelled", "Cancelled"], ["all", "All"]].map(([k, l]) => (
+        {[["unpaid", "Unpaid"], ["delivered", "Delivered"], ["paid", "Paid"], ["cancelled", "Cancelled"], ["all", "All"]].map(([k, l]) => (
           <button key={k} type="button" className={`hp-tab${tab === k ? " active" : ""}`} onClick={() => setTab(k)}>{l} ({counts[k]})</button>
         ))}
       </div>

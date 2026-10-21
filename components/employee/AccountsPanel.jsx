@@ -20,7 +20,7 @@ const NAV = [
   { key: 'settings', label: 'Settings', Icon: IconSettings },
 ];
 const STATUS_LABEL = { placed: 'Placed', confirmed: 'Confirmed', packed: 'Packed', shipped: 'Dispatched', delivered: 'Delivered', installed: 'Installation Done', cancelled: 'Cancelled' };
-const TABS = [{ key: 'unpaid', label: 'Unpaid' }, { key: 'paid', label: 'Paid' }, { key: 'cancelled', label: 'Cancelled' }, { key: 'all', label: 'All' }];
+const TABS = [{ key: 'unpaid', label: 'Unpaid' }, { key: 'delivered', label: 'Delivered' }, { key: 'paid', label: 'Paid' }, { key: 'cancelled', label: 'Cancelled' }, { key: 'all', label: 'All' }];
 
 const money = (n) => `₹${Number(n || 0).toLocaleString('en-IN')}`;
 const isPaid = (o) => o.paymentStatus === 'paid';
@@ -48,6 +48,8 @@ function OrdersSection() {
 
   const flash = (m) => { setNotice(m); setTimeout(() => setNotice(''), 4000); };
   const groupOf = (o) => (o.status === 'cancelled' ? 'cancelled' : isPaid(o) ? 'paid' : 'unpaid');
+  // "Delivered" = the goods have reached the customer (Delivered or Installation Done), paid or not.
+  const isDelivered = (o) => o.status === 'delivered' || o.status === 'installed';
 
   const stats = useMemo(() => {
     const s = { unpaid: 0, unpaidAmt: 0, paid: 0, paidAmt: 0, cancelled: 0 };
@@ -59,10 +61,10 @@ function OrdersSection() {
     }
     return s;
   }, [orders]);
-  const counts = { unpaid: stats.unpaid, paid: stats.paid, cancelled: stats.cancelled, all: orders.length };
+  const counts = { unpaid: stats.unpaid, delivered: orders.filter(isDelivered).length, paid: stats.paid, cancelled: stats.cancelled, all: orders.length };
 
   const filtered = useMemo(() => orders.filter((o) => {
-    if (tab !== 'all' && groupOf(o) !== tab) return false;
+    if (tab === 'delivered' ? !isDelivered(o) : tab !== 'all' && groupOf(o) !== tab) return false;
     const s = q.trim().toLowerCase();
     return !s || `${o.id} ${o.customerName || ''} ${o.phone || ''}`.toLowerCase().includes(s);
   }), [orders, tab, q]);
