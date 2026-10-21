@@ -176,6 +176,7 @@ export function AddEmployeeModal({ role: fixedRole, title, onClose, onDone }) {
             <option value="presales">Pre-Sales</option>
             <option value="sales_engineer">Sales Engineer</option>
             <option value="operations">Operations</option>
+            <option value="accounts">Accounts</option>
             <option value="marketing">Marketing</option>
             <option value="management">Management</option>
           </select>

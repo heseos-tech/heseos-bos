@@ -42,7 +42,7 @@ function navItemShiftClass(item) {
 // /team/home?tab= — see the `route: true` handling in TeamBottomNav below), so the nav still
 // reads as a normal, symmetric 4-icons-plus-center-Add-Lead bar instead of looking sparse with
 // an empty slot.
-export const GENERIC_ROLES = ['operations', 'marketing', 'management'];
+export const GENERIC_ROLES = ['operations', 'accounts', 'marketing', 'management'];
 
 function navItemsFor(role) {
   const isSE = role === 'sales_engineer';

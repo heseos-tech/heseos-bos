@@ -30,6 +30,11 @@ export async function PATCH(request, { params }) {
   const body = await request.json().catch(() => ({}));
   const actorLabel = employee.name || 'Admin';
 
+  // Accounts can read orders and mark them paid — nothing else (no status changes, scheduling or notes).
+  if (employee.role === 'accounts' && body.markPaid !== true) {
+    return Response.json({ error: 'Accounts can only mark orders as paid' }, { status: 403 });
+  }
+
   // Operations: record the installation date agreed with the customer on the phone (and, optionally,
   // a time window) plus the fee the installation partner earns for the job. The customer is told
   // on WhatsApp whenever the date/window actually changes; a fee-only edit never texts them.
@@ -81,6 +86,8 @@ export async function PATCH(request, { params }) {
   }
 
   if (body.markPaid === true) {
+    if (existing.status === 'cancelled') return Response.json({ error: 'A cancelled order cannot be marked paid' }, { status: 400 });
+    if (existing.paymentStatus === 'paid') return Response.json(existing); // already paid — never record it twice
     const updated = await markOrderPaid(id, actorLabel);
     return Response.json(updated);
   }

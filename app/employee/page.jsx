@@ -3,6 +3,7 @@ import { getEmployee } from '@/lib/auth';
 import PresalesPanel from '@/components/employee/PresalesPanel';
 import SalesEngineerPanel from '@/components/employee/SalesEngineerPanel';
 import OperationsPanel from '@/components/employee/OperationsPanel';
+import AccountsPanel from '@/components/employee/AccountsPanel';
 
 export default async function EmployeePage() {
   const employee = await getEmployee();
@@ -14,6 +15,7 @@ export default async function EmployeePage() {
   if (employee.role === 'presales') return <PresalesPanel employee={employee} />;
   if (employee.role === 'sales_engineer') return <SalesEngineerPanel employee={employee} />;
   if (employee.role === 'operations') return <OperationsPanel employee={employee} />;
+  if (employee.role === 'accounts') return <AccountsPanel employee={employee} />;
   if (employee.role === 'admin') redirect('/admin');
   // Marketing / Management have no lead pipeline, so there's no desktop panel for them
   // here — their work lives in the Team app (Orders, Catalogue, Referrals). Send them straight there

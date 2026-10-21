@@ -21,7 +21,7 @@ import {
 import { LEAD_SOURCES, TIMELINE, BUDGET_BY_PROPERTY } from '@/lib/formOptions';
 import { isQrKind } from '@/lib/attributionConstants';
 
-export const ROLE_LABEL = { presales: 'Pre-Sales', sales_engineer: 'Sales Engineer', operations: 'Operations' };
+export const ROLE_LABEL = { presales: 'Pre-Sales', sales_engineer: 'Sales Engineer', operations: 'Operations', accounts: 'Accounts' };
 
 // Lead Detail modal needs human labels for `timeline` and `budget` too (Interest/Property
 // Type already have PI_LABEL/PT_LABEL built locally in each panel from PRODUCT_INTEREST/

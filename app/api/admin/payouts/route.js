@@ -15,7 +15,8 @@ export const dynamic = 'force-dynamic';
 
 async function requireAdmin() {
   const employee = await getEmployee();
-  if (!employee || employee.role !== 'admin') return null;
+  // Admin, plus the Accounts role (Accounts' Payouts tab is this same ledger).
+  if (!employee || !['admin', 'accounts'].includes(employee.role)) return null;
   return employee;
 }
 
