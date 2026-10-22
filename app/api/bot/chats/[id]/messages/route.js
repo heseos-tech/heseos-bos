@@ -4,7 +4,8 @@
 
 import { dbWhere, dbInsert, dbPatch, dbGetById } from '@/lib/db';
 import { getBotTenant } from '@/lib/auth';
-import { botSendText, botSendTemplate } from '@/lib/botWhatsapp';
+import { botSendText, botSendTemplate, botSendDocument, botSendImageBuffer } from '@/lib/botWhatsapp';
+import { saveBotMedia, safeFilename, MAX_SEND_BYTES, SEND_IMAGE_MIMES, SEND_DOC_MIMES } from '@/lib/botMedia';
 import { renderTemplate, paramCount } from '@/lib/botTemplates';
 import { getHeseosBotTenant } from '@/lib/attribution';
 import { findOrderForChat, buildInstallBookingToken } from '@/lib/installBooking';
@@ -36,6 +37,51 @@ export async function POST(request, { params }) {
   const chatId = decodeURIComponent(id);
   const chat = await loadChat(chatId, tenant.id);
   if (!chat) return Response.json({ error: 'Not found' }, { status: 404 });
+
+  // File send (Inbox -> paperclip): a multipart form with `file` (JPG/PNG image or PDF) and an optional
+  // `caption`. Free-form files only go out inside WhatsApp's 24h customer-service window — outside it
+  // the team has to open the chat with an approved template first.
+  if ((request.headers.get('content-type') || '').toLowerCase().includes('multipart/form-data')) {
+    const form = await request.formData().catch(() => null);
+    const file = form?.get('file');
+    if (!file || typeof file === 'string' || !file.size) return Response.json({ error: 'Choose a file to send' }, { status: 400 });
+    const mime = String(file.type || '').toLowerCase();
+    const isImage = SEND_IMAGE_MIMES.includes(mime);
+    const isDoc = SEND_DOC_MIMES.includes(mime);
+    if (!isImage && !isDoc) return Response.json({ error: 'Only JPG / PNG images and PDF files can be sent' }, { status: 400 });
+    if (file.size > MAX_SEND_BYTES) return Response.json({ error: 'That file is over 4 MB — please send a smaller one' }, { status: 413 });
+    const buffer = Buffer.from(await file.arrayBuffer());
+    // Trust the contents, not just the label the browser gave the file.
+    const head = buffer.subarray(0, 8);
+    const okMagic = mime === 'application/pdf' ? head.subarray(0, 4).toString('latin1') === '%PDF'
+      : mime === 'image/png' ? head.equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))
+      : head[0] === 0xff && head[1] === 0xd8 && head[2] === 0xff;
+    if (!okMagic) return Response.json({ error: 'That file does not look like a valid ' + (isDoc ? 'PDF' : 'image') }, { status: 400 });
+
+    const history = await dbWhere('bot_messages', 'chatId', chatId);
+    const lastIn = history.filter((x) => x.direction === 'in').reduce((mx, x) => Math.max(mx, new Date(x.ts || 0).getTime()), 0);
+    if (!lastIn || Date.now() - lastIn > 24 * 60 * 60 * 1000) {
+      return Response.json({ error: "This customer hasn't messaged in the last 24 hours, so WhatsApp only allows approved templates. Send a template first — once they reply you can attach files." }, { status: 409 });
+    }
+
+    const caption = String(form.get('caption') || '').trim().slice(0, 1000);
+    const filename = safeFilename(file.name, isImage ? 'image.jpg' : 'document.pdf');
+    const creds = { phoneNumberId: tenant.waPhoneNumberId, token: tenant.waAccessToken };
+    const sent = isImage
+      ? await botSendImageBuffer(creds, chatId, { buffer, filename, mimeType: mime, caption })
+      : await botSendDocument(creds, chatId, { buffer, filename, mimeType: mime, caption });
+    const now = new Date().toISOString();
+    const msgId = `${chatId}_M${Date.now()}`;
+    const sender = tenant.contactName || tenant.businessName || 'Agent';
+    const media = await saveBotMedia(tenant.id, { buffer, mime, filename, type: isImage ? 'image' : 'document' });
+    const logBody = caption || (isImage ? '[image]' : '[document]');
+    await dbInsert('bot_messages', msgId, {
+      id: msgId, tenantId: tenant.id, chatId, direction: 'out', body: logBody, ts: now, sender, media,
+      status: sent.ok ? 'sent' : 'failed', error: sent.ok ? null : sent.error,
+    });
+    await dbPatch('bot_chats', chatId, { lastText: caption || (isImage ? '📷 Photo' : `📄 ${filename}`), lastAt: now, unread: 0, assignedTo: chat.assignedTo || sender });
+    return Response.json({ success: true, id: msgId, delivered: sent.ok, error: sent.ok ? null : sent.error });
+  }
 
   const payload = await request.json().catch(() => ({}));
 

@@ -6,7 +6,8 @@
 // lib/botEngine.js.
 
 import { dbGetById, dbInsert, dbList, dbPatch, dbWhere, dbDelete } from '@/lib/db';
-import { parseWebhookByPhone, describeMetaError, botMarkReadWithTyping, botWaConfigured } from '@/lib/botWhatsapp';
+import { parseWebhookByPhone, describeMetaError, botMarkReadWithTyping, botWaConfigured, botDownloadMedia } from '@/lib/botWhatsapp';
+import { saveBotMedia, MAX_RECEIVE_BYTES } from '@/lib/botMedia';
 import { runBotTurn } from '@/lib/botEngine';
 import { runFlowTurn, pickFlow } from '@/lib/botFlowEngine';
 import { parseRefFromText, referrerNoteFor, attributionCityFor } from '@/lib/attribution';
@@ -114,9 +115,28 @@ export async function POST(req) {
 
       for (const m of g.messages) {
         if (await dbGetById('bot_messages', m.id)) continue; // de-dupe Meta's retries
+        // A customer-sent image / PDF: pull the file down from WhatsApp now (the link Meta gives is
+        // short-lived) and keep it so the Inbox can show it. Best-effort — if it fails or the file is
+        // too big the message is still logged, with a note instead of a preview.
+        let media = null;
+        if (m.media && botWaConfigured(tenant)) {
+          try {
+            const dl = await botDownloadMedia({ phoneNumberId: tenant.waPhoneNumberId, token: tenant.waAccessToken }, m.media.waId, { maxBytes: MAX_RECEIVE_BYTES });
+            if (dl.ok) {
+              const saved = await saveBotMedia(tenant.id, { buffer: dl.buffer, mime: dl.mime || m.media.mime, filename: m.media.filename, type: m.media.type });
+              media = saved;
+            } else {
+              media = { type: m.media.type, filename: m.media.filename || '', mime: m.media.mime || '', unavailable: dl.tooLarge ? 'too_large' : 'failed' };
+              console.error('Bot webhook: media download failed:', dl.error);
+            }
+          } catch (err) {
+            media = { type: m.media.type, filename: m.media.filename || '', mime: m.media.mime || '', unavailable: 'failed' };
+            console.error('Bot webhook: media save error:', err);
+          }
+        }
         await dbInsert('bot_messages', m.id, {
           id: m.id, tenantId: tenant.id, chatId: m.from, direction: 'in', body: m.text, ts: m.ts,
-          status: 'received', sender: m.name || null,
+          status: 'received', sender: m.name || null, ...(media ? { media } : {}),
         });
 
         // Show "typing…" right away, before any of the (occasionally slow) engine/flow work

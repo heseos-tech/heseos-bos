@@ -37,6 +37,9 @@ export const IconLogout = ({ size = 20, ...p }) => (
 export const IconSend = ({ size = 20, ...p }) => (
   <svg {...base(size)} {...p}><path d="M4 20l17-8L4 4l0 6.5L15.5 12 4 13.5Z" /></svg>
 );
+export const IconPaperclip = ({ size = 20, ...p }) => (
+  <svg {...base(size)} {...p}><path d="M21 11.5l-8.6 8.6a5.5 5.5 0 0 1-7.8-7.8l8.9-8.9a3.7 3.7 0 0 1 5.2 5.2l-8.9 8.9a1.8 1.8 0 0 1-2.6-2.6l8.2-8.2" /></svg>
+);
 export const IconEye = ({ size = 20, ...p }) => (
   <svg {...base(size)} {...p}><path d="M2 12s3.8-7 10-7 10 7 10 7-3.8 7-10 7-10-7-10-7z" /><circle cx="12" cy="12" r="3" /></svg>
 );

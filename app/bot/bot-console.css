@@ -149,6 +149,21 @@
 .bc-composer input:focus { outline: none; border-color: var(--bc-accent); background: var(--bc-white); }
 .bc-send-btn { width: 40px; height: 40px; border-radius: 50%; background: var(--bc-accent); color: #fff; border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; }
 .bc-send-btn:disabled { opacity: 0.5; cursor: default; }
+.bc-attach-btn { width: 40px; height: 40px; border-radius: 50%; background: transparent; color: var(--bc-ink-soft); border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; }
+.bc-attach-btn:hover { background: var(--bc-bg); color: var(--bc-accent); }
+.bc-attach-preview { display: block; max-width: 100%; max-height: 260px; margin: 0 auto; border-radius: 8px; border: 1px solid var(--bc-border); }
+.bc-attach-doc { background: var(--bc-bg); }
+
+/* ── Inbox: images / files inside a message bubble ───────────────────────── */
+.bc-media-img-link { display: block; margin-bottom: 4px; }
+.bc-media-img { display: block; max-width: 100%; max-height: 300px; border-radius: 6px; background: rgba(0, 0, 0, 0.05); }
+.bc-media-doc { display: flex; align-items: center; gap: 10px; padding: 9px 11px; margin-bottom: 4px; border-radius: 8px; background: rgba(0, 0, 0, 0.06); color: inherit; text-decoration: none; min-width: 190px; }
+.bc-media-doc:hover { background: rgba(0, 0, 0, 0.1); }
+.bc-media-doc-ico { font-size: 22px; line-height: 1; }
+.bc-media-doc-txt { display: flex; flex-direction: column; min-width: 0; }
+.bc-media-doc-name { font-size: 13px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 220px; }
+.bc-media-doc-size { font-size: 11px; opacity: 0.65; }
+.bc-media-missing { font-size: 12.5px; font-style: italic; opacity: 0.75; margin-bottom: 4px; }
 
 /* ── Inbox: right info panel ─────────────────────────────────────────────── */
 .bc-info-col { width: 300px; flex-shrink: 0; background: var(--bc-white); border-left: 1px solid var(--bc-border); padding: 28px 22px; overflow-y: auto; }
