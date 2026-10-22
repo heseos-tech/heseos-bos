@@ -12,6 +12,7 @@ import Portal from '@/components/shared/Portal';
 import { IconSearch, IconPhone, IconWhatsApp, IconOrders, IconX, IconDownload } from '@/components/admin/icons';
 import { IconNote, IconCalendar } from '@/components/partner/icons';
 import { useApiResource, invalidate } from '@/lib/useApiResource';
+import ShippingSection from '@/components/admin/ShippingSection';
 
 const ORDERS_URL = '/api/admin/orders';
 
@@ -138,6 +139,14 @@ function OrdersView({ pmap }) {
     if (await patch(order, { installation: { releaseInstaller: true } })) flash('Installer released');
   }
 
+  // Velocity courier shipment: 'create' (also the retry), 'sync' (refresh tracking), 'cancel'.
+  async function shippingAction(order, action) {
+    if (action === 'cancel' && !window.confirm(`Cancel the courier shipment for ${order.id}? This only works before the courier has picked it up.`)) return;
+    const r = await patch(order, { shipping: action });
+    if (!r) return;
+    flash(r.shippingError ? `Velocity: ${r.shippingError}` : action === 'create' ? 'Shipment created with Velocity' : action === 'sync' ? 'Tracking refreshed' : 'Cancellation requested');
+  }
+
   async function saveNotes(order, notes) {
     if (!(await patch(order, { notes }))) return false;
     flash('Note saved');
@@ -190,6 +199,7 @@ function OrdersView({ pmap }) {
               onCancel={() => cancel(o)}
               installer={pmap[o.installPartnerId]}
               onRelease={() => releaseInstaller(o)}
+              onShipping={(a) => shippingAction(o, a)}
             />
           ))}
         </div>
@@ -219,7 +229,7 @@ function OrdersView({ pmap }) {
 // A date the customer picked via the "Book installation" button that Operations haven't confirmed yet.
 const awaitingConfirm = (o) => !!(o && o.installDate && o.installRequestSource === 'customer' && !o.installConfirmedAt);
 
-function OrderCard({ order: o, busy, onAdvance, onPaid, onSchedule, onNotes, onCancel, installer, onRelease }) {
+function OrderCard({ order: o, busy, onAdvance, onPaid, onSchedule, onNotes, onCancel, installer, onRelease, onShipping }) {
   const st = STAGE[o.status];
   const [color, bg] = BADGE_COLOR[o.status] || BADGE_COLOR.confirmed;
   const paid = o.paymentStatus === 'paid';
@@ -268,6 +278,8 @@ function OrderCard({ order: o, busy, onAdvance, onPaid, onSchedule, onNotes, onC
           {o.installCustomerNote ? <span style={{ display: 'block', color: 'var(--hp-text-soft)', marginTop: 4 }}>Customer note: {o.installCustomerNote}</span> : null}
         </div>
       )}
+
+      <ShippingSection order={o} onAction={onShipping} compact />
 
       <InstallMeta date={o.installDate} fee={o.installFee} partnerId={o.installPartnerId} installer={installer} city={o.city} done={done} busy={busy} onRelease={onRelease} />
 

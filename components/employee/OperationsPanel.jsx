@@ -13,6 +13,7 @@ import { EmployeeShell } from '@/components/employee/ui';
 import { StatCard, Modal, Pagination } from '@/components/admin/ui';
 import { IconOrders, IconDemo, IconSearch, IconConversions, IconLeads, IconPhone, IconWhatsApp, IconDownload } from '@/components/admin/icons';
 import { useApiResource, invalidate } from '@/lib/useApiResource';
+import ShippingSection from '@/components/admin/ShippingSection';
 
 const ORDERS_URL = '/api/admin/orders';
 const PAGE_SIZE = 10;
@@ -176,6 +177,13 @@ export default function OperationsPanel({ employee }) {
     if (!window.confirm(`Mark the installation for ${job.customerName || job.ref} as done?${job.partnerId ? ' The installer’s fee goes to payouts.' : ''}`)) return;
     if (await patchLead(job, { complete: true })) { setLeadModalId(null); flash('Marked installed'); }
   }
+  // Velocity courier shipment: 'create' (also the retry), 'sync' (refresh tracking), 'cancel'.
+  async function shippingAction(order, action) {
+    if (action === 'cancel' && !window.confirm(`Cancel the courier shipment for ${order.id}? This only works before the courier has picked it up.`)) return;
+    const r = await patch(order, { shipping: action });
+    if (!r) return;
+    flash(r.shippingError ? `Velocity: ${r.shippingError}` : action === 'create' ? 'Shipment created with Velocity' : action === 'sync' ? 'Tracking refreshed' : 'Cancellation requested');
+  }
   async function saveNotes(order, notes) {
     if (!(await patch(order, { notes }))) return false;
     flash('Note saved');
@@ -337,6 +345,7 @@ export default function OperationsPanel({ employee }) {
           onRelease={() => releaseInstaller(modalOrder)}
           onSchedule={(d, s, f) => saveSchedule(modalOrder, d, s, f)}
           onNotes={(n) => saveNotes(modalOrder, n)}
+          onShipping={(a) => shippingAction(modalOrder, a)}
         />
       )}
     </EmployeeShell>
@@ -373,7 +382,7 @@ function OrderRow({ o, busy, onOpen, onAdvance, installer }) {
 // A date the customer picked via the "Book installation" button that Operations haven't confirmed yet.
 const awaitingConfirm = (o) => !!(o && o.installDate && o.installRequestSource === 'customer' && !o.installConfirmedAt);
 
-function OrderModal({ order, busy, installer, onClose, onAdvance, onPaid, onCancel, onRelease, onSchedule, onNotes }) {
+function OrderModal({ order, busy, installer, onClose, onAdvance, onPaid, onCancel, onRelease, onSchedule, onNotes, onShipping }) {
   const st = STAGE[order.status];
   const done = order.status === 'installed';
   const [date, setDate] = useState(order.installDate || '');
@@ -401,6 +410,8 @@ function OrderModal({ order, busy, installer, onClose, onAdvance, onPaid, onCanc
         <span className="adm-detail-label">Items</span>
         <div style={{ marginTop: 4 }}>{(order.items || []).map((i, k) => <div key={k}>{i.name} × {i.qty} — {money(i.lineTotal ?? i.price * i.qty)}</div>)}</div>
       </div>
+
+      <ShippingSection order={order} onAction={onShipping} />
 
       {!done && (
         <InstallForm
