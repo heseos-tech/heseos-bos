@@ -1,6 +1,5 @@
 import Script from 'next/script';
 import './globals.css';
-import FloatingCTA from '@/components/FloatingCTA';
 
 export const metadata = {
   title: 'Heseos: Smart Home Automation, Done Right',
@@ -48,7 +47,6 @@ window.addEventListener('beforeinstallprompt', function (e) {
         </Script>
       </head>
       <body>
-        <FloatingCTA />
         {children}
       </body>
     </html>

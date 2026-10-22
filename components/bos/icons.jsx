@@ -117,3 +117,22 @@ export function IconPeople({ size = 18 }) {
     </svg>
   );
 }
+
+export function IconRoleOps({ size = 20 }) {
+  return <svg width={size} height={size} viewBox="0 0 24 24" {...base}><path d="M21 8l-9-5-9 5 9 5 9-5z" /><path d="M3 8v8l9 5 9-5V8" /><path d="M12 13v8" /></svg>;
+}
+export function IconRoleAccounts({ size = 20 }) {
+  return <svg width={size} height={size} viewBox="0 0 24 24" {...base}><rect x="3" y="6" width="18" height="13" rx="2.5" /><path d="M3 10h18" /><path d="M16 15h2" /></svg>;
+}
+export function IconRoleInstaller({ size = 20 }) {
+  return <svg width={size} height={size} viewBox="0 0 24 24" {...base}><path d="M14.7 6.3a4 4 0 0 0-5.4 5.2L3 17.8V21h3.2l6.3-6.3a4 4 0 0 0 5.2-5.4l-2.6 2.6-2.4-.6-.6-2.4 2.6-2.6z" /></svg>;
+}
+export function IconPhoneApp({ size = 20 }) {
+  return <svg width={size} height={size} viewBox="0 0 24 24" {...base}><rect x="7" y="2.5" width="10" height="19" rx="2.5" /><path d="M11 18.5h2" /></svg>;
+}
+export function IconMonitor({ size = 20 }) {
+  return <svg width={size} height={size} viewBox="0 0 24 24" {...base}><rect x="3" y="4" width="18" height="12" rx="2" /><path d="M8 20h8M12 16v4" /></svg>;
+}
+export function IconChat({ size = 20 }) {
+  return <svg width={size} height={size} viewBox="0 0 24 24" {...base}><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z" /></svg>;
+}

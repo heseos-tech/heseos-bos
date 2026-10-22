@@ -1,23 +1,23 @@
 // components/bos/SystemFlow.jsx
-// "One system. Every channel." — the four-step Capture / Qualify / Engage /
-// Convert process strip beneath the hero.
+// "How BOS works" — the journey one customer takes through Heseos, and who owns each step.
 
-import { IconCapture, IconQualify, IconEngage, IconConvert, IconArrowRight } from './icons';
+import { IconCapture, IconQualify, IconEngage, IconConvert, IconRoleOps, IconArrowRight } from './icons';
 
 const STEPS = [
-  { name: 'Capture', desc: 'Leads from partners, QR codes, WhatsApp and ads.', Icon: IconCapture },
-  { name: 'Qualify', desc: 'Pre-sales team nurtures and qualifies high-potential leads.', Icon: IconQualify },
-  { name: 'Engage', desc: 'Demos are scheduled with interested customers.', Icon: IconEngage },
-  { name: 'Convert', desc: 'Quotes are sent and deals are converted faster.', Icon: IconConvert },
+  { name: 'Capture', who: 'Partners · QR · WhatsApp · Ads', desc: 'Every enquiry lands in BOS as a lead, tagged with where it came from.', Icon: IconCapture },
+  { name: 'Qualify', who: 'Pre-sales', desc: 'Call, qualify and book a demo with the customer.', Icon: IconQualify },
+  { name: 'Demo & quote', who: 'Sales engineers', desc: 'Run the on-site demo, send the quotation and close the deal.', Icon: IconEngage },
+  { name: 'Order & deliver', who: 'Operations', desc: 'Confirm, pack and ship the order — tracked through the courier.', Icon: IconRoleOps },
+  { name: 'Install & pay', who: 'Installers · Accounts', desc: 'Installers complete the job; accounts record payment and settle payouts.', Icon: IconConvert },
 ];
 
 export default function SystemFlow() {
   return (
-    <section className="bos-flow">
+    <section className="bos-flow" id="how">
       <div className="container">
         <div className="bos-section-head bos-section-head--center">
-          <div className="bos-eyebrow bos-eyebrow--center">How It Works</div>
-          <h2 className="bos-h2">One system. Every channel.</h2>
+          <div className="bos-eyebrow bos-eyebrow--center">How BOS works</div>
+          <h2 className="bos-h2">One customer, start to finish</h2>
         </div>
 
         <div className="bos-flow-row">
@@ -26,6 +26,7 @@ export default function SystemFlow() {
               <div className="bos-flow-card">
                 <div className="bos-flow-icon"><s.Icon /></div>
                 <div className="bos-flow-name">{s.name}</div>
+                <div className="bos-flow-who">{s.who}</div>
                 <div className="bos-flow-desc">{s.desc}</div>
               </div>
               {i < STEPS.length - 1 && (

@@ -1,36 +1,35 @@
 // components/bos/RolesGrid.jsx
-// "Built for every role in your growth engine" — 4 role cards. Photo areas are
-// clean gradient placeholders (per product decision) standing in for real
-// team/role photography — swap the .bos-role-photo div for a real <Image>
-// once photos are supplied, keeping the badge + copy as-is.
+// "Who uses BOS" — a plain list of the teams and what each one does inside the system.
 
-import { IconRolePartners, IconRolePresales, IconRoleSales, IconRoleLeaders, IconArrowUpRight } from './icons';
+import { IconRolePartners, IconRolePresales, IconRoleSales, IconRoleLeaders, IconRoleOps, IconRoleAccounts, IconRoleInstaller } from './icons';
 
 const ROLES = [
-  { name: 'Partners', desc: 'Add leads on the go. Track status. Earn rewards.', Icon: IconRolePartners, tone: 'orange' },
-  { name: 'Pre-sales Team', desc: 'Qualify leads. Nurture relationships. Schedule demos.', Icon: IconRolePresales, tone: 'orange' },
-  { name: 'Sales Engineers', desc: 'Manage demos. Send quotes. Close more deals.', Icon: IconRoleSales, tone: 'blue' },
-  { name: 'Leaders', desc: 'Real-time insights. Smarter decisions.', Icon: IconRoleLeaders, tone: 'purple' },
+  { name: 'Pre-sales', desc: 'Call new leads, qualify them and book demos.', Icon: IconRolePresales },
+  { name: 'Sales engineers', desc: 'Run demos, send quotations and close deals.', Icon: IconRoleSales },
+  { name: 'Operations', desc: 'Confirm, pack, ship and schedule installations.', Icon: IconRoleOps },
+  { name: 'Accounts', desc: 'Mark orders paid and settle partner and installer payouts.', Icon: IconRoleAccounts },
+  { name: 'Partners', desc: 'Bring in leads and follow them to conversion.', Icon: IconRolePartners },
+  { name: 'Installers', desc: 'Claim installation jobs and complete them.', Icon: IconRoleInstaller },
+  { name: 'Admin & leadership', desc: 'See the whole pipeline, reports and settings.', Icon: IconRoleLeaders },
 ];
 
 export default function RolesGrid() {
   return (
-    <section className="bos-roles">
+    <section className="bos-roles" id="teams">
       <div className="container">
         <div className="bos-section-head bos-section-head--center">
-          <div className="bos-eyebrow bos-eyebrow--center">Built for Every Role</div>
-          <h2 className="bos-h2">Built for every role in your growth engine</h2>
+          <div className="bos-eyebrow bos-eyebrow--center">Who uses BOS</div>
+          <h2 className="bos-h2">Every team has its own view</h2>
         </div>
 
-        <div className="bos-roles-grid">
+        <div className="bos-team-grid">
           {ROLES.map((r) => (
-            <div className="bos-role-card" key={r.name}>
-              <div className={`bos-role-photo bos-role-photo--${r.tone}`}>
-                <span className={`bos-role-badge bos-role-badge--${r.tone}`}><r.Icon /></span>
+            <div className="bos-team-card" key={r.name}>
+              <span className="bos-team-icon"><r.Icon size={20} /></span>
+              <div>
+                <div className="bos-role-name">{r.name}</div>
+                <div className="bos-role-desc" style={{ marginBottom: 0 }}>{r.desc}</div>
               </div>
-              <div className="bos-role-name">{r.name}</div>
-              <div className="bos-role-desc">{r.desc}</div>
-              <button className="bos-role-arrow" aria-label={`Learn more about ${r.name}`}><IconArrowUpRight size={15} /></button>
             </div>
           ))}
         </div>

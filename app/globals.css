@@ -539,6 +539,46 @@ footer { background: #011F2E; padding: 64px 0 28px; color: rgba(255, 255, 255, 0
 .bos-role-arrow { width: 34px; height: 34px; border-radius: 50%; border: 1.5px solid var(--bos-border); background: #fff; color: var(--bos-ink); display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; align-self: flex-start; }
 .bos-role-arrow:hover { background: var(--bos-ink); color: #fff; border-color: var(--bos-ink); }
 
+/* Internal home page additions */
+.bos-internal-pill { font-size: 10.5px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--bos-orange); background: var(--bos-orange-dim); padding: 4px 9px; border-radius: 999px; white-space: nowrap; }
+.bos-hero-actions { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.bos-btn-ghost { display: inline-flex; align-items: center; font-size: 14.5px; font-weight: 700; padding: 13px 22px; border-radius: var(--r-full); text-decoration: none; color: var(--bos-ink); border: 1.5px solid var(--bos-border); background: #fff; transition: all 0.2s; }
+.bos-btn-ghost:hover { border-color: var(--bos-ink); }
+.bos-btn-sm { font-size: 13.5px; padding: 11px 18px; }
+.bos-section-sub { text-align: center; color: var(--bos-text-soft); font-size: 14.5px; margin-top: 10px; }
+.bos-flow, .bos-signin, .bos-roles { scroll-margin-top: 76px; }
+.bos-flow-who { font-size: 11.5px; font-weight: 700; color: var(--bos-orange); margin-bottom: 8px; }
+.bos-signin { background: var(--bos-bg-soft); padding: 68px 0 56px; }
+.bos-signin-grid { display: flex; flex-wrap: wrap; justify-content: center; gap: 20px; }
+.bos-signin-card { flex: 0 1 calc(33.333% - 14px); min-width: 280px; }
+.bos-flow-item { align-items: stretch; }
+.bos-flow-sep { align-self: center; }
+.bos-flow-card { width: 196px; }
+.bos-signin-card { background: #fff; border: 1px solid var(--bos-border); border-radius: 18px; padding: 26px 24px; display: flex; flex-direction: column; transition: all 0.2s; }
+.bos-signin-card:hover { border-color: rgba(255, 122, 0, 0.3); box-shadow: 0 14px 32px rgba(11, 27, 46, 0.07); transform: translateY(-2px); }
+.bos-signin-icon { width: 42px; height: 42px; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin-bottom: 16px; }
+.bos-signin-icon--navy { background: rgba(8, 20, 34, 0.08); color: var(--bos-ink); }
+.bos-signin-icon--orange { background: var(--bos-orange-dim); color: var(--bos-orange); }
+.bos-signin-icon--blue { background: rgba(47, 95, 201, 0.12); color: #2f5fc9; }
+.bos-signin-icon--purple { background: rgba(111, 63, 201, 0.12); color: #6f3fc9; }
+.bos-signin-title { font-size: 17px; font-weight: 800; color: var(--bos-ink); margin-bottom: 4px; }
+.bos-signin-who { font-size: 12.5px; font-weight: 700; color: var(--bos-text-soft); margin-bottom: 8px; }
+.bos-signin-note { font-size: 13px; color: var(--bos-text-soft); line-height: 1.55; margin-bottom: 20px; flex: 1; }
+.bos-signin-actions { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.bos-signin-alt { font-size: 13px; font-weight: 700; color: var(--bos-orange); text-decoration: none; }
+.bos-signin-alt:hover { text-decoration: underline; }
+.bos-signin-help { text-align: center; font-size: 13px; color: var(--bos-text-faint); margin: 30px auto 0; max-width: 560px; line-height: 1.6; }
+.bos-team-grid { display: flex; flex-wrap: wrap; justify-content: center; gap: 16px; }
+.bos-team-card { flex: 0 1 calc(33.333% - 11px); min-width: 260px; }
+.bos-team-card { display: flex; align-items: flex-start; gap: 14px; background: #fff; border: 1px solid var(--bos-border); border-radius: 16px; padding: 20px; }
+.bos-team-icon { flex-shrink: 0; width: 38px; height: 38px; border-radius: 11px; background: var(--bos-orange-dim); color: var(--bos-orange); display: flex; align-items: center; justify-content: center; }
+.bos-roles { background: var(--white); }
+.bos-foot { display: flex; justify-content: space-between; gap: 32px; flex-wrap: wrap; padding-bottom: 32px; border-bottom: 1px solid rgba(255, 255, 255, 0.08); }
+.bos-foot-links { flex-direction: row; gap: 24px; align-items: flex-start; }
+@media (max-width: 980px) { .bos-signin-card { flex-basis: calc(50% - 10px); } .bos-team-card { flex-basis: calc(50% - 8px); } }
+@media (max-width: 640px) { .bos-signin-card, .bos-team-card { flex-basis: 100%; } .bos-signin { padding: 52px 0 44px; } }
+@media (max-width: 480px) { .bos-internal-pill { display: none; } }
+
 /* Powering CTA split */
 .bos-power { background: var(--white); padding: 64px 0; }
 .bos-power-box { background: var(--bos-power-bg); border-radius: 28px; display: grid; grid-template-columns: 1fr 1fr; align-items: center; gap: 40px; padding: 52px; overflow: hidden; }
