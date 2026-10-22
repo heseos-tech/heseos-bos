@@ -9,6 +9,7 @@ import { useMemo, useState } from 'react';
 import { StatCard, Modal, Pagination } from './ui';
 import { IconSearch, IconOrders, IconLeads, IconConversions, IconDownload } from './icons';
 import { useApiResource, invalidate } from '@/lib/useApiResource';
+import { velocityStatusLabel } from '@/lib/velocityStatusLabels';
 
 const ORDERS_URL = '/api/admin/orders';
 const PAGE_SIZE = 10;
@@ -96,6 +97,15 @@ export default function OrdersPage() {
     flash(`Order cancelled${updated.whatsappSent ? ' — customer notified on WhatsApp' : ' — WhatsApp message could not be sent'}`);
   }
 
+  // Velocity courier shipment: 'create' (also the retry), 'sync' (refresh tracking), 'cancel'.
+  async function shippingAction(order, action) {
+    if (action === 'cancel' && !window.confirm(`Cancel the courier shipment for ${order.id}? This only works before the courier has picked it up.`)) return;
+    const updated = await patchOrder(order.id, { shipping: action });
+    setModal({ type: 'view', order: updated });
+    if (updated.shippingError) flash(`Velocity: ${updated.shippingError}`);
+    else flash(action === 'create' ? 'Shipment created with Velocity' : action === 'sync' ? 'Tracking refreshed' : 'Cancellation requested');
+  }
+
   async function markPaid(order) {
     const updated = await patchOrder(order.id, { markPaid: true });
     setModal({ type: 'view', order: updated });
@@ -162,6 +172,7 @@ export default function OrdersPage() {
           installer={partners.find((p) => p.id === modal.order.installPartnerId)}
           onClose={() => setModal(null)}
           onAdvance={() => advance(modal.order)}
+          onShipping={(a) => shippingAction(modal.order, a)}
           onCancel={() => cancel(modal.order)}
           onMarkPaid={() => markPaid(modal.order)}
         />
@@ -170,7 +181,11 @@ export default function OrdersPage() {
   );
 }
 
-function OrderDetailModal({ order, installer, onClose, onAdvance, onCancel, onMarkPaid }) {
+function OrderDetailModal({ order, installer, onClose, onAdvance, onCancel, onMarkPaid, onShipping }) {
+  const [busy, setBusy] = useState(false);
+  async function ship(a) { setBusy(true); try { await onShipping(a); } finally { setBusy(false); } }
+  const sh = order.shipping || null;
+  const canShip = order.status !== 'cancelled' && ['confirmed', 'packed', 'shipped'].includes(order.status) && !sh?.awb;
   const next = nextForwardStatus(order.status);
   const canCancel = CANCELLABLE.has(order.status);
   return (
@@ -200,6 +215,32 @@ function OrderDetailModal({ order, installer, onClose, onAdvance, onCancel, onMa
         <span className="adm-detail-label">Delivery Address</span>
         {order.deliveryAddress}
       </div>
+
+      {(sh || canShip) && (
+        <div className="adm-detail-notes" style={{ marginTop: 10 }}>
+          <span className="adm-detail-label">Courier shipment (Velocity)</span>
+          {sh?.awb ? (
+            <div style={{ lineHeight: 1.7 }}>
+              <div><strong>{sh.courier || 'Courier'}</strong> · AWB {sh.awb}</div>
+              <div>Status: {velocityStatusLabel(sh.status)}</div>
+              <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                {sh.trackingUrl && <a href={sh.trackingUrl} target="_blank" rel="noopener noreferrer">Track shipment</a>}
+                {sh.labelUrl && <a href={sh.labelUrl} target="_blank" rel="noopener noreferrer">Download shipping label</a>}
+              </div>
+            </div>
+          ) : sh?.error ? (
+            <div style={{ color: '#c0392b', fontWeight: 600 }}>⚠ {sh.error}</div>
+          ) : (
+            <div>{sh?.shipmentId ? 'Order created in Velocity — waiting for a courier.' : 'Not sent to Velocity yet. It is sent automatically when the order is marked Packed.'}</div>
+          )}
+          {sh?.cancelError && <div style={{ color: '#c0392b', fontWeight: 600 }}>⚠ Cancel failed: {sh.cancelError}</div>}
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
+            {canShip && <button className="adm-chip-btn" disabled={busy} onClick={() => ship('create')}>{busy ? 'Working…' : sh?.error || sh?.shipmentId ? 'Retry shipment' : 'Create shipment'}</button>}
+            {sh?.awb && <button className="adm-chip-btn" disabled={busy} onClick={() => ship('sync')}>Refresh tracking</button>}
+            {sh?.awb && order.status !== 'delivered' && order.status !== 'installed' && !['cancelled', 'cancel_requested'].includes(sh.status) && <button className="adm-chip-btn" disabled={busy} onClick={() => ship('cancel')}>Cancel shipment</button>}
+          </div>
+        </div>
+      )}
 
       <div style={{ marginTop: 16 }}>
         <span className="adm-detail-label">Items</span>

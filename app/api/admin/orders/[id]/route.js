@@ -6,6 +6,7 @@ import { dbPatch } from '@/lib/db';
 import { advanceOrderStatus, markOrderPaid, setInstallationSchedule, cleanInstallFee, ORDER_STATUSES } from '@/lib/heseosOrders';
 import { releaseJob, ensureInstallPayout } from '@/lib/installJobs';
 import { notifyHeseosOrderStatus, notifyHeseosInstallationScheduled } from '@/lib/heseosNotify';
+import { velocityConfigured, velocityConfig, createShipmentForOrder, cancelShipmentForOrder, syncShipmentTracking } from '@/lib/velocityShipping';
 
 export const dynamic = 'force-dynamic';
 
@@ -85,6 +86,27 @@ export async function PATCH(request, { params }) {
     return Response.json(updated);
   }
 
+  // Velocity shipping: create / retry the courier shipment, refresh tracking, or cancel it.
+  if (body.shipping) {
+    const act = String(body.shipping);
+    if (act === 'create') {
+      if (existing.status === 'cancelled') return Response.json({ error: 'This order is cancelled' }, { status: 400 });
+      const r = await createShipmentForOrder(id, actorLabel);
+      if (!r.ok) return Response.json({ ...(r.order || existing), shippingError: r.error });
+      return Response.json({ ...r.order, whatsappSent: !!r.whatsappSent });
+    }
+    if (act === 'sync') {
+      const r = await syncShipmentTracking(id);
+      if (!r.ok) return Response.json({ ...existing, shippingError: r.error });
+      return Response.json(r.order);
+    }
+    if (act === 'cancel') {
+      const r = await cancelShipmentForOrder(id, actorLabel);
+      return Response.json({ ...(r.order || existing), ...(r.ok ? {} : { shippingError: r.error }) });
+    }
+    return Response.json({ error: 'Unknown shipping action' }, { status: 400 });
+  }
+
   if (body.markPaid === true) {
     if (existing.status === 'cancelled') return Response.json({ error: 'A cancelled order cannot be marked paid' }, { status: 400 });
     if (existing.paymentStatus === 'paid') return Response.json(existing); // already paid — never record it twice
@@ -96,7 +118,7 @@ export async function PATCH(request, { params }) {
     if (!VALID_STATUSES.has(body.status)) {
       return Response.json({ error: `Unknown status "${body.status}"` }, { status: 400 });
     }
-    const updated = await advanceOrderStatus(id, body.status, actorLabel);
+    let updated = await advanceOrderStatus(id, body.status, actorLabel);
     // Tell the customer on WhatsApp — only when the status actually changed (a double-click or a
     // retry never texts them twice) and only for the steps that have a message
     // (Packed / Dispatched / Delivered / Installation Done / Cancelled). Best-effort: a failed send never
@@ -108,7 +130,22 @@ export async function PATCH(request, { params }) {
       const wa = await notifyHeseosOrderStatus(updated, body.status);
       whatsappSent = !!wa?.ok;
     }
-    return Response.json({ ...updated, whatsappSent });
+    // Velocity: Packed -> send the order to the courier automatically; Cancelled -> cancel the shipment
+    // (only possible before pickup). Best-effort — the order's own status change never fails because of
+    // Velocity; the Shipping section on the order shows the error and a Retry button.
+    let shippingError = null;
+    if (updated && existing.status !== body.status && velocityConfigured()) {
+      if (body.status === 'packed' && velocityConfig().autoShip) {
+        const r = await createShipmentForOrder(id, actorLabel).catch((e) => ({ ok: false, error: String(e?.message || e) }));
+        if (r.order) updated = r.order;
+        if (!r.ok) shippingError = r.error;
+      } else if (body.status === 'cancelled') {
+        const r = await cancelShipmentForOrder(id, actorLabel).catch((e) => ({ ok: false, error: String(e?.message || e) }));
+        if (r.order) updated = r.order;
+        if (!r.ok) shippingError = r.error;
+      }
+    }
+    return Response.json({ ...updated, whatsappSent, ...(shippingError ? { shippingError } : {}) });
   }
 
   return Response.json({ error: 'Nothing to update — send status or markPaid' }, { status: 400 });
