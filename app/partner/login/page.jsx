@@ -54,7 +54,7 @@ export default function PartnerLoginPage() {
             and space-between keeps the form flush at the bottom exactly like flex-end did when
             the logo didn't count toward layout (align-self/flex-none for it already exists in
             partner-app.css, added for exactly this normal-flow case). */}
-        <div className="hp-hero-content" style={{ justifyContent: 'space-between', paddingBottom: 18 }}>
+        <div className="hp-hero-content" style={{ justifyContent: 'space-between', paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 56px)' }}>
           <img src="/brand/lockup-white.png" alt="Heseos — Lighting Ahead" className="hp-brand-logo" />
 
           <div>

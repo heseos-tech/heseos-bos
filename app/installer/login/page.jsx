@@ -43,7 +43,7 @@ export default function InstallerLoginPage() {
       <div className="hp-hero">
         <div className="hp-hero-bg" style={{ backgroundImage: "url('/Login_screen.webp')" }} />
         <div className="hp-hero-scrim-full" />
-        <div className="hp-hero-content" style={{ justifyContent: 'space-between', paddingBottom: 18 }}>
+        <div className="hp-hero-content" style={{ justifyContent: 'space-between', paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 56px)' }}>
           <img src="/brand/lockup-white.png" alt="Heseos — Lighting Ahead" className="hp-brand-logo" />
           <div>
             <h1 className="hp-h2">Installer Login</h1>
