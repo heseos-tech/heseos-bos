@@ -8,11 +8,13 @@ import { useState } from 'react';
 import { StatCard, Funnel, Modal, Pagination } from './ui';
 import { IconReports, IconLeads, IconConversions, IconPhone } from './icons';
 import { useApiResource } from '@/lib/useApiResource';
+import InvestorActivityPanel from './InvestorActivityPanel';
 
 const PAGE_TABS = [
   { key: 'all', label: 'All pages' },
   { key: 'door_lock', label: 'Door Lock' },
   { key: 'smart_home', label: 'Smart Home' },
+  { key: 'investors', label: 'Investors' }, // separate: never counted in "All pages"
 ];
 const RANGE_TABS = [
   { key: 1, label: '24 hours' },
@@ -65,7 +67,7 @@ export default function LandingActivityPage() {
   return (
     <>
       <div className="adm-page-head">
-        <div><h1 className="adm-h1">Landing Activity</h1><p className="adm-page-sub">What customers do after tapping “Know More” on WhatsApp — who opened the page, how far they read, what they tapped, and whether they filled the form</p></div>
+        <div><h1 className="adm-h1">Landing Activity</h1><p className="adm-page-sub">{page === 'investors' ? 'Who got through the NDA gate on the investor proposal, and how they read it — tracked separately from the customer pages' : 'What customers do after tapping “Know More” on WhatsApp — who opened the page, how far they read, what they tapped, and whether they filled the form'}</p></div>
       </div>
 
       <div className="adm-card" style={{ marginBottom: 18 }}>
@@ -81,6 +83,7 @@ export default function LandingActivityPage() {
         </div>
       </div>
 
+      {page === 'investors' ? <InvestorActivityPanel r={r} loading={loading} /> : (<>
       <div className="adm-stat-row">
         <StatCard label="Page visits" value={sum.visits} Icon={IconReports} tone="orange" />
         <StatCard label="WhatsApp cards opened" value={`${sum.cardsOpened} / ${sum.cardsSent}${sum.cardsSent ? ` (${openRate}%)` : ''}`} Icon={IconPhone} tone="purple" />
@@ -174,6 +177,7 @@ export default function LandingActivityPage() {
       </div>
 
       {modal && <VisitModal v={modal} onClose={() => setModal(null)} />}
+      </>)}
     </>
   );
 }

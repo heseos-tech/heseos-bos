@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import Script from 'next/script';
 import { NDA_SECTIONS, NDA_TITLE, NDA_VERSION } from '@/lib/investorNda';
 
 // Step 1: name / mobile / email + NDA (must be opened and read to the end before the box can be
@@ -41,6 +42,7 @@ export default function InvestorGate() {
       setCode('');
       setStep('otp');
       setCooldown(30);
+      if (window.hsTrack) window.hsTrack('mark', 'Code sent');
       return true;
     } catch {
       setError('Network problem. Please try again.');
@@ -62,6 +64,7 @@ export default function InvestorGate() {
         if (data.expired) setCode('');
         return;
       }
+      if (window.hsTrack) window.hsTrack('submitted', { name, phone });
       window.location.reload();
     } catch {
       setError('Network problem. Please try again.');
@@ -74,6 +77,7 @@ export default function InvestorGate() {
 
   return (
     <main className="inv-page">
+      <Script src="/hs-track.js" data-page="investors" strategy="afterInteractive" />
       <div className="inv-glow" aria-hidden="true" />
       <div className="inv-card">
         <img className="inv-logo" src="/brand/wordmark-white.png" alt="Heseos" />

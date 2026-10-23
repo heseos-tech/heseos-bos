@@ -1,13 +1,14 @@
 /* HESEOS landing-page analytics — first-party, no cookies, no third-party calls.
  *
  * Include on a landing page with:  <script src="/hs-track.js" data-page="door_lock"></script>
- * (data-page: door_lock | smart_home). It keeps ONE cumulative snapshot of the visit — how far the
+ * (data-page: door_lock | smart_home | investors). It keeps ONE cumulative snapshot of the visit — how far the
  * visitor scrolled, which sections they reached, which buttons they tapped, whether they started /
  * submitted the form, and how long the page was actually in view — and POSTs it to /api/track
  * (merged server-side into one row per visit, see lib/landingActivity.js).
  *
  * Pages can add to it through window.hsTrack(event, data):
  *   hsTrack('error')                                  a validation / server error was shown
+ *   hsTrack('mark', 'Code sent')                      a named step reached (shows in the tapped-buttons list)
  *   hsTrack('submitted', {name, phone, refId})        the form went through
  * It stays silent for crawlers, link-preview bots and visitors who send Do-Not-Track.
  */
@@ -125,6 +126,7 @@
 
   window.hsTrack = function (ev, data) {
     if (ev === 'error') { s.errors += 1; soon(); }
+    else if (ev === 'mark') { var m = String(data || '').slice(0, 40); if (m && s.clicks.length < 40) { s.clicks.push([m, 'step', secs()]); now(); } }
     else if (ev === 'submitted') {
       s.submittedSecs = secs();
       data = data || {};
