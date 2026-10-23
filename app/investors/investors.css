@@ -1,0 +1,70 @@
+/* /investors — dark Heseos look (black canvas, warm amber light, orange gradient) to match the proposal itself. */
+.inv-page, .inv-viewer { --bg:#0a0a0b; --card:#141416; --line:#2a2a2e; --ink:#f3efe9; --mute:#9d978d; --o1:#FAA43D; --o2:#EE5B25;
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, 'Segoe UI', sans-serif; color: var(--ink); }
+body:has(.inv-page), body:has(.inv-viewer) { background: #0a0a0b; }
+
+.inv-page { min-height: 100dvh; display: flex; align-items: center; justify-content: center; padding: 24px 16px; background: var(--bg); position: relative; overflow: hidden; }
+.inv-glow { position: absolute; width: 760px; height: 760px; left: 50%; top: -280px; transform: translateX(-50%); pointer-events: none;
+  background: radial-gradient(closest-side, rgba(250,164,61,.22), rgba(238,91,37,.08) 55%, transparent 72%); }
+.inv-card { position: relative; width: 100%; max-width: 440px; background: var(--card); border: 1px solid var(--line); border-radius: 20px; padding: 30px 26px 22px; box-shadow: 0 30px 80px rgba(0,0,0,.55); }
+.inv-logo { height: 26px; width: auto; display: block; margin-bottom: 18px; }
+.inv-eyebrow { margin: 0 0 14px; font-size: 11.5px; letter-spacing: .16em; text-transform: uppercase; font-weight: 700; color: var(--o1); }
+.inv-h1 { margin: 0 0 8px; font-size: 26px; line-height: 1.15; font-weight: 800; letter-spacing: -.01em; }
+.inv-sub { margin: 0 0 20px; font-size: 14px; line-height: 1.55; color: var(--mute); }
+
+.inv-field { display: block; margin-bottom: 14px; }
+.inv-field > span { display: block; font-size: 12.5px; font-weight: 600; color: #cfc9bf; margin-bottom: 6px; }
+.inv-field input, .inv-phone { width: 100%; height: 46px; border-radius: 12px; border: 1px solid var(--line); background: #0d0d0f; color: var(--ink); font: inherit; font-size: 15px; padding: 0 14px; outline: none; transition: border-color .15s, box-shadow .15s; }
+.inv-field input:focus, .inv-phone:focus-within { border-color: var(--o1); box-shadow: 0 0 0 3px rgba(250,164,61,.16); }
+.inv-phone { display: flex; align-items: center; padding: 0 0 0 14px; gap: 10px; }
+.inv-phone i { font-style: normal; font-size: 15px; color: var(--mute); }
+.inv-phone input { border: 0; background: transparent; height: 100%; padding: 0 14px 0 0; box-shadow: none !important; flex: 1; min-width: 0; }
+
+.inv-nda { margin: 18px 0 4px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; background: #0d0d0f; }
+.inv-nda.is-on { border-color: rgba(250,164,61,.5); }
+.inv-check { display: flex; gap: 10px; align-items: flex-start; font-size: 13.5px; line-height: 1.5; color: #d9d3c9; cursor: pointer; }
+.inv-check.is-locked { cursor: not-allowed; color: var(--mute); }
+.inv-check input { width: 18px; height: 18px; margin-top: 2px; accent-color: var(--o2); flex: none; }
+.inv-hint { margin: 8px 0 0; font-size: 12px; color: var(--mute); }
+.inv-link { background: none; border: 0; padding: 0; font: inherit; color: var(--o1); text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
+.inv-link:disabled { color: var(--mute); text-decoration: none; cursor: default; }
+.inv-error { margin: 12px 0 0; font-size: 13px; color: #ff8a7a; }
+
+.inv-btn { width: 100%; height: 48px; margin-top: 16px; border: 0; border-radius: 12px; font: inherit; font-size: 15px; font-weight: 700; color: #160c02; cursor: pointer;
+  background: linear-gradient(135deg, var(--o1), var(--o2)); transition: filter .15s, opacity .15s, transform .05s; }
+.inv-btn:hover:not(:disabled) { filter: brightness(1.07); }
+.inv-btn:active:not(:disabled) { transform: translateY(1px); }
+.inv-btn:disabled { opacity: .4; cursor: not-allowed; }
+.inv-btn--sm { width: auto; height: 42px; margin: 0; padding: 0 20px; font-size: 14px; }
+.inv-row { display: flex; justify-content: space-between; margin-top: 14px; font-size: 13px; }
+.inv-code { width: 100%; height: 58px; text-align: center; font: inherit; font-size: 28px; font-weight: 700; letter-spacing: .5em; padding-left: .5em; color: var(--o1);
+  background: #0d0d0f; border: 1px solid var(--line); border-radius: 12px; outline: none; }
+.inv-code:focus { border-color: var(--o1); box-shadow: 0 0 0 3px rgba(250,164,61,.16); }
+.inv-foot { margin: 22px 0 0; text-align: center; font-size: 11.5px; color: #6f6a62; }
+
+.inv-modal { position: fixed; inset: 0; z-index: 50; background: rgba(0,0,0,.72); display: flex; align-items: center; justify-content: center; padding: 16px; }
+.inv-modal-card { width: 100%; max-width: 620px; max-height: min(86dvh, 720px); display: flex; flex-direction: column; background: var(--card); border: 1px solid var(--line); border-radius: 18px; overflow: hidden; }
+.inv-modal-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 20px; border-bottom: 1px solid var(--line); }
+.inv-modal-head h2 { margin: 0; font-size: 16px; font-weight: 800; }
+.inv-x { background: none; border: 0; color: var(--mute); font-size: 26px; line-height: 1; cursor: pointer; padding: 0 4px; }
+.inv-modal-body { flex: 1; overflow-y: auto; padding: 6px 20px 18px; overscroll-behavior: contain; }
+.inv-modal-body h3 { margin: 18px 0 4px; font-size: 13.5px; font-weight: 700; color: var(--o1); }
+.inv-modal-body p { margin: 0; font-size: 13.5px; line-height: 1.65; color: #cfc9bf; }
+.inv-modal-body .inv-modal-ver { margin-top: 20px; font-size: 11.5px; color: #6f6a62; }
+.inv-modal-foot { display: flex; align-items: center; justify-content: flex-end; gap: 14px; padding: 12px 20px; border-top: 1px solid var(--line); }
+.inv-modal-foot .inv-hint { margin: 0; }
+
+.inv-viewer { position: fixed; inset: 0; display: flex; flex-direction: column; background: var(--bg); }
+.inv-bar { flex: none; height: 38px; display: flex; align-items: center; gap: 12px; padding: 0 14px; background: #101012; border-bottom: 1px solid var(--line); font-size: 12px; }
+.inv-bar-mark { font-weight: 800; letter-spacing: .14em; text-transform: uppercase; font-size: 10.5px; color: var(--o1); }
+.inv-bar-who { color: var(--mute); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.inv-bar-out { background: none; border: 1px solid var(--line); color: #cfc9bf; border-radius: 8px; padding: 4px 10px; font: inherit; font-size: 12px; cursor: pointer; }
+.inv-frame { flex: 1; width: 100%; border: 0; background: #000; }
+
+@media (max-width: 480px) {
+  .inv-card { padding: 24px 18px 18px; border-radius: 16px; }
+  .inv-h1 { font-size: 23px; }
+}
+
+.inv-page *, .inv-viewer *, .inv-modal * { box-sizing: border-box; }
+.inv-eyebrow { white-space: nowrap; font-size: 11px; letter-spacing: .13em; }

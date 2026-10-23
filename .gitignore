@@ -31,3 +31,6 @@ android/local.properties
 *.keystore
 *.jks
 android/keystore.properties
+
+# Investor-proposal gate records (names, phones, emails) when running without a database
+data/investor_*.json

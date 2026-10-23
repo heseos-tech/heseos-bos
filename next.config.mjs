@@ -34,6 +34,8 @@ const nextConfig = {
     ];
   },
   outputFileTracingIncludes: {
+    // the NDA-gated investment proposal is read from disk at request time (app/api/investors/proposal)
+    '/api/investors/proposal': ['./private/investor-proposal.html'],
     '/api/leads/[id]/quotation-pdf': ['./node_modules/pdfkit/js/**/*'],
     '/api/leads/[id]/quotation-pdf/send': ['./node_modules/pdfkit/js/**/*'],
     '/api/leads/**': ['./node_modules/pdfkit/js/**/*'],
