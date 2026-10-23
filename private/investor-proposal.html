@@ -621,7 +621,7 @@ tr.tot td { font-weight: 700; color: var(--white); }
     <div class="head">
       <span class="eyebrow">Returns Calculator</span>
       <h2>Work Out Your Own Return, <span class="gtext">Tied to the Plan</span></h2>
-      <p class="lede">Choose a scenario, your cheque size and when you sell. Every default comes from the deal terms and the five-year model in this deck, so the base case matches the 1.9× and 4.3× shown on the previous slide.</p>
+      <p class="lede">Choose a scenario, your cheque size and when you sell. It starts at a ₹55 Cr seed, ₹200 Cr Series A and ₹500 Cr Series B pre-money, and you can change any of them. Pick Downside, Base or Upside to load the valuation cases from the deal slide instead.</p>
     </div>
     <div class="rc" id="rc">
       <div class="card rc-in">
@@ -677,7 +677,7 @@ tr.tot td { font-weight: 700; color: var(--white); }
           <input type="range" id="rc-mult" min="4" max="20" step="1" value="8">
           <small id="rc-mult-n"></small>
         </div>
-        <details class="rc-adv">
+        <details class="rc-adv" open>
           <summary>Change the valuations (seed, A, B)</summary>
           <div>
             <div class="rc-num rc-num3">
@@ -813,7 +813,7 @@ tr.tot td { font-weight: 700; color: var(--white); }
     $("rc-mult-o").textContent = o.mult + "×";
     var sy = Math.max(0, 1 - o.sa - o.sb);
     $("rc-fy-n").textContent = Math.round(sy * 100) + "% is held to Year 5.";
-    $("rc-scn-note").textContent = custom ? "Custom valuations" : "Year-5 EBITDA ₹" + sc.ebitda + " Cr · cash ₹" + sc.cash + " Cr";
+    $("rc-scn-note").textContent = (custom ? "Custom valuations · " : "") + "Y5 EBITDA ₹" + sc.ebitda + " Cr · cash ₹" + sc.cash + " Cr";
     $("rc-mult-n").textContent = "Value = " + o.mult + " × ₹" + sc.ebitda + " Cr EBITDA + ₹" + sc.cash + " Cr cash = ₹" + fmt(r.valY, 0) + " Cr. An illustrative multiple, not a valuation view.";
     $("rc-split").hidden = o.mode !== "s";
     $("rc-mult-f").hidden = !r.usesY;
@@ -856,7 +856,7 @@ tr.tot td { font-weight: 700; color: var(--white); }
   }
 
   Array.prototype.forEach.call(document.querySelectorAll('input[name="rc-scn"]'), function (i) {
-    i.addEventListener("change", function () { setScenario(i.value); render(); });
+    i.addEventListener("click", function () { setScenario(i.value); render(); });
   });
   Array.prototype.forEach.call(document.querySelectorAll('input[name="rc-exit"]'), function (i) {
     i.addEventListener("change", render);
@@ -870,7 +870,7 @@ tr.tot td { font-weight: 700; color: var(--white); }
     el.cb.value = Math.min(o.rb, Math.round(held * g.gB * o.rb)); render();
   });
   ["p0", "pa", "pb", "ra", "rb"].forEach(function (k) { el[k].addEventListener("input", function () { sync(); render(); }); });
-  setScenario("base"); render();
+  setScenario("base"); el.pa.value = 200; el.pb.value = 500; sync(); render();
 })();
 </script>
 
