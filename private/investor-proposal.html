@@ -287,6 +287,50 @@ tr.tot td { font-weight: 700; color: var(--white); }
 @media (max-width: 760px) { .dots { display: none; } }
 .counter { position: fixed; left: max(20px, env(safe-area-inset-left, 0px)); bottom: calc(16px + env(safe-area-inset-bottom, 0px)); z-index: 15; font-size: 0.74rem; font-weight: 700; letter-spacing: 0.12em; color: var(--mute); background: rgba(0,0,0,.75); padding: 8px 12px; border-radius: 999px; border: 1px solid var(--line); }
 @media (max-width: 760px) { .counter { display: none; } }
+
+/* ---------- returns calculator ---------- */
+.rc { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 16px; align-items: start; }
+.rc-in, .rc-out { display: grid; gap: 18px; }
+.rc-f { display: grid; gap: 9px; }
+.rc-f > label, .rc-f > .rc-lab { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; font-size: .86rem; font-weight: 700; color: var(--white); }
+.rc-f > label output, .rc-lab output { font-weight: 700; color: var(--amber); font-variant-numeric: tabular-nums; }
+.rc-f small { font-size: .78rem; color: var(--mute); line-height: 1.4; }
+.rc-seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 4px; padding: 4px; border-radius: 999px; background: #0B0B0B; border: 1px solid var(--line); }
+.rc-seg input { position: absolute; opacity: 0; pointer-events: none; }
+.rc-seg label { display: grid; place-items: center; min-height: 38px; padding: 0 8px; border-radius: 999px; font-size: .82rem; font-weight: 700; color: var(--text); cursor: pointer; text-align: center; transition: background .15s, color .15s; }
+.rc-seg input:checked + label { background: var(--grad); color: #1a0c00; }
+.rc-seg input:focus-visible + label { outline: 2px solid var(--amber); outline-offset: 2px; }
+.rc input[type=range] { width: 100%; accent-color: var(--orange); height: 22px; margin: 0; }
+.rc-num { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.rc-num label { display: grid; gap: 6px; font-size: .78rem; font-weight: 700; color: var(--mute); }
+.rc-num input { width: 100%; height: 42px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--line); background: #0B0B0B; color: var(--white); font: inherit; font-size: .95rem; font-variant-numeric: tabular-nums; }
+.rc-num input:focus-visible { outline: 2px solid var(--amber); outline-offset: 1px; }
+.rc-split { display: grid; gap: 14px; padding: 14px; border-radius: 12px; background: #0B0B0B; border: 1px solid var(--line); }
+.rc-split[hidden], .rc-f[hidden] { display: none; }
+.rc-kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.rc-kpis .card { padding: 16px; gap: 6px; }
+.rc-kpis .num { font-size: clamp(1.45rem, 2.3vw, 2rem); }
+.rc-bars { display: grid; gap: 10px; }
+.rc-bar { display: grid; grid-template-columns: 96px minmax(0, 1fr) 76px; gap: 12px; align-items: center; font-size: .84rem; }
+.rc-bar > span:first-child { color: var(--text); }
+.rc-bar > span:last-child { text-align: right; font-weight: 700; color: var(--white); font-variant-numeric: tabular-nums; }
+.rc-track { height: 14px; border-radius: 7px; background: #0B0B0B; overflow: hidden; }
+.rc-track i { display: block; height: 100%; border-radius: 7px; transition: width .25s ease; }
+.rc-sens th:first-child, .rc-sens td:first-child { text-align: left; }
+.rc-sens td.on { background: rgba(254,172,1,.14); color: var(--white); font-weight: 700; }
+.rc-sens td.lo { color: var(--neg); }
+.rc table { min-width: 0; }
+.rc-tl th, .rc-tl td { padding: 10px 14px; }
+.rc-tl th:first-child, .rc-tl td:first-child { text-align: left; white-space: normal; }
+.rc-adv { border: 1px solid var(--line); border-radius: 12px; padding: 0 14px; background: #0B0B0B; }
+.rc-adv summary { cursor: pointer; padding: 12px 0; font-size: .84rem; font-weight: 700; color: var(--amber-2); list-style: none; }
+.rc-adv summary::-webkit-details-marker { display: none; }
+.rc-adv summary::after { content: "+"; float: right; }
+.rc-adv[open] summary::after { content: "–"; }
+.rc-adv > div { display: grid; gap: 14px; padding-bottom: 14px; }
+@media (max-width: 960px) { .rc { grid-template-columns: 1fr; } .rc-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 600px) { .rc-tl th:nth-child(4), .rc-tl td:nth-child(4) { display: none; } .rc-tl th, .rc-tl td, .rc-sens th, .rc-sens td { padding: 10px 8px; font-size: .8rem; } .rc-sens th { letter-spacing: 0; } .rc-sens th:first-child { white-space: normal; } }
+@media (max-width: 520px) { .rc-bar { grid-template-columns: 74px minmax(0, 1fr) 64px; gap: 8px; } .rc-seg label { font-size: .76rem; padding: 0 4px; } }
 </style>
 </head>
 <body>
@@ -559,6 +603,219 @@ tr.tot td { font-weight: 700; color: var(--white); }
     <p class="src">Series A and B valuations are planning assumptions, not commitments. Secondary sales need a willing buyer in the new round and the usual board and right-of-first-refusal approvals. Investors can sell part of the stake at Series A and hold the rest. Series A investors who sell at Series B make about 1.8× (50% IRR) on the same basis. Founders keep about 58% after Series B.</p>
   </div>
 </section>
+
+<!-- 9b RETURNS CALCULATOR -->
+<section class="slide" id="returns" data-title="Returns calculator">
+  <div class="wrap">
+    <div class="head">
+      <span class="eyebrow">Returns Calculator</span>
+      <h2>Work Out Your Own Return, <span class="gtext">Tied to the Plan</span></h2>
+      <p class="lede">Choose a scenario, your cheque size and when you sell. Every default comes from the deal terms and the five-year model in this deck, so the base case matches the 1.9× and 4.3× shown on the previous slide.</p>
+    </div>
+    <div class="rc" id="rc">
+      <div class="card rc-in">
+        <span class="chip lit">Your inputs</span>
+        <div class="rc-f" role="radiogroup" aria-label="Scenario">
+          <div class="rc-lab"><span>Scenario</span><output id="rc-scn-note"></output></div>
+          <div class="rc-seg" id="rc-scn">
+            <input type="radio" name="rc-scn" id="rc-s-down" value="down"><label for="rc-s-down">Downside</label>
+            <input type="radio" name="rc-scn" id="rc-s-base" value="base" checked><label for="rc-s-base">Base</label>
+            <input type="radio" name="rc-scn" id="rc-s-up" value="up"><label for="rc-s-up">Upside</label>
+          </div>
+        </div>
+        <div class="rc-f">
+          <label for="rc-chq">Your investment <output id="rc-chq-o"></output></label>
+          <input type="range" id="rc-chq" min="0.5" max="7" step="0.25" value="7">
+          <small id="rc-chq-n"></small>
+        </div>
+        <div class="rc-f" role="radiogroup" aria-label="When you sell">
+          <div class="rc-lab"><span>When you sell</span></div>
+          <div class="rc-seg" id="rc-exit">
+            <input type="radio" name="rc-exit" id="rc-e-a" value="a" checked><label for="rc-e-a">Series A</label>
+            <input type="radio" name="rc-exit" id="rc-e-b" value="b"><label for="rc-e-b">Series B</label>
+            <input type="radio" name="rc-exit" id="rc-e-y" value="y"><label for="rc-e-y">Year 5</label>
+            <input type="radio" name="rc-exit" id="rc-e-s" value="s"><label for="rc-e-s">Split</label>
+          </div>
+        </div>
+        <div class="rc-split" id="rc-split" hidden>
+          <div class="rc-f"><label for="rc-fa">Sold at Series A <output id="rc-fa-o"></output></label><input type="range" id="rc-fa" min="0" max="100" step="5" value="30"></div>
+          <div class="rc-f"><label for="rc-fb">Sold at Series B <output id="rc-fb-o"></output></label><input type="range" id="rc-fb" min="0" max="100" step="5" value="40"></div>
+          <small style="color:var(--mute);font-size:.78rem" id="rc-fy-n"></small>
+        </div>
+        <div class="rc-f" id="rc-disc-f">
+          <label for="rc-disc">Secondary-sale discount <output id="rc-disc-o"></output></label>
+          <input type="range" id="rc-disc" min="0" max="40" step="5" value="20">
+          <small>How far below the round price the incoming investor buys your shares. The plan assumes 20%.</small>
+        </div>
+        <div class="rc-f" id="rc-mult-f" hidden>
+          <label for="rc-mult">Year-5 value multiple (× EBITDA) <output id="rc-mult-o"></output></label>
+          <input type="range" id="rc-mult" min="4" max="20" step="1" value="8">
+          <small id="rc-mult-n"></small>
+        </div>
+        <details class="rc-adv">
+          <summary>Change the round valuations</summary>
+          <div>
+            <div class="rc-num">
+              <label>Series A pre-money (₹ Cr)<input type="number" id="rc-pa" min="40" max="1000" step="10" inputmode="decimal"></label>
+              <label>Series B pre-money (₹ Cr)<input type="number" id="rc-pb" min="100" max="3000" step="10" inputmode="decimal"></label>
+            </div>
+            <small style="color:var(--mute);font-size:.78rem">Series A raises ₹20 Cr and Series B raises ₹50 Cr, as in the funding plan. Editing a valuation switches the scenario label to Custom.</small>
+          </div>
+        </details>
+      </div>
+
+      <div class="rc-out" aria-live="polite">
+        <div class="rc-kpis">
+          <div class="card kpi hot"><span class="chip lit">Cash back</span><div class="num gtext" id="rc-k-cash">–</div><div class="lab">Total ₹ Cr received</div></div>
+          <div class="card kpi"><span class="chip">MOIC</span><div class="num" id="rc-k-moic">–</div><div class="lab">Money multiple on cash invested</div></div>
+          <div class="card kpi"><span class="chip">IRR</span><div class="num" id="rc-k-irr">–</div><div class="lab">Yearly return</div></div>
+          <div class="card kpi"><span class="chip">Gain</span><div class="num" id="rc-k-gain">–</div><div class="lab">Cash back less invested</div></div>
+        </div>
+        <div class="card">
+          <h3>Invested vs Returned (₹ Cr)</h3>
+          <div class="rc-bars" id="rc-bars"></div>
+        </div>
+        <div class="tbl rc-tl">
+          <table>
+            <thead><tr><th>Step</th><th>When</th><th>Stake</th><th>Value at round</th><th>Cash received</th></tr></thead>
+            <tbody id="rc-tl"></tbody>
+          </table>
+        </div>
+        <div class="tbl rc-sens">
+      <table>
+        <thead><tr><th>MOIC if all sold at Series B</th><th>0% disc.</th><th>10%</th><th>20%</th><th>30%</th></tr></thead>
+        <tbody id="rc-sens"></tbody>
+      </table>
+    </div>
+      </div>
+    </div>
+    <p class="src" id="rc-src">Illustration only, not a forecast or a promise. Series A and B valuations and the Year-5 multiple are your inputs, not commitments. Series A raises ₹20 Cr and Series B ₹50 Cr; option-pool top-ups of about 3.2% at Series A and 2.5% at Series B are included so the base case matches the deal slide. Secondary sales need a willing buyer and the usual board and right-of-first-refusal approvals. Year-5 value is the multiple times Year-5 EBITDA plus year-end cash from the scenarios slide, with no dilution after Series B and no discount. Not investment advice.</p>
+  </div>
+</section>
+<script>
+(function () {
+  var POST = 62, SEED = 7, RAISE_A = 20, RAISE_B = 50, TOP_A = 0.032, TOP_B = 0.025, T_A = 1.5, T_B = 3, T_Y = 5;
+  var SCN = {
+    down: { name: "Downside", pa: 100, pb: 250, ebitda: 23, cash: 47 },
+    base: { name: "Base", pa: 150, pb: 400, ebitda: 92, cash: 133 },
+    up:   { name: "Upside", pa: 200, pb: 600, ebitda: 127, cash: 178 }
+  };
+  var $ = function (id) { return document.getElementById(id); };
+  var root = $("rc"); if (!root) return;
+  var el = { chq: $("rc-chq"), fa: $("rc-fa"), fb: $("rc-fb"), disc: $("rc-disc"), mult: $("rc-mult"), pa: $("rc-pa"), pb: $("rc-pb") };
+  var scn = "base", custom = false;
+
+  function fmt(x, d) { return x.toLocaleString("en-IN", { minimumFractionDigits: d, maximumFractionDigits: d }); }
+  function cr(x) { return "₹" + fmt(x, 1) + " Cr"; }
+
+  function irr(flows) {
+    var tot = 0; for (var i = 0; i < flows.length; i++) if (flows[i].v > 0) tot += flows[i].v;
+    if (tot <= 0) return null;
+    function npv(r) { var n = 0; for (var i = 0; i < flows.length; i++) n += flows[i].v / Math.pow(1 + r, flows[i].t); return n; }
+    var lo = -0.99, hi = 20;
+    if (npv(lo) < 0) return null;
+    for (var k = 0; k < 120; k++) { var mid = (lo + hi) / 2; if (npv(mid) > 0) lo = mid; else hi = mid; }
+    return (lo + hi) / 2;
+  }
+
+  function model(o) {
+    var s0 = o.chq / POST;
+    var fA = s0 * o.pa / (o.pa + RAISE_A) * (1 - TOP_A);       // stake after Series A
+    var postA = o.pa + RAISE_A, postB = o.pb + RAISE_B;
+    var fB = fA * o.pb / (o.pb + RAISE_B) * (1 - TOP_B);       // stake after Series B
+    var valY = o.mult * o.ebitda + o.cash;
+    var sa = o.sa, sb = o.sb, sy = Math.max(0, 1 - sa - sb);
+    var rows = [], flows = [{ t: 0, v: -o.chq }], total = 0;
+    var dd = 1 - o.disc;
+    if (sa > 0) { var st = fA * sa, vr = st * postA, c = vr * dd; rows.push({ n: "Sell at Series A", w: "Month 19", st: st, vr: vr, c: c, t: T_A }); }
+    if (sb > 0) { var st2 = fB * sb, vr2 = st2 * postB, c2 = vr2 * dd; rows.push({ n: "Sell at Series B", w: "Month 37", st: st2, vr: vr2, c: c2, t: T_B }); }
+    if (sy > 0.0001) { var st3 = fB * sy, vr3 = st3 * valY, c3 = vr3; rows.push({ n: "Hold to Year 5", w: "Month 60", st: st3, vr: vr3, c: c3, t: T_Y }); }
+    rows.forEach(function (r) { total += r.c; flows.push({ t: r.t, v: r.c }); });
+    return { rows: rows, total: total, moic: total / o.chq, irr: irr(flows), s0: s0, fA: fA, fB: fB, valY: valY };
+  }
+
+  function exitFractions() {
+    var m = document.querySelector('input[name="rc-exit"]:checked').value;
+    if (m === "a") return { sa: 1, sb: 0, m: m };
+    if (m === "b") return { sa: 0, sb: 1, m: m };
+    if (m === "y") return { sa: 0, sb: 0, m: m };
+    return { sa: +el.fa.value / 100, sb: +el.fb.value / 100, m: m };
+  }
+
+  function read() {
+    var ex = exitFractions(), sc = SCN[scn] || SCN.base;
+    return { chq: +el.chq.value, pa: +el.pa.value || sc.pa, pb: +el.pb.value || sc.pb, disc: +el.disc.value / 100, mult: +el.mult.value,
+             ebitda: sc.ebitda, cash: sc.cash, sa: ex.sa, sb: ex.sb, mode: ex.m };
+  }
+
+  function setScenario(k) {
+    scn = k; custom = false;
+    el.pa.value = SCN[k].pa; el.pb.value = SCN[k].pb;
+  }
+
+  function render() {
+    var o = read(), r = model(o), sc = SCN[scn];
+    $("rc-chq-o").textContent = cr(o.chq);
+    $("rc-chq-n").textContent = "Buys " + fmt(r.s0 * 100, 1) + "% of Heseos at the ₹" + POST + " Cr post-money. The seed round is ₹" + SEED + " Cr in total.";
+    $("rc-fa-o").textContent = Math.round(o.sa * 100) + "%";
+    $("rc-fb-o").textContent = Math.round(o.sb * 100) + "%";
+    $("rc-disc-o").textContent = Math.round(o.disc * 100) + "%";
+    $("rc-mult-o").textContent = o.mult + "×";
+    var sy = Math.max(0, 1 - o.sa - o.sb);
+    $("rc-fy-n").textContent = Math.round(sy * 100) + "% is held to Year 5.";
+    $("rc-scn-note").textContent = custom ? "Custom valuations" : "Year-5 EBITDA ₹" + sc.ebitda + " Cr · cash ₹" + sc.cash + " Cr";
+    $("rc-mult-n").textContent = "Value = " + o.mult + " × ₹" + sc.ebitda + " Cr EBITDA + ₹" + sc.cash + " Cr cash = ₹" + fmt(r.valY, 0) + " Cr. An illustrative multiple, not a valuation view.";
+    $("rc-split").hidden = o.mode !== "s";
+    var showY = (o.mode === "y") || (o.mode === "s" && sy > 0.0001);
+    $("rc-mult-f").hidden = !showY;
+    $("rc-disc-f").hidden = o.mode === "y";
+    if (o.mode === "s") { el.fb.max = String(Math.round((1 - o.sa) * 100)); if (+el.fb.value > +el.fb.max) { el.fb.value = el.fb.max; return render(); } }
+
+    $("rc-k-cash").textContent = fmt(r.total, 1);
+    $("rc-k-moic").textContent = fmt(r.moic, 1) + "×";
+    $("rc-k-irr").textContent = r.irr === null ? "–" : Math.round(r.irr * 100) + "%";
+    var gain = r.total - o.chq;
+    $("rc-k-gain").textContent = (gain >= 0 ? "+" : "–") + fmt(Math.abs(gain), 1);
+
+    var max = Math.max(o.chq, r.total, 0.01);
+    var bars = '<div class="rc-bar"><span>Invested</span><div class="rc-track"><i style="width:' + (o.chq / max * 100) + '%;background:#5A5A5A"></i></div><span>' + fmt(o.chq, 1) + '</span></div>';
+    r.rows.forEach(function (x) { bars += '<div class="rc-bar"><span>' + x.n.replace("Sell at ", "").replace("Hold to ", "") + '</span><div class="rc-track"><i style="width:' + (x.c / max * 100) + '%;background:var(--grad)"></i></div><span>' + fmt(x.c, 1) + '</span></div>'; });
+    $("rc-bars").innerHTML = bars;
+
+    var tl = '<tr><td>Invest at seed</td><td>Month 0</td><td>' + fmt(r.s0 * 100, 1) + '%</td><td>' + cr(o.chq) + '</td><td>–' + fmt(o.chq, 1) + '</td></tr>';
+    r.rows.forEach(function (x) { tl += '<tr><td>' + x.n + '</td><td>' + x.w + '</td><td>' + fmt(x.st * 100, 1) + '%</td><td>' + cr(x.vr) + '</td><td>' + fmt(x.c, 1) + '</td></tr>'; });
+    tl += '<tr class="tot"><td>Total</td><td></td><td></td><td></td><td>' + fmt(r.total, 1) + '</td></tr>';
+    $("rc-tl").innerHTML = tl;
+
+    var pbs = [250, 325, 400, 500, 600], ds = [0, 0.1, 0.2, 0.3], sens = "";
+    pbs.forEach(function (pb) {
+      sens += "<tr><td>₹" + pb + " Cr pre-money</td>";
+      ds.forEach(function (d) {
+        var m = model({ chq: o.chq, pa: o.pa, pb: pb, disc: d, mult: o.mult, ebitda: o.ebitda, cash: o.cash, sa: 0, sb: 1 }).moic;
+        var on = pb === o.pb && Math.abs(d - o.disc) < 0.001;
+        sens += '<td class="' + (on ? "on" : m < 1 ? "lo" : "") + '">' + fmt(m, 1) + "×</td>";
+      });
+      sens += "</tr>";
+    });
+    $("rc-sens").innerHTML = sens;
+  }
+
+  function sync() { // pre-money fields drive the Custom label
+    var sc = SCN[scn];
+    custom = (+el.pa.value !== sc.pa) || (+el.pb.value !== sc.pb);
+  }
+
+  Array.prototype.forEach.call(document.querySelectorAll('input[name="rc-scn"]'), function (i) {
+    i.addEventListener("change", function () { setScenario(i.value); render(); });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('input[name="rc-exit"]'), function (i) {
+    i.addEventListener("change", render);
+  });
+  ["chq", "fa", "fb", "disc", "mult"].forEach(function (k) { el[k].addEventListener("input", render); });
+  ["pa", "pb"].forEach(function (k) { el[k].addEventListener("input", function () { sync(); render(); }); });
+  setScenario("base"); render();
+})();
+</script>
 
 <!-- 10 USE OF FUNDS -->
 <section class="slide" id="funds" data-title="Use of funds">
