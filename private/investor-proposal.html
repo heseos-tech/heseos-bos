@@ -301,7 +301,18 @@ tr.tot td { font-weight: 700; color: var(--white); }
 .rc-seg input:checked + label { background: var(--grad); color: #1a0c00; }
 .rc-seg input:focus-visible + label { outline: 2px solid var(--amber); outline-offset: 2px; }
 .rc input[type=range] { width: 100%; accent-color: var(--orange); height: 22px; margin: 0; }
+.rc-chq-row { display: grid; grid-template-columns: minmax(0, 1fr) 118px; gap: 14px; align-items: center; }
+.rc-chq-box { display: flex; align-items: center; gap: 6px; }
+.rc-chq-box input { width: 100%; height: 40px; padding: 0 10px; border-radius: 10px; border: 1px solid var(--line); background: #0B0B0B; color: var(--white); font: inherit; font-size: .95rem; font-variant-numeric: tabular-nums; }
+.rc-chq-box input:focus-visible { outline: 2px solid var(--amber); outline-offset: 1px; }
+.rc-chq-box b { color: var(--mute); font-size: .84rem; }
+.rc-more { padding: 14px; border-radius: 12px; background: #0B0B0B; border: 1px solid var(--line); gap: 14px; }
+.rc-pr { justify-self: start; background: none; border: 1px solid var(--line); color: var(--amber-2); border-radius: 999px; padding: 5px 12px; font: inherit; font-size: .76rem; font-weight: 700; cursor: pointer; }
+.rc-pr:hover { border-color: var(--amber); }
+.rc-pr:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
 .rc-num { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.rc-num3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+@media (max-width: 520px) { .rc-num3 { grid-template-columns: 1fr; } }
 .rc-num label { display: grid; gap: 6px; font-size: .78rem; font-weight: 700; color: var(--mute); }
 .rc-num input { width: 100%; height: 42px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--line); background: #0B0B0B; color: var(--white); font: inherit; font-size: .95rem; font-variant-numeric: tabular-nums; }
 .rc-num input:focus-visible { outline: 2px solid var(--amber); outline-offset: 1px; }
@@ -624,9 +635,23 @@ tr.tot td { font-weight: 700; color: var(--white); }
           </div>
         </div>
         <div class="rc-f">
-          <label for="rc-chq">Your investment <output id="rc-chq-o"></output></label>
-          <input type="range" id="rc-chq" min="0.5" max="7" step="0.25" value="7">
+          <label for="rc-chq">Your seed investment <output id="rc-chq-o"></output></label>
+          <div class="rc-chq-row"><input type="range" id="rc-chq" min="0.5" max="25" step="0.5" value="7"><span class="rc-chq-box"><input type="number" id="rc-chqn" min="0.5" max="100" step="0.5" value="7" inputmode="decimal" aria-label="Seed investment in rupees crore"><b>Cr</b></span></div>
           <small id="rc-chq-n"></small>
+        </div>
+        <div class="rc-f rc-more">
+          <div class="rc-lab"><span>Invest more in later rounds</span></div>
+          <div class="rc-f">
+            <label for="rc-ca">At Series A (₹20 Cr round) <output id="rc-ca-o"></output></label>
+            <input type="range" id="rc-ca" min="0" max="20" step="0.5" value="0">
+            <button type="button" class="rc-pr" id="rc-pr-a">Match my stake (pro-rata)</button>
+          </div>
+          <div class="rc-f">
+            <label for="rc-cb">At Series B (₹50 Cr round) <output id="rc-cb-o"></output></label>
+            <input type="range" id="rc-cb" min="0" max="50" step="1" value="0">
+            <button type="button" class="rc-pr" id="rc-pr-b">Match my stake (pro-rata)</button>
+          </div>
+          <small id="rc-more-n">Follow-on money buys shares at that round's price, with no discount. It is sold at Series B or held to Year 5, never sold in the round it was bought.</small>
         </div>
         <div class="rc-f" role="radiogroup" aria-label="When you sell">
           <div class="rc-lab"><span>When you sell</span></div>
@@ -653,20 +678,21 @@ tr.tot td { font-weight: 700; color: var(--white); }
           <small id="rc-mult-n"></small>
         </div>
         <details class="rc-adv">
-          <summary>Change the round valuations</summary>
+          <summary>Change the valuations (seed, A, B)</summary>
           <div>
-            <div class="rc-num">
+            <div class="rc-num rc-num3">
+              <label>Seed pre-money (₹ Cr)<input type="number" id="rc-p0" min="10" max="500" step="5" inputmode="decimal"></label>
               <label>Series A pre-money (₹ Cr)<input type="number" id="rc-pa" min="40" max="1000" step="10" inputmode="decimal"></label>
               <label>Series B pre-money (₹ Cr)<input type="number" id="rc-pb" min="100" max="3000" step="10" inputmode="decimal"></label>
             </div>
-            <small style="color:var(--mute);font-size:.78rem">Series A raises ₹20 Cr and Series B raises ₹50 Cr, as in the funding plan. Editing a valuation switches the scenario label to Custom.</small>
+            <small style="color:var(--mute);font-size:.78rem">The plan has the seed at ₹55 Cr pre-money, Series A raising ₹20 Cr and Series B raising ₹50 Cr. Editing a valuation switches the scenario label to Custom.</small>
           </div>
         </details>
       </div>
 
       <div class="rc-out" aria-live="polite">
         <div class="rc-kpis">
-          <div class="card kpi hot"><span class="chip lit">Cash back</span><div class="num gtext" id="rc-k-cash">–</div><div class="lab">Total ₹ Cr received</div></div>
+          <div class="card kpi hot"><span class="chip lit">Cash back</span><div class="num gtext" id="rc-k-cash">–</div><div class="lab" id="rc-k-cashl">Total ₹ Cr received</div></div>
           <div class="card kpi"><span class="chip">MOIC</span><div class="num" id="rc-k-moic">–</div><div class="lab">Money multiple on cash invested</div></div>
           <div class="card kpi"><span class="chip">IRR</span><div class="num" id="rc-k-irr">–</div><div class="lab">Yearly return</div></div>
           <div class="card kpi"><span class="chip">Gain</span><div class="num" id="rc-k-gain">–</div><div class="lab">Cash back less invested</div></div>
@@ -683,13 +709,13 @@ tr.tot td { font-weight: 700; color: var(--white); }
         </div>
         <div class="tbl rc-sens">
       <table>
-        <thead><tr><th>MOIC if all sold at Series B</th><th>0% disc.</th><th>10%</th><th>20%</th><th>30%</th></tr></thead>
+        <thead><tr><th>Seed stake MOIC if sold at Series B</th><th>0% disc.</th><th>10%</th><th>20%</th><th>30%</th></tr></thead>
         <tbody id="rc-sens"></tbody>
       </table>
     </div>
       </div>
     </div>
-    <p class="src" id="rc-src">Illustration only, not a forecast or a promise. Series A and B valuations and the Year-5 multiple are your inputs, not commitments. Series A raises ₹20 Cr and Series B ₹50 Cr; option-pool top-ups of about 3.2% at Series A and 2.5% at Series B are included so the base case matches the deal slide. Secondary sales need a willing buyer and the usual board and right-of-first-refusal approvals. Year-5 value is the multiple times Year-5 EBITDA plus year-end cash from the scenarios slide, with no dilution after Series B and no discount. Not investment advice.</p>
+    <p class="src" id="rc-src">Illustration only, not a forecast or a promise. Series A and B valuations and the Year-5 multiple are your inputs, not commitments. Series A raises ₹20 Cr and Series B ₹50 Cr; a seed cheque above ₹7 Cr assumes the round upsizes at the same seed pre-money; option-pool top-ups of about 3.2% at Series A and 2.5% at Series B are included so the base case matches the deal slide. Secondary sales need a willing buyer and the usual board and right-of-first-refusal approvals. Year-5 value is the multiple times Year-5 EBITDA plus year-end cash from the scenarios slide, with no dilution after Series B and no discount. Not investment advice.</p>
   </div>
 </section>
 <script>
@@ -702,7 +728,7 @@ tr.tot td { font-weight: 700; color: var(--white); }
   };
   var $ = function (id) { return document.getElementById(id); };
   var root = $("rc"); if (!root) return;
-  var el = { chq: $("rc-chq"), fa: $("rc-fa"), fb: $("rc-fb"), disc: $("rc-disc"), mult: $("rc-mult"), pa: $("rc-pa"), pb: $("rc-pb") };
+  var el = { p0: $("rc-p0"), chq: $("rc-chq"), chqn: $("rc-chqn"), ca: $("rc-ca"), cb: $("rc-cb"), fa: $("rc-fa"), fb: $("rc-fb"), disc: $("rc-disc"), mult: $("rc-mult"), pa: $("rc-pa"), pb: $("rc-pb") };
   var scn = "base", custom = false;
 
   function fmt(x, d) { return x.toLocaleString("en-IN", { minimumFractionDigits: d, maximumFractionDigits: d }); }
@@ -718,20 +744,33 @@ tr.tot td { font-weight: 700; color: var(--white); }
     return (lo + hi) / 2;
   }
 
+  function gains(o) {
+    var rnd = Math.max(SEED, o.chq), post0 = o.p0 + rnd;
+    var gA = o.pa / (o.pa + RAISE_A) * (1 - TOP_A), gB = o.pb / (o.pb + RAISE_B) * (1 - TOP_B);
+    return { post0: post0, s0: o.chq / post0, gA: gA, gB: gB, postA: o.pa + RAISE_A, postB: o.pb + RAISE_B, rnd: rnd };
+  }
+
   function model(o) {
-    var s0 = o.chq / POST;
-    var fA = s0 * o.pa / (o.pa + RAISE_A) * (1 - TOP_A);       // stake after Series A
-    var postA = o.pa + RAISE_A, postB = o.pb + RAISE_B;
-    var fB = fA * o.pb / (o.pb + RAISE_B) * (1 - TOP_B);       // stake after Series B
-    var valY = o.mult * o.ebitda + o.cash;
+    var g = gains(o), dd = 1 - o.disc, valY = o.mult * o.ebitda + o.cash;
     var sa = o.sa, sb = o.sb, sy = Math.max(0, 1 - sa - sb);
-    var rows = [], flows = [{ t: 0, v: -o.chq }], total = 0;
-    var dd = 1 - o.disc;
-    if (sa > 0) { var st = fA * sa, vr = st * postA, c = vr * dd; rows.push({ n: "Sell at Series A", w: "Month 19", st: st, vr: vr, c: c, t: T_A }); }
-    if (sb > 0) { var st2 = fB * sb, vr2 = st2 * postB, c2 = vr2 * dd; rows.push({ n: "Sell at Series B", w: "Month 37", st: st2, vr: vr2, c: c2, t: T_B }); }
-    if (sy > 0.0001) { var st3 = fB * sy, vr3 = st3 * valY, c3 = vr3; rows.push({ n: "Hold to Year 5", w: "Month 60", st: st3, vr: vr3, c: c3, t: T_Y }); }
-    rows.forEach(function (r) { total += r.c; flows.push({ t: r.t, v: r.c }); });
-    return { rows: rows, total: total, moic: total / o.chq, irr: irr(flows), s0: s0, fA: fA, fB: fB, valY: valY };
+    var seedA = g.s0 * g.gA, seedB = seedA * g.gB;
+    var a1 = o.ca > 0 ? o.ca / g.postA : 0, a1B = a1 * g.gB, b1 = o.cb > 0 ? o.cb / g.postB : 0;
+    var rows = [], inv = o.chq + o.ca + o.cb, total = 0, flows = {};
+    function add(t, v) { flows[t] = (flows[t] || 0) + v; }
+    add(0, -o.chq);
+    rows.push({ n: "Invest at seed", w: "Month 0", st: g.s0, vr: o.chq, c: -o.chq, t: 0, inv: true });
+    if (o.ca > 0) { add(T_A, -o.ca); rows.push({ n: "Invest more at Series A", w: "Month 19", st: a1, vr: o.ca, c: -o.ca, t: T_A, inv: true }); }
+    if (sa > 0) { var st = seedA * sa, vr = st * g.postA, c = vr * dd; rows.push({ n: "Sell seed shares at Series A", w: "Month 19", st: st, vr: vr, c: c, t: T_A }); }
+    // follow-on shares from Series A: sold with the seed shares at B / Year 5; all held to Year 5 if the seed sells fully at A
+    var wB = (sb + sy) > 0.0001 ? sb / (sb + sy) : 0, wY = 1 - wB;
+    var seedBsold = seedB * sb, a1Bsold = a1B * wB;
+    if (seedBsold + a1Bsold > 0) { var stb = seedBsold + a1Bsold, vrb = stb * g.postB, cb = vrb * dd; rows.push({ n: o.ca > 0 ? "Sell at Series B" : "Sell seed shares at Series B", w: "Month 37", st: stb, vr: vrb, c: cb, t: T_B }); }
+    if (o.cb > 0) { add(T_B, -o.cb); rows.push({ n: "Invest more at Series B", w: "Month 37", st: b1, vr: o.cb, c: -o.cb, t: T_B, inv: true }); }
+    var yst = seedB * sy + a1B * wY + b1;
+    if (yst > 0.00001) { var vry = yst * valY; rows.push({ n: "Hold to Year 5", w: "Month 60", st: yst, vr: vry, c: vry, t: T_Y }); }
+    rows.forEach(function (r) { if (!r.inv) { total += r.c; add(r.t, r.c); } });
+    var fl = Object.keys(flows).map(function (k) { return { t: +k, v: flows[k] }; });
+    return { rows: rows, total: total, inv: inv, moic: total / inv, irr: irr(fl), g: g, valY: valY, usesY: yst > 0.00001 };
   }
 
   function exitFractions() {
@@ -744,19 +783,23 @@ tr.tot td { font-weight: 700; color: var(--white); }
 
   function read() {
     var ex = exitFractions(), sc = SCN[scn] || SCN.base;
-    return { chq: +el.chq.value, pa: +el.pa.value || sc.pa, pb: +el.pb.value || sc.pb, disc: +el.disc.value / 100, mult: +el.mult.value,
+    return { chq: Math.max(0.5, +el.chqn.value || 0.5), ca: +el.ca.value, cb: +el.cb.value, p0: +el.p0.value || 55, pa: +el.pa.value || sc.pa, pb: +el.pb.value || sc.pb, disc: +el.disc.value / 100, mult: +el.mult.value,
              ebitda: sc.ebitda, cash: sc.cash, sa: ex.sa, sb: ex.sb, mode: ex.m };
   }
 
   function setScenario(k) {
     scn = k; custom = false;
-    el.pa.value = SCN[k].pa; el.pb.value = SCN[k].pb;
+    el.p0.value = 55; el.pa.value = SCN[k].pa; el.pb.value = SCN[k].pb;
   }
 
   function render() {
-    var o = read(), r = model(o), sc = SCN[scn];
+    var o = read(), r = model(o), sc = SCN[scn], g = r.g;
     $("rc-chq-o").textContent = cr(o.chq);
-    $("rc-chq-n").textContent = "Buys " + fmt(r.s0 * 100, 1) + "% of Heseos at the ₹" + POST + " Cr post-money. The seed round is ₹" + SEED + " Cr in total.";
+    $("rc-chq-n").textContent = o.chq > SEED
+      ? "Above the ₹" + SEED + " Cr round: assumes the seed upsizes to ₹" + fmt(g.rnd, 1) + " Cr at the same ₹" + fmt(o.p0, 0) + " Cr pre-money (₹" + fmt(g.post0, 1) + " Cr post). Buys " + fmt(g.s0 * 100, 1) + "% of Heseos."
+      : "Buys " + fmt(g.s0 * 100, 1) + "% of Heseos at the ₹" + fmt(g.post0, 0) + " Cr post-money. The seed round is ₹" + SEED + " Cr in total.";
+    $("rc-ca-o").textContent = o.ca > 0 ? cr(o.ca) : "None";
+    $("rc-cb-o").textContent = o.cb > 0 ? cr(o.cb) : "None";
     $("rc-fa-o").textContent = Math.round(o.sa * 100) + "%";
     $("rc-fb-o").textContent = Math.round(o.sb * 100) + "%";
     $("rc-disc-o").textContent = Math.round(o.disc * 100) + "%";
@@ -766,32 +809,32 @@ tr.tot td { font-weight: 700; color: var(--white); }
     $("rc-scn-note").textContent = custom ? "Custom valuations" : "Year-5 EBITDA ₹" + sc.ebitda + " Cr · cash ₹" + sc.cash + " Cr";
     $("rc-mult-n").textContent = "Value = " + o.mult + " × ₹" + sc.ebitda + " Cr EBITDA + ₹" + sc.cash + " Cr cash = ₹" + fmt(r.valY, 0) + " Cr. An illustrative multiple, not a valuation view.";
     $("rc-split").hidden = o.mode !== "s";
-    var showY = (o.mode === "y") || (o.mode === "s" && sy > 0.0001);
-    $("rc-mult-f").hidden = !showY;
-    $("rc-disc-f").hidden = o.mode === "y";
+    $("rc-mult-f").hidden = !r.usesY;
+    $("rc-disc-f").hidden = o.mode === "y" && !r.rows.some(function (x) { return /Series [AB]$/.test(x.n) && !x.inv; });
     if (o.mode === "s") { el.fb.max = String(Math.round((1 - o.sa) * 100)); if (+el.fb.value > +el.fb.max) { el.fb.value = el.fb.max; return render(); } }
 
     $("rc-k-cash").textContent = fmt(r.total, 1);
+    $("rc-k-cashl").textContent = "Total ₹ Cr received";
     $("rc-k-moic").textContent = fmt(r.moic, 1) + "×";
     $("rc-k-irr").textContent = r.irr === null ? "–" : Math.round(r.irr * 100) + "%";
-    var gain = r.total - o.chq;
+    var gain = r.total - r.inv;
     $("rc-k-gain").textContent = (gain >= 0 ? "+" : "–") + fmt(Math.abs(gain), 1);
 
-    var max = Math.max(o.chq, r.total, 0.01);
-    var bars = '<div class="rc-bar"><span>Invested</span><div class="rc-track"><i style="width:' + (o.chq / max * 100) + '%;background:#5A5A5A"></i></div><span>' + fmt(o.chq, 1) + '</span></div>';
-    r.rows.forEach(function (x) { bars += '<div class="rc-bar"><span>' + x.n.replace("Sell at ", "").replace("Hold to ", "") + '</span><div class="rc-track"><i style="width:' + (x.c / max * 100) + '%;background:var(--grad)"></i></div><span>' + fmt(x.c, 1) + '</span></div>'; });
+    var max = Math.max(r.inv, r.total, 0.01);
+    var bars = '<div class="rc-bar"><span>Invested</span><div class="rc-track"><i style="width:' + (r.inv / max * 100) + '%;background:#5A5A5A"></i></div><span>' + fmt(r.inv, 1) + '</span></div>';
+    r.rows.forEach(function (x) { if (x.inv) return; bars += '<div class="rc-bar"><span>' + (x.t === T_A ? "Series A" : x.t === T_B ? "Series B" : "Year 5") + '</span><div class="rc-track"><i style="width:' + (x.c / max * 100) + '%;background:var(--grad)"></i></div><span>' + fmt(x.c, 1) + '</span></div>'; });
     $("rc-bars").innerHTML = bars;
 
-    var tl = '<tr><td>Invest at seed</td><td>Month 0</td><td>' + fmt(r.s0 * 100, 1) + '%</td><td>' + cr(o.chq) + '</td><td>–' + fmt(o.chq, 1) + '</td></tr>';
-    r.rows.forEach(function (x) { tl += '<tr><td>' + x.n + '</td><td>' + x.w + '</td><td>' + fmt(x.st * 100, 1) + '%</td><td>' + cr(x.vr) + '</td><td>' + fmt(x.c, 1) + '</td></tr>'; });
-    tl += '<tr class="tot"><td>Total</td><td></td><td></td><td></td><td>' + fmt(r.total, 1) + '</td></tr>';
+    var tl = "";
+    r.rows.forEach(function (x) { tl += '<tr><td>' + x.n + '</td><td>' + x.w + '</td><td>' + fmt(x.st * 100, 1) + '%</td><td>' + cr(x.vr) + '</td><td>' + (x.inv ? "–" : "") + fmt(Math.abs(x.c), 1) + '</td></tr>'; });
+    tl += '<tr class="tot"><td>Total received</td><td></td><td></td><td></td><td>' + fmt(r.total, 1) + '</td></tr>';
     $("rc-tl").innerHTML = tl;
 
     var pbs = [250, 325, 400, 500, 600], ds = [0, 0.1, 0.2, 0.3], sens = "";
     pbs.forEach(function (pb) {
       sens += "<tr><td>₹" + pb + " Cr pre-money</td>";
       ds.forEach(function (d) {
-        var m = model({ chq: o.chq, pa: o.pa, pb: pb, disc: d, mult: o.mult, ebitda: o.ebitda, cash: o.cash, sa: 0, sb: 1 }).moic;
+        var m = model({ chq: o.chq, p0: o.p0, ca: 0, cb: 0, pa: o.pa, pb: pb, disc: d, mult: o.mult, ebitda: o.ebitda, cash: o.cash, sa: 0, sb: 1 }).moic;
         var on = pb === o.pb && Math.abs(d - o.disc) < 0.001;
         sens += '<td class="' + (on ? "on" : m < 1 ? "lo" : "") + '">' + fmt(m, 1) + "×</td>";
       });
@@ -802,7 +845,7 @@ tr.tot td { font-weight: 700; color: var(--white); }
 
   function sync() { // pre-money fields drive the Custom label
     var sc = SCN[scn];
-    custom = (+el.pa.value !== sc.pa) || (+el.pb.value !== sc.pb);
+    custom = (+el.p0.value !== 55) || (+el.pa.value !== sc.pa) || (+el.pb.value !== sc.pb);
   }
 
   Array.prototype.forEach.call(document.querySelectorAll('input[name="rc-scn"]'), function (i) {
@@ -811,8 +854,15 @@ tr.tot td { font-weight: 700; color: var(--white); }
   Array.prototype.forEach.call(document.querySelectorAll('input[name="rc-exit"]'), function (i) {
     i.addEventListener("change", render);
   });
-  ["chq", "fa", "fb", "disc", "mult"].forEach(function (k) { el[k].addEventListener("input", render); });
-  ["pa", "pb"].forEach(function (k) { el[k].addEventListener("input", function () { sync(); render(); }); });
+  el.chq.addEventListener("input", function () { el.chqn.value = el.chq.value; render(); });
+  el.chqn.addEventListener("input", function () { var v = +el.chqn.value; if (v >= 0.5) { el.chq.value = Math.min(v, +el.chq.max); } render(); });
+  ["ca", "cb", "fa", "fb", "disc", "mult"].forEach(function (k) { el[k].addEventListener("input", render); });
+  $("rc-pr-a").addEventListener("click", function () { var o = read(); var g = gains(o); el.ca.value = Math.min(20, Math.round(g.s0 * RAISE_A * 2) / 2); render(); });
+  $("rc-pr-b").addEventListener("click", function () {
+    var o = read(), g = gains(o); var held = (g.s0 * g.gA) + (o.ca > 0 ? o.ca / g.postA : 0);
+    el.cb.value = Math.min(50, Math.round(held * g.gB * RAISE_B)); render();
+  });
+  ["p0", "pa", "pb"].forEach(function (k) { el[k].addEventListener("input", function () { sync(); render(); }); });
   setScenario("base"); render();
 })();
 </script>
