@@ -74,7 +74,7 @@ export default function InvestorActivityPanel({ r, loading }) {
             <tbody>
               {loading ? <tr><td colSpan={6} className="adm-empty">Loading…</td></tr> : rows.length === 0 ? <tr><td colSpan={6} className="adm-empty">Nobody has unlocked the proposal in this period.</td></tr> : rows.map((p) => (
                 <tr key={p.id} style={{ cursor: 'pointer' }} onClick={() => setModal(p)}>
-                  <td><div className="adm-lead-name">{p.name}</div><div className="adm-lead-sub">{p.phone} · {p.email}</div></td>
+                  <td><div className="adm-lead-name">{p.name}</div><div className="adm-lead-sub">{p.phone}</div></td>
                   <td>{when(p.acceptedAt)}</td>
                   <td>{when(p.lastOpenedAt)}</td>
                   <td>{p.views}</td>
@@ -98,10 +98,9 @@ function PersonModal({ p, slides, onClose }) {
   const order = slides.map((s) => s.id);
   const timeline = Object.entries(p.slides || {}).sort((a, b) => order.indexOf(a[0]) - order.indexOf(b[0]));
   return (
-    <Modal title={p.name} sub={`NDA v${p.ndaVersion} accepted ${when(p.acceptedAt)} · code entered via ${p.verifiedVia}`} onClose={onClose}>
+    <Modal title={p.name} sub={`NDA v${p.ndaVersion} accepted ${when(p.acceptedAt)}`} onClose={onClose}>
       <div className="adm-detail-grid">
         <div><span className="adm-detail-label">Phone</span>{p.phone}</div>
-        <div><span className="adm-detail-label">Email</span>{p.email}</div>
         <div><span className="adm-detail-label">Times opened</span>{p.views}</div>
         <div><span className="adm-detail-label">Total read time</span>{p.views ? dur(p.readSeconds) : '—'}</div>
         <div><span className="adm-detail-label">Scrolled</span>{p.views ? `${p.maxScroll}%` : '—'}</div>
@@ -123,7 +122,6 @@ function PersonModal({ p, slides, onClose }) {
       )}
       <div className="lf-actions" style={{ marginTop: 18 }}>
         <a className="adm-btn-outline" href={waLink(p.phone)} target="_blank" rel="noreferrer">WhatsApp {p.phone}</a>
-        <a className="adm-btn-outline" href={`mailto:${p.email}`}>Email</a>
       </div>
     </Modal>
   );

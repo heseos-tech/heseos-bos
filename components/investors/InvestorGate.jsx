@@ -4,13 +4,12 @@ import { useEffect, useRef, useState } from 'react';
 import Script from 'next/script';
 import { NDA_SECTIONS, NDA_TITLE, NDA_VERSION } from '@/lib/investorNda';
 
-// Step 1: name / mobile / email + NDA (must be opened and read to the end before the box can be
-// ticked). Step 2: 6-digit code sent to WhatsApp and email — either copy works.
+// Step 1: name / mobile + NDA (must be opened and read to the end before the box can be
+// ticked). Step 2: 6-digit code sent to their WhatsApp.
 export default function InvestorGate() {
   const [step, setStep] = useState('form'); // 'form' | 'otp'
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
-  const [email, setEmail] = useState('');
   const [ndaRead, setNdaRead] = useState(false);
   const [agreed, setAgreed] = useState(false);
   const [ndaOpen, setNdaOpen] = useState(false);
@@ -36,7 +35,7 @@ export default function InvestorGate() {
     setError('');
     setBusy(true);
     try {
-      const { ok, data } = await post('/api/investors/otp', { name, phone, email, ndaAccepted: agreed, ndaVersion: NDA_VERSION });
+      const { ok, data } = await post('/api/investors/otp', { name, phone, ndaAccepted: agreed, ndaVersion: NDA_VERSION });
       if (!ok) { setError(data.error || 'Something went wrong. Please try again.'); return false; }
       setChallenge(data);
       setCode('');
@@ -71,10 +70,6 @@ export default function InvestorGate() {
     } finally { setBusy(false); }
   };
 
-  const channels = challenge
-    ? [challenge.sent?.whatsapp && `WhatsApp (${challenge.to.whatsapp})`, challenge.sent?.email && `email (${challenge.to.email})`].filter(Boolean)
-    : [];
-
   return (
     <main className="inv-page">
       <Script src="/hs-track.js" data-page="investors" strategy="afterInteractive" />
@@ -86,7 +81,7 @@ export default function InvestorGate() {
         {step === 'form' ? (
           <form onSubmit={submitForm} noValidate>
             <h1 className="inv-h1">Request access</h1>
-            <p className="inv-sub">This document is shared only with people who agree to our NDA. We’ll send a one-time code to confirm it’s you.</p>
+            <p className="inv-sub">This document is shared only with people who agree to our NDA. We’ll send a one-time code to your WhatsApp to confirm it’s you.</p>
 
             <label className="inv-field">
               <span>Full name</span>
@@ -98,10 +93,6 @@ export default function InvestorGate() {
                 <i>+91</i>
                 <input value={phone} onChange={(e) => setPhone(e.target.value)} inputMode="tel" autoComplete="tel-national" placeholder="98765 43210" required />
               </div>
-            </label>
-            <label className="inv-field">
-              <span>Email</span>
-              <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" inputMode="email" autoComplete="email" placeholder="you@company.com" required />
             </label>
 
             <div className={`inv-nda ${agreed ? 'is-on' : ''}`}>
@@ -118,7 +109,7 @@ export default function InvestorGate() {
             </div>
 
             {error && <p className="inv-error" role="alert">{error}</p>}
-            <button className="inv-btn" type="submit" disabled={busy || !name.trim() || !phone.trim() || !email.trim() || !agreed}>
+            <button className="inv-btn" type="submit" disabled={busy || !name.trim() || !phone.trim() || !agreed}>
               {busy ? 'Sending code…' : 'Send me a code'}
             </button>
           </form>
@@ -126,8 +117,7 @@ export default function InvestorGate() {
           <form onSubmit={verify}>
             <h1 className="inv-h1">Enter your code</h1>
             <p className="inv-sub">
-              We sent a 6-digit code to {channels.length ? channels.join(' and ') : 'you'}.
-              {channels.length === 2 ? ' Either copy works.' : ''}
+              We sent a 6-digit code to your WhatsApp ({challenge?.to}).
               {challenge?.devCode ? ` (Dev: ${challenge.devCode})` : ''}
             </p>
             <input

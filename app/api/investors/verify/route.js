@@ -1,5 +1,4 @@
-// POST /api/investors/verify — step 2: checks the code (from WhatsApp OR email, they're the same
-// code), records the NDA acceptance and sets the signed access cookie.
+// POST /api/investors/verify — step 2: checks the WhatsApp code, records the NDA acceptance and sets the signed access cookie.
 import { NextResponse } from 'next/server';
 import { dbGetById, dbPatch } from '@/lib/db';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
@@ -35,8 +34,8 @@ export async function POST(request) {
   }
 
   await dbPatch('investor_otps', id, { used: true, usedAt: new Date().toISOString() });
-  const via = ch.sentWhatsApp && ch.sentEmail ? 'whatsapp/email' : ch.sentWhatsApp ? 'whatsapp' : ch.sentEmail ? 'email' : 'dev';
-  const row = await recordAccept({ name: ch.name, phone: ch.phone, email: ch.email, via, ip, ua: request.headers.get('user-agent') });
+  const via = ch.sentWhatsApp ? 'whatsapp' : 'dev';
+  const row = await recordAccept({ name: ch.name, phone: ch.phone, via, ip, ua: request.headers.get('user-agent') });
   notifyTeamOfAccess(row);
 
   const res = NextResponse.json({ ok: true });
