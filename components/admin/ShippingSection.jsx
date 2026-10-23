@@ -7,13 +7,22 @@ import { useState } from 'react';
 import { velocityStatusLabel } from '@/lib/velocityStatusLabels';
 
 export function canCreateShipment(order) {
-  return !!order && ['confirmed', 'packed', 'shipped'].includes(order.status) && !order.shipping?.awb;
+  const sh = order?.shipping;
+  return !!order && ['confirmed', 'packed', 'shipped'].includes(order.status) && (!sh?.shipmentId || sh.status === 'cancelled');
 }
 
 function CompactShipping({ order, sh, onAction }) {
   const [busy, setBusy] = useState(false);
   async function run(a) { setBusy(true); try { await onAction(a); } finally { setBusy(false); } }
   const line = { fontSize: 12.5, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginTop: 8 };
+  if (sh?.status === 'cancelled') {
+    return (
+      <div style={line}>
+        <span>🚚 Shipment cancelled</span>
+        <button type="button" className="hp-btn hp-btn-outline hp-btn-sm" disabled={busy} onClick={() => run('create')}>{busy ? 'Sending…' : 'Send again'}</button>
+      </div>
+    );
+  }
   if (sh?.awb) {
     return (
       <div style={line}>
@@ -31,11 +40,11 @@ function CompactShipping({ order, sh, onAction }) {
       </div>
     );
   }
-  if (sh?.shipmentId) return <div style={line}><span>🚚 Waiting for a courier</span></div>;
+  if (sh?.shipmentId) return <div style={line}><span>🚚 Waiting for a courier in Velocity</span></div>;
   if (order.status === 'packed') {
     return (
       <div style={line}>
-        <span>🚚 Not sent to courier yet</span>
+        <span>🚚 Not sent to Velocity yet</span>
         <button type="button" className="hp-btn hp-btn-outline hp-btn-sm" disabled={busy} onClick={() => run('create')}>{busy ? 'Sending…' : 'Send'}</button>
       </div>
     );
@@ -68,11 +77,11 @@ export default function ShippingSection({ order, onAction, compact = false }) {
       ) : sh?.error ? (
         <div style={{ color: '#c0392b', fontWeight: 600 }}>⚠ {sh.error}</div>
       ) : (
-        <div>{sh?.shipmentId ? 'Order created in Velocity — waiting for a courier.' : 'Not sent to Velocity yet. It is sent automatically when the order is marked Packed.'}</div>
+        <div>{sh?.shipmentId ? 'Sent to Velocity — Operations pick the courier there. The courier and tracking appear here once it is assigned.' : 'Not sent to Velocity yet. It is sent automatically when the order is marked Packed.'}</div>
       )}
       {sh?.cancelError && <div style={{ color: '#c0392b', fontWeight: 600 }}>⚠ Cancel failed: {sh.cancelError}</div>}
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
-        {canShip && <button type="button" className={btn} disabled={busy} onClick={() => run('create')}>{busy ? 'Working…' : sh?.error || sh?.shipmentId ? 'Retry shipment' : 'Create shipment'}</button>}
+        {canShip && <button type="button" className={btn} disabled={busy} onClick={() => run('create')}>{busy ? 'Working…' : sh?.status === 'cancelled' ? 'Send to Velocity again' : sh?.error ? 'Retry' : 'Send to Velocity'}</button>}
         {sh?.awb && <button type="button" className={btn} disabled={busy} onClick={() => run('sync')}>Refresh tracking</button>}
         {canCancel && <button type="button" className={btn} disabled={busy} onClick={() => run('cancel')}>Cancel shipment</button>}
       </div>

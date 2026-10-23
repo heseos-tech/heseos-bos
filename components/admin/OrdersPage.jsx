@@ -103,7 +103,7 @@ export default function OrdersPage() {
     const updated = await patchOrder(order.id, { shipping: action });
     setModal({ type: 'view', order: updated });
     if (updated.shippingError) flash(`Velocity: ${updated.shippingError}`);
-    else flash(action === 'create' ? 'Shipment created with Velocity' : action === 'sync' ? 'Tracking refreshed' : 'Cancellation requested');
+    else flash(action === 'create' ? 'Sent to Velocity — pick the courier there' : action === 'sync' ? 'Tracking refreshed' : 'Cancellation requested');
   }
 
   async function markPaid(order) {
