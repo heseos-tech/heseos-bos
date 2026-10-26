@@ -9,6 +9,7 @@
 // filling this in from here is exactly what shows up there too.
 import { useState, useEffect, useCallback } from 'react';
 import { ScreenHeader, TextField, SelectField, Button, useAppBase } from './ui';
+import PincodeField, { usePincodeLookup } from './PincodeField';
 import { IconBuilding, IconTag, IconUser, IconPhone, IconMapPin, IconFile } from './icons';
 import { PARTNER_CATEGORY } from '@/lib/formOptions';
 
@@ -37,8 +38,6 @@ export default function MyProfileScreen() {
   const [category, setCategory] = useState('');
   const [addressLine, setAddressLine] = useState('');
   const [pincode, setPincode] = useState('');
-  const [city, setCity] = useState('');
-  const [state, setState] = useState('');
   const [gstNumber, setGstNumber] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -53,12 +52,12 @@ export default function MyProfileScreen() {
       setCategory(PARTNER_CATEGORY.some((c) => c.v === p.type) ? p.type : '');
       setAddressLine(p.addressLine || '');
       setPincode(p.pincode || '');
-      setCity(p.city || '');
-      setState(p.state || '');
       setGstNumber(p.gstNumber || '');
     });
   }, []);
   useEffect(() => { load(); }, [load]);
+  // City + state are read from the pincode, never typed.
+  const area = usePincodeLookup(pincode);
 
   function flash(msg) { setToast(msg); setTimeout(() => setToast(''), 2500); }
 
@@ -68,15 +67,14 @@ export default function MyProfileScreen() {
     || category !== (PARTNER_CATEGORY.some((c) => c.v === partner.type) ? partner.type : '')
     || addressLine.trim() !== (partner.addressLine || '')
     || pincode.trim() !== (partner.pincode || '')
-    || city.trim() !== (partner.city || '')
-    || state.trim() !== (partner.state || '')
     || gstNumber.trim() !== (partner.gstNumber || '')
   );
 
   async function save() {
     if (!partnerName.trim()) { setError('Partner name cannot be empty'); return; }
     if (!category) { setError('Please choose your partner category'); return; }
-    if (pincode.trim() && !PINCODE_RE.test(pincode.trim())) { setError('Pincode must be 6 digits'); return; }
+    if (!PINCODE_RE.test(pincode.trim())) { setError('Please enter your 6-digit pincode'); return; }
+    if (pincode.trim() !== (partner.pincode || '') && area.status !== 'ok') { setError(area.status === 'loading' ? 'Checking your pincode — one moment' : 'Please enter a pincode we can find a city for'); return; }
     if (gstNumber.trim() && !GST_RE.test(gstNumber.trim().toUpperCase())) { setError('That doesn\u2019t look like a valid GSTIN (e.g. 22AAAAA0000A1Z5)'); return; }
     setError(''); setSaving(true);
     try {
@@ -89,8 +87,6 @@ export default function MyProfileScreen() {
           type: category,
           addressLine: addressLine.trim(),
           pincode: pincode.trim(),
-          city: city.trim(),
-          state: state.trim(),
           gstNumber: gstNumber.trim().toUpperCase(),
         }),
       });
@@ -145,26 +141,12 @@ export default function MyProfileScreen() {
                 onChange={(e) => setAddressLine(e.target.value)}
                 placeholder="Shop / building, street, area"
               />
-              <TextField
-                label="Pincode"
-                value={pincode}
-                onChange={(e) => setPincode(e.target.value.replace(/[^0-9]/g, '').slice(0, 6))}
-                inputMode="numeric"
-                maxLength={6}
-                placeholder="560034"
-              />
-              <TextField
-                label="City"
-                value={city}
-                onChange={(e) => setCity(e.target.value)}
-                placeholder="e.g. Pune"
-              />
-              <TextField
-                label="State"
-                value={state}
-                onChange={(e) => setState(e.target.value)}
-                placeholder="e.g. Maharashtra"
-              />
+              <PincodeField label="Pincode" value={pincode} onChange={setPincode} lookup={area} placeholder="560034" />
+              {/* City + state come from the pincode — shown, never typed. Before the pincode is edited
+                  they show what's already on the account (older accounts may list several cities). */}
+              {area.status === 'idle' && (partner.city || partner.state) && (
+                <div className="hp-hint">{[partner.city, partner.state].filter(Boolean).join(', ')}</div>
+              )}
               <TextField
                 label="GST Number (optional)"
                 icon={<IconFile size={18} />}

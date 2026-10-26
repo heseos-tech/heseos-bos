@@ -4,12 +4,15 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Button, TextField, Checkbox } from '@/components/partner/ui';
 import { IconUserPlus, IconPhone, IconLock } from '@/components/partner/icons';
+import PincodeField, { usePincodeLookup } from '@/components/partner/PincodeField';
 
 export default function PartnerSignupPage() {
   const router = useRouter();
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
+  const [pincode, setPincode] = useState('');
+  const area = usePincodeLookup(pincode);
   const [agree, setAgree] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -17,13 +20,15 @@ export default function PartnerSignupPage() {
   async function submit(e) {
     e.preventDefault();
     setError('');
+    if (!/^\d{6}$/.test(pincode)) { setError('Please enter your 6-digit pincode.'); return; }
+    if (area.status !== 'ok') { setError(area.status === 'loading' ? 'Checking your pincode — one moment.' : 'Please enter a pincode we can find a city for.'); return; }
     if (!agree) { setError('Please agree to the Terms & Conditions to continue.'); return; }
     setLoading(true);
     try {
       const res = await fetch('/api/auth/partner/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, phone, password }),
+        body: JSON.stringify({ name, phone, password, pincode }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || 'Could not create your account');
@@ -59,6 +64,7 @@ export default function PartnerSignupPage() {
             <form onSubmit={submit}>
               <TextField icon={<IconUserPlus size={18} />} placeholder="Full Name" value={name} onChange={(e) => setName(e.target.value)} required />
               <TextField icon={<IconPhone size={18} />} placeholder="Mobile Number" value={phone} onChange={(e) => setPhone(e.target.value)} inputMode="numeric" required />
+              <PincodeField value={pincode} onChange={setPincode} lookup={area} placeholder="Pincode (6 digits)" />
               <TextField icon={<IconLock size={18} />} type="password" placeholder="Create Password" value={password} onChange={(e) => setPassword(e.target.value)} required />
 
               <Checkbox checked={agree} onChange={() => setAgree((a) => !a)}>

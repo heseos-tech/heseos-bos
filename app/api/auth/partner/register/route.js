@@ -3,15 +3,16 @@
 // account (hashed password, same pbkdf2 scheme as everywhere else in lib/auth.js), then signs
 // the partner straight in, matching the mobile app's "Create Account" → dashboard flow.
 //
-// The Installer app (/installer/signup) uses this same endpoint with `type: 'installer'` + `city`
-// — an installation partner is just a partner of type 'installer' whose city (or cities, comma
-// separated) decides which installation jobs they can see and claim (lib/installJobs.js). No
+// The Installer app (/installer/signup) uses this same endpoint with `type: 'installer'` — an
+// installation partner is just a partner of type 'installer' whose city (looked up from the pincode they
+// sign up with; older accounts may hold several, comma separated) decides which installation jobs they can see and claim (lib/installJobs.js). No
 // Heseos staff step is needed; Admin can still deactivate an account from Admin → Partners.
 
 import { NextResponse } from 'next/server';
 import { dbList, dbInsert } from '@/lib/db';
 import { hashPassword, encodePartnerSession, PARTNER_COOKIE } from '@/lib/auth';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
+import { resolveServiceArea } from '@/lib/pincodeLookup';
 
 export async function POST(request) {
   // Per-IP throttle (storage-backed, see lib/rateLimit.js) — checked first so a blocked request
@@ -25,22 +26,17 @@ export async function POST(request) {
   const password = String(body.password || '');
   const businessName = String(body.businessName || '').trim();
   const isInstaller = body.type === 'installer';
-  // Cities as typed: "Pune" or "Pune, Mumbai". Tidied (trimmed, de-duplicated) but kept readable.
-  const cities = [];
-  for (const raw of String(body.city || '').split(/[,/;]/)) {
-    const c = raw.trim().replace(/\s+/g, ' ').replace(/(^|\s)(\p{L})/gu, (m, sp, ch) => sp + ch.toUpperCase());
-    if (c && !cities.some((x) => x.toLowerCase() === c.toLowerCase())) cities.push(c);
-  }
-  const city = cities.join(', ');
 
   if (!name || !password) return NextResponse.json({ error: 'Name and password are required' }, { status: 400 });
   if (phoneDigits.length !== 10) return NextResponse.json({ error: 'Please enter a valid 10-digit mobile number' }, { status: 400 });
   if (password.length < 6) return NextResponse.json({ error: 'Password must be at least 6 characters' }, { status: 400 });
 
-  if (isInstaller) {
-    if (!city) return NextResponse.json({ error: 'Please enter the city you work in' }, { status: 400 });
-    if (city.length > 120 || cities.length > 10) return NextResponse.json({ error: 'Please enter up to 10 cities' }, { status: 400 });
-  }
+  // Pincode is mandatory for every partner and installer. City + state are never taken from the
+  // client — they come from the pincode (India Post lookup), so nobody can type a made-up city.
+  // For an installer that city is what decides which installation jobs they can see and claim.
+  const area = await resolveServiceArea(body.pincode);
+  if (!area.ok) return NextResponse.json({ error: area.error }, { status: area.status });
+  const { pincode, city, state } = area;
 
   const partners = await dbList('partners');
   const exists = partners.some((p) => String(p.phone || '').replace(/\D/g, '').slice(-10) === phoneDigits);
@@ -54,7 +50,10 @@ export async function POST(request) {
     phone: phoneDigits,
     password: await hashPassword(password),
     type: isInstaller ? 'installer' : 'shop',
-    ...(isInstaller ? { city, signupVia: 'installer_app' } : {}),
+    pincode,
+    city,
+    ...(state ? { state } : {}),
+    ...(isInstaller ? { signupVia: 'installer_app' } : {}),
     active: true,
     createdAt: new Date().toISOString(),
   };

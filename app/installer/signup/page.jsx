@@ -3,16 +3,19 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Button, TextField, Checkbox } from '@/components/partner/ui';
-import { IconUserPlus, IconPhone, IconLock, IconMapPin } from '@/components/partner/icons';
+import { IconUserPlus, IconPhone, IconLock } from '@/components/partner/icons';
+import PincodeField, { usePincodeLookup } from '@/components/partner/PincodeField';
 
 // Installer app self sign-up — an installation partner creates their own account (no Heseos staff
-// step). Uses the same endpoint as the Partner app's sign-up with `type: 'installer'`; the city
-// (or cities) entered here decides which installation jobs they can see and claim.
+// step). Uses the same endpoint as the Partner app's sign-up with `type: 'installer'`; the pincode
+// entered here gives their city (looked up, never typed), which decides which installation jobs they
+// can see and claim.
 export default function InstallerSignupPage() {
   const router = useRouter();
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
-  const [city, setCity] = useState('');
+  const [pincode, setPincode] = useState('');
+  const area = usePincodeLookup(pincode);
   const [password, setPassword] = useState('');
   const [agree, setAgree] = useState(false);
   const [error, setError] = useState('');
@@ -21,14 +24,15 @@ export default function InstallerSignupPage() {
   async function submit(e) {
     e.preventDefault();
     setError('');
-    if (!city.trim()) { setError('Please enter the city you work in.'); return; }
+    if (!/^\d{6}$/.test(pincode)) { setError('Please enter the 6-digit pincode of the area you work in.'); return; }
+    if (area.status !== 'ok') { setError(area.status === 'loading' ? 'Checking your pincode — one moment.' : 'Please enter a pincode we can find a city for.'); return; }
     if (!agree) { setError('Please agree to the Terms & Conditions to continue.'); return; }
     setLoading(true);
     try {
       const res = await fetch('/api/auth/partner/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, phone, password, city, type: 'installer' }),
+        body: JSON.stringify({ name, phone, password, pincode, type: 'installer' }),
       });
       const raw = await res.text();
       let data = {};
@@ -59,7 +63,7 @@ export default function InstallerSignupPage() {
             <form onSubmit={submit}>
               <TextField icon={<IconUserPlus size={18} />} placeholder="Full Name" value={name} onChange={(e) => setName(e.target.value)} required />
               <TextField icon={<IconPhone size={18} />} placeholder="Mobile Number" value={phone} onChange={(e) => setPhone(e.target.value)} inputMode="numeric" required />
-              <TextField icon={<IconMapPin size={18} />} placeholder="City you work in (e.g. Pune, Mumbai)" value={city} onChange={(e) => setCity(e.target.value)} required />
+              <PincodeField value={pincode} onChange={setPincode} lookup={area} placeholder="Pincode of the area you work in" />
               <TextField icon={<IconLock size={18} />} type="password" placeholder="Create Password" value={password} onChange={(e) => setPassword(e.target.value)} required />
 
               <Checkbox checked={agree} onChange={() => setAgree((a) => !a)}>

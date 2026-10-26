@@ -15,6 +15,7 @@
 import { dbPatch } from '@/lib/db';
 import { getPartner, invalidateAccountCache } from '@/lib/auth';
 import { PARTNER_CATEGORY } from '@/lib/formOptions';
+import { resolveServiceArea } from '@/lib/pincodeLookup';
 
 export const dynamic = 'force-dynamic';
 
@@ -62,18 +63,19 @@ export async function PATCH(request) {
     patch.addressLine = String(body.addressLine || '').trim();
   }
 
-  if (body.city !== undefined) {
-    patch.city = String(body.city || '').trim();
-  }
-
-  if (body.state !== undefined) {
-    patch.state = String(body.state || '').trim();
-  }
-
+  // City and state are never self-entered — they follow the pincode (India Post lookup). Any `city` /
+  // `state` in the request is ignored. The pincode can't be blank; it's only re-resolved when it changes,
+  // so an older installer with several coverage cities keeps them until they actually change pincode.
   if (body.pincode !== undefined) {
     const pincode = String(body.pincode || '').trim();
-    if (pincode && !PINCODE_RE.test(pincode)) return Response.json({ error: 'Pincode must be 6 digits' }, { status: 400 });
-    patch.pincode = pincode;
+    if (!PINCODE_RE.test(pincode)) return Response.json({ error: 'Pincode must be 6 digits' }, { status: 400 });
+    if (pincode !== String(partner.pincode || '')) {
+      const area = await resolveServiceArea(pincode);
+      if (!area.ok) return Response.json({ error: area.error }, { status: area.status });
+      patch.pincode = area.pincode;
+      patch.city = area.city;
+      patch.state = area.state;
+    }
   }
 
   if (body.gstNumber !== undefined) {
