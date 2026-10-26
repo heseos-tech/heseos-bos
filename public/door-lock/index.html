@@ -79,8 +79,8 @@
         <div class="field"><label for="name">Full name *</label><input id="name" name="name" placeholder="Your name" required autocomplete="name" maxlength="80"></div>
         <div class="field"><label for="phone">Mobile number (WhatsApp) *</label><input id="phone" name="phone" type="tel" inputmode="numeric" placeholder="98765 43210" required autocomplete="tel" maxlength="16"></div>
         <div class="field"><label for="pincode">Pincode *</label><input id="pincode" name="pincode" inputmode="numeric" placeholder="6-digit pincode" required autocomplete="postal-code" maxlength="6"><small id="pinHint" style="display:block;margin-top:5px;font-size:12px;color:#8fa0b5;min-height:15px"></small></div>
-        <div class="field"><label for="city">City *</label><input id="city" name="city" placeholder="Filled from your pincode" required autocomplete="address-level2" maxlength="60"></div>
-        <div class="field full"><label for="state">State *</label><select id="state" name="state" required autocomplete="address-level1"><option value="">Select your state</option></select></div>
+        <div class="field"><label for="city">City</label><input id="city" name="city" placeholder="Filled from your pincode" readonly tabindex="-1" autocomplete="off" style="background:#0e1117;color:#c9d1dc;cursor:default"></div>
+        <div class="field full"><label for="state">State</label><input id="state" name="state" placeholder="Filled from your pincode" readonly tabindex="-1" autocomplete="off" style="background:#0e1117;color:#c9d1dc;cursor:default"></div>
         <div class="field full"><label for="address">Full delivery address *</label><textarea id="address" name="address" placeholder="House / flat no., building, street, area" required maxlength="300"></textarea></div>
         <div class="field full"><label for="quantity">Quantity</label><select id="quantity" name="quantity"><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select></div>
         <div class="hp-field" aria-hidden="true"><label>Website <input name="website" tabindex="-1" autocomplete="off"></label></div>
@@ -139,23 +139,22 @@
  // The WhatsApp link carries ?p=<mobile> — only pre-fills the field.
  try{var p=new URLSearchParams(location.search).get('p'); if(p&&/^\d{10}$/.test(p)) $('phone').value=p;}catch(e){}
 
- // Pincode first: the 6th digit fills city + state (the customer can still change either).
- var STATES=['Andaman and Nicobar Islands','Andhra Pradesh','Arunachal Pradesh','Assam','Bihar','Chandigarh','Chhattisgarh','Dadra and Nagar Haveli and Daman and Diu','Delhi','Goa','Gujarat','Haryana','Himachal Pradesh','Jammu and Kashmir','Jharkhand','Karnataka','Kerala','Ladakh','Lakshadweep','Madhya Pradesh','Maharashtra','Manipur','Meghalaya','Mizoram','Nagaland','Odisha','Puducherry','Punjab','Rajasthan','Sikkim','Tamil Nadu','Telangana','Tripura','Uttar Pradesh','Uttarakhand','West Bengal'];
+ // Pincode first: the 6th digit fills city + state. They are read-only — never typed — so the city is always a real one.
+ var found=false,notFound=false;
  (function(){
    var sel=$('state'),pin=$('pincode'),hint=$('pinHint'),city=$('city'),last='';
-   STATES.forEach(function(n){var o=document.createElement('option');o.value=n;o.textContent=n;sel.appendChild(o);});
+   found=false; notFound=false;
    function lookup(){
      var v=pin.value.replace(/\D/g,'');
      if(v!==pin.value) pin.value=v;
-     if(v.length<6){hint.textContent='';last='';return;}
+     if(v.length<6){hint.textContent='';last='';city.value='';sel.value='';found=false;notFound=false;return;}
      if(v===last) return; last=v;
-     hint.textContent='Finding your city and state\u2026';
+     hint.textContent='Finding your city and state\u2026'; found=false; notFound=false; city.value=''; sel.value='';
      fetch('/api/shop/pincode?pin='+v).then(function(r){return r.json();}).then(function(j){
        if(pin.value!==v) return;
-       if(j.city) city.value=j.city;
-       if(j.state) sel.value=j.state;
-       hint.textContent=(j.city||j.state)?'\u2713 '+[j.city,j.state].filter(Boolean).join(', '):'Please enter your city and select your state.';
-     }).catch(function(){hint.textContent='Please enter your city and select your state.';});
+       city.value=j.city||''; sel.value=j.state||''; found=!!j.city; notFound=!j.city;
+       hint.textContent=j.city?'\u2713 '+[j.city,j.state].filter(Boolean).join(', '):'We could not find this pincode. Please check it.';
+     }).catch(function(){notFound=false;hint.textContent='Could not check the pincode right now \u2014 we will confirm it when you place the order.';});
    }
    pin.addEventListener('input',lookup);
    if(pin.value) lookup();
@@ -176,9 +175,8 @@
    if(body.name.length<2) return fail('Please enter your full name.');
    if(!/^[6-9]\d{9}$/.test(digits)) return fail('Please enter a valid 10-digit mobile number.');
    if(body.address.length<8) return fail('Please enter your full delivery address.');
-   if(body.city.length<2) return fail('Please enter your city.');
-   if(!body.state) return fail('Please select your state.');
    if(!/^\d{6}$/.test(body.pincode)) return fail('Please enter a valid 6-digit pincode.');
+   if(notFound) return fail('We could not find this pincode. Please check it.');
    btn.disabled=true; btn.firstChild.textContent='Placing your order\u2026 ';
    fetch('/api/shop/door-lock',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
      .then(function(r){return r.json().catch(function(){return {};}).then(function(j){return {ok:r.ok,j:j};});})

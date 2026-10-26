@@ -9,6 +9,8 @@
 // whatever number is typed in: a hidden honeypot field, a per-IP rate limit, a per-phone cap, and
 // `clientRef` de-duplication so a double-tap or browser retry never creates two leads.
 import { dbList, dbGetById } from '@/lib/db';
+import { lookupPincode, matchOperatingCity } from '@/lib/pincodeLookup';
+import { getCities } from '@/lib/cities';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { PRODUCT_INTEREST, PROPERTY_TYPE, BUDGET_BY_PROPERTY, TIMELINE } from '@/lib/formOptions';
 import { indianMobile } from '@/lib/heseosDoorLock';
@@ -34,13 +36,19 @@ export async function POST(request) {
 
   const name = clean(body?.name, 80);
   const mobile = indianMobile(body?.phone);
-  const city = clean(body?.city, 60);
+  const pincode = String(body?.pincode || '').replace(/\D/g, '');
   const notes = clean(body?.notes, 400);
   const clientRef = clean(body?.clientRef, 64) || null;
 
   if (name.length < 2) return Response.json({ error: 'Please enter your full name.' }, { status: 400 });
   if (!mobile) return Response.json({ error: 'Please enter a valid 10-digit mobile number.' }, { status: 400 });
-  if (city.length < 2) return Response.json({ error: 'Please select or enter your city.' }, { status: 400 });
+  if (!/^\d{6}$/.test(pincode)) return Response.json({ error: 'Please enter a valid 6-digit pincode.' }, { status: 400 });
+  // City is never typed — it comes from the pincode (and is mapped onto Admin → Settings → Cities so the
+  // pre-sales auto-assignment, which matches by city name, finds the right team).
+  const area = await lookupPincode(pincode);
+  if (!area.city) return Response.json({ error: 'We couldn\u2019t find this pincode. Please check it and try again.' }, { status: 400 });
+  const city = clean(matchOperatingCity(area.city, await getCities().catch(() => [])), 60);
+  const state = area.state || '';
 
   // Only ever store vocabulary the rest of the app understands (lib/formOptions.js) — anything else
   // is dropped rather than rejected, so a stale cached page can never block a real enquiry.
@@ -71,7 +79,7 @@ export async function POST(request) {
   let result;
   try {
     result = await createHeseosLandingLead({
-      name, phone: mobile, city, propertyType, budget, timeline, productInterest, notes, link, pageUrl: '/smart-home', clientRef, viaWhatsApp: body?.via === 'wa',
+      name, phone: mobile, city, state, pincode, propertyType, budget, timeline, productInterest, notes, link, pageUrl: '/smart-home', clientRef, viaWhatsApp: body?.via === 'wa',
     });
   } catch (err) {
     console.error('POST /api/leads/landing error:', err);

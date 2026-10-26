@@ -230,8 +230,8 @@
       <div class="formgrid">
         <div class="field"><label for="name">Full name *</label><input id="name" name="name" placeholder="Your name" required autocomplete="name" maxlength="80"></div>
         <div class="field"><label for="phone">Mobile number (WhatsApp) *</label><input id="phone" name="phone" type="tel" inputmode="numeric" placeholder="98765 43210" required autocomplete="tel" maxlength="16"></div>
-        <div class="field"><label for="city">City *</label><select id="city" name="city" required><option value="">Loading cities…</option></select></div>
-        <div class="field" id="cityOtherWrap" style="display:none"><label for="cityOther">Your city *</label><input id="cityOther" name="cityOther" placeholder="Type your city" maxlength="60" autocomplete="address-level2"></div>
+        <div class="field"><label for="pincode">Pincode *</label><input id="pincode" name="pincode" inputmode="numeric" placeholder="6-digit pincode" required autocomplete="postal-code" maxlength="6"><small id="pinHint" style="display:block;margin-top:5px;font-size:12px;color:#8fa0b5;min-height:15px"></small></div>
+        <div class="field"><label for="city">City</label><input id="city" name="city" placeholder="Filled from your pincode" readonly tabindex="-1" autocomplete="off" style="background:#0e1117;color:#c9d1dc;cursor:default"><input type="hidden" id="state" name="state"></div>
         <div class="field"><label for="propertyType">Property type</label><select id="propertyType" name="propertyType"><option value="">Select property type</option><option value="1bhk">1 BHK Apartment</option><option value="2bhk">2 BHK Apartment</option><option value="3bhk_plus">3 BHK &amp; Above / Villa</option><option value="commercial">Office / Commercial</option></select></div>
         <div class="field"><label for="budget">Approximate budget</label><select id="budget" name="budget" disabled><option value="">Select property type first</option></select></div>
         <div class="field"><label for="timeline">When do you plan to start?</label><select id="timeline" name="timeline"><option value="">Select timeline</option><option value="within_15d">Within 15 days</option><option value="within_30d">Within 30 days</option><option value="within_45d">Within 45 days</option><option value="beyond_45d">45 days &amp; beyond</option></select></div>
@@ -289,30 +289,22 @@
    bd.innerHTML='<option value="">Select budget</option>'+list.map(function(b){return '<option value="'+b[0]+'">'+b[1]+'</option>';}).join('');
  });
 
- // Cities come from the admin-managed list (Admin -> Settings -> Cities), so leads route to the right
- // pre-sales team. "Other" lets someone outside those cities still enquire.
- var city=$('city'),cityOtherWrap=$('cityOtherWrap'),cityOther=$('cityOther');
- function fillCities(list){
-   city.innerHTML='<option value="">Select your city</option>'+list.map(function(c){return '<option>'+String(c).replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</option>';}).join('')+'<option value="__other">Other city…</option>';
+ // Pincode first: the 6th digit fills the city (read-only — never typed, so it is always a real city that the
+ // pre-sales routing can match). The server looks the pincode up again and ignores whatever city is posted.
+ var city=$('city'),stateEl=$('state'),pin=$('pincode'),hint=$('pinHint'),lastPin='',notFound=false;
+ function lookupPin(){
+   var v=pin.value.replace(/\D/g,'');
+   if(v!==pin.value) pin.value=v;
+   if(v.length<6){hint.textContent='';lastPin='';city.value='';stateEl.value='';notFound=false;return;}
+   if(v===lastPin) return; lastPin=v;
+   hint.textContent='Finding your city\u2026'; city.value=''; stateEl.value=''; notFound=false;
+   fetch('/api/shop/pincode?pin='+v).then(function(r){return r.json();}).then(function(j){
+     if(pin.value!==v) return;
+     city.value=j.city||''; stateEl.value=j.state||''; notFound=!j.city;
+     hint.textContent=j.city?'\u2713 '+[j.city,j.state].filter(Boolean).join(', '):'We could not find this pincode. Please check it.';
+   }).catch(function(){notFound=false;hint.textContent='Could not check the pincode right now \u2014 we will confirm it when you submit.';});
  }
- fillCities([]);
- // ?c=<city> (sent by the WhatsApp card when we already know the partner's / placement's city) only
- // PRE-SELECTS a city; the customer can change it.
- var wantCity='';
- try{wantCity=(new URLSearchParams(location.search).get('c')||'').trim().slice(0,60);}catch(e){}
- function applyWantCity(){
-   if(!wantCity||city.value)return;
-   var hit=[].slice.call(city.options).filter(function(o){return o.value&&o.value!=='__other'&&o.value.toLowerCase()===wantCity.toLowerCase();})[0];
-   if(hit){city.value=hit.value;}
-   else{city.value='__other';cityOtherWrap.style.display='';cityOther.value=wantCity;}
- }
- fetch('/api/cities',{cache:'no-store'}).then(function(r){return r.ok?r.json():null;}).then(function(d){
-   if(d&&Array.isArray(d.cities)&&d.cities.length){var cur=city.value;fillCities(d.cities);if(cur)city.value=cur;}
-   applyWantCity();
- }).catch(function(){applyWantCity();});
- city.addEventListener('change',function(){
-   var o=city.value==='__other'; cityOtherWrap.style.display=o?'':'none'; if(o)cityOther.focus();
- });
+ pin.addEventListener('input',lookupPin);
 
  // ?p=<mobile> pre-fills the number; ?ref=<code> credits a partner / QR / referral link (kept for the visit)
  var ref='', via='';
@@ -332,9 +324,8 @@
  form.addEventListener('submit',function(e){
    e.preventDefault(); err.style.display='none';
    var d=new FormData(form);
-   var cityVal=(d.get('city')||'')==='__other'?(d.get('cityOther')||'').trim():(d.get('city')||'').trim();
    var body={
-     name:(d.get('name')||'').trim(), phone:(d.get('phone')||'').trim(), city:cityVal,
+     name:(d.get('name')||'').trim(), phone:(d.get('phone')||'').trim(), pincode:(d.get('pincode')||'').trim(),
      propertyType:d.get('propertyType')||'', budget:d.get('budget')||'', timeline:d.get('timeline')||'',
      productInterest:d.getAll('interest'), notes:(d.get('notes')||'').trim(),
      website:d.get('website')||'', clientRef:clientRef, ref:ref, via:via
@@ -342,7 +333,8 @@
    var digits=body.phone.replace(/\D/g,'').replace(/^91(?=\d{10}$)/,'').replace(/^0(?=\d{10}$)/,'');
    if(body.name.length<2) return fail('Please enter your full name.');
    if(!/^[6-9]\d{9}$/.test(digits)) return fail('Please enter a valid 10-digit mobile number.');
-   if(!body.city||body.city.length<2) return fail('Please select or enter your city.');
+   if(!/^\d{6}$/.test(body.pincode)) return fail('Please enter a valid 6-digit pincode.');
+   if(notFound) return fail('We could not find this pincode. Please check it.');
    btn.disabled=true; btn.firstChild.textContent='Sending… ';
    fetch('/api/leads/landing',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
      .then(function(r){return r.json().catch(function(){return {};}).then(function(j){return {ok:r.ok,j:j};});})

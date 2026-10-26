@@ -14,7 +14,7 @@
 import { dbList } from '@/lib/db';
 import { DOOR_LOCK, indianMobile } from '@/lib/heseosDoorLock';
 import { createHeseosLandingOrder } from '@/lib/heseosOrders';
-import { canonicalState, lookupPincode } from '@/lib/pincodeLookup';
+import { lookupPincode } from '@/lib/pincodeLookup';
 import { notifyHeseosOrderPlaced } from '@/lib/heseosNotify';
 
 export const dynamic = 'force-dynamic';
@@ -36,21 +36,18 @@ export async function POST(request) {
   const name = clean(body?.name, 80);
   const mobile = indianMobile(body?.phone);
   const address = clean(body?.address, 300);
-  const city = clean(body?.city, 60);
   const pincode = String(body?.pincode || '').replace(/\D/g, '');
-  let state = canonicalState(body?.state);
   const quantity = Math.floor(Number(body?.quantity));
   const clientRef = clean(body?.clientRef, 64) || null;
 
   if (name.length < 2) return Response.json({ error: 'Please enter your full name.' }, { status: 400 });
   if (!mobile) return Response.json({ error: 'Please enter a valid 10-digit mobile number.' }, { status: 400 });
   if (address.length < 8) return Response.json({ error: 'Please enter your full delivery address.' }, { status: 400 });
-  if (city.length < 2) return Response.json({ error: 'Please enter your city.' }, { status: 400 });
   if (!/^\d{6}$/.test(pincode)) return Response.json({ error: 'Please enter a valid 6-digit pincode.' }, { status: 400 });
-  // The form fills the state from the pincode; if it didn't arrive (an old cached page, or a lookup that failed),
-  // work it out here so the courier hand-off always has one.
-  if (!state) state = (await lookupPincode(pincode)).state;
-  if (!state) return Response.json({ error: 'Please select your state.' }, { status: 400 });
+  // City and state are never taken from the form — they come from the pincode, so the courier hand-off
+  // always has a real city and state (the page shows them read-only).
+  const { city, state } = await lookupPincode(pincode);
+  if (!city || !state) return Response.json({ error: 'We couldn\u2019t verify this pincode right now. Please check it and try again.' }, { status: 400 });
   if (!Number.isFinite(quantity) || quantity < 1 || quantity > DOOR_LOCK.maxQty) {
     return Response.json({ error: `Quantity must be between 1 and ${DOOR_LOCK.maxQty}.` }, { status: 400 });
   }
