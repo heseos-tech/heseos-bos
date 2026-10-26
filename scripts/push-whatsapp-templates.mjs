@@ -144,7 +144,7 @@ const CATALOGUE = [
   {
     name: 'order_placed',
     body: 'Hi {{1}}, your HESEOS order {{2}} is placed! Total ₹{{3}}, payable by Cash/UPI on delivery. Our team will call you shortly to confirm delivery.\n\n— Team HESEOS',
-    examples: ['Rahul', 'ORD12345678', '4,999'],
+    examples: ['Rahul', 'ORD12345678', '6,499'],
   },
   {
     name: 'order_confirmed',
