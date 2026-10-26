@@ -32,6 +32,19 @@
     store('hs_sid_' + page, sid);
   }
 
+  // What the browser reports about itself (language, screen, timezone, connection) — sent once with the visit.
+  function envInfo() {
+    var e = {};
+    try { e.lang = (navigator.language || '').slice(0, 12); } catch (x) { /* ignore */ }
+    try { e.screen = Math.round(screen.width) + 'x' + Math.round(screen.height); e.dpr = Math.round((window.devicePixelRatio || 1) * 10) / 10; } catch (x) { /* ignore */ }
+    try { e.tz = (Intl.DateTimeFormat().resolvedOptions().timeZone || '').slice(0, 40); } catch (x) { /* ignore */ }
+    try {
+      var c = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+      if (c) { e.conn = String(c.effectiveType || '').slice(0, 8); e.saveData = !!c.saveData; }
+    } catch (x) { /* ignore */ }
+    return e;
+  }
+
   var t0 = Date.now();
   function secs() { return Math.round((Date.now() - t0) / 1000); }
 
@@ -45,7 +58,8 @@
     device: window.innerWidth < 700 ? 'mobile' : window.innerWidth < 1100 ? 'tablet' : 'desktop',
     maxScroll: 0, activeSeconds: 0, sections: [], clicks: [],
     formStartSecs: null, fields: [], submitAttempts: 0, errors: 0, submittedSecs: null,
-    contact: null, refId: ''
+    contact: null, refId: '',
+    env: envInfo()
   };
   try {
     if (document.referrer) { var h = new URL(document.referrer).hostname; if (h && h !== location.hostname) s.referrer = h; }

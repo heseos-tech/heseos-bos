@@ -105,6 +105,9 @@ export default function LandingActivityPage() {
             <div className="adm-lead-sub" style={{ marginTop: 14, lineHeight: 1.8 }}>
               Source — WhatsApp {r.bySource?.WhatsApp || 0} · QR / referral {r.bySource?.['QR / Referral'] || 0} · Direct / other {r.bySource?.['Direct / other'] || 0}<br />
               Device — mobile {r.byDevice?.mobile || 0} · tablet {r.byDevice?.tablet || 0} · desktop {r.byDevice?.desktop || 0}
+              {(r.byOs || []).length > 0 && <><br />Phone / OS — {r.byOs.map((x) => `${x.label} ${x.count}`).join(' · ')}</>}
+              {(r.byBrowser || []).length > 0 && <><br />Browser — {r.byBrowser.map((x) => `${x.label} ${x.count}`).join(' · ')}</>}
+              {(r.byIpCity || []).length > 0 && <><br />Approx. location (from IP) — {r.byIpCity.map((x) => `${x.label} ${x.count}`).join(' · ')}</>}
             </div>
           )}
         </div>
@@ -156,14 +159,15 @@ export default function LandingActivityPage() {
         <div className="adm-card-sub">Newest first — tap a row to see exactly what that visitor did</div>
         <div className="adm-table-scroll">
           <table className="adm-table">
-            <thead><tr><th>When</th><th>Page</th><th>Visitor</th><th>Source</th><th>Scrolled</th><th>Time</th><th>Taps</th><th>Result</th></tr></thead>
+            <thead><tr><th>When</th><th>Page</th><th>Visitor</th><th>Source</th><th>Location (IP)</th><th>Scrolled</th><th>Time</th><th>Taps</th><th>Result</th></tr></thead>
             <tbody>
-              {loading ? <tr><td colSpan={8} className="adm-empty">Loading…</td></tr> : rows.length === 0 ? <tr><td colSpan={8} className="adm-empty">No visits yet in this period.</td></tr> : rows.map((v) => (
+              {loading ? <tr><td colSpan={9} className="adm-empty">Loading…</td></tr> : rows.length === 0 ? <tr><td colSpan={9} className="adm-empty">No visits yet in this period.</td></tr> : rows.map((v) => (
                 <tr key={v.id} style={{ cursor: 'pointer' }} onClick={() => setModal(v)}>
                   <td>{when(v.at)}</td>
                   <td>{PAGE_LABEL[v.page] || v.page}</td>
                   <td>{v.name ? <><div className="adm-lead-name">{v.name}</div><div className="adm-lead-sub">{v.phone}</div></> : (v.phone || <span className="adm-lead-sub">Anonymous</span>)}</td>
                   <td>{v.source}</td>
+                  <td>{v.ipCity ? [v.ipCity, v.ipRegion].filter(Boolean).join(', ') : <span className="adm-lead-sub">—</span>}</td>
                   <td>{v.maxScroll}%</td>
                   <td>{dur(v.activeSeconds)}</td>
                   <td>{(v.clicks || []).length}</td>
@@ -199,6 +203,14 @@ function VisitModal({ v, onClose }) {
         <div><span className="adm-detail-label">Scrolled</span>{v.maxScroll}%</div>
         <div><span className="adm-detail-label">Time on page</span>{dur(v.activeSeconds)}</div>
         <div><span className="adm-detail-label">Result</span>{STATUS[v.status]?.label || v.status}</div>
+        <div><span className="adm-detail-label">IP address</span>{v.ip || '—'}</div>
+        <div><span className="adm-detail-label">Approx. location (from IP)</span>{[v.ipCity, v.ipRegion, v.ipCountry].filter(Boolean).join(', ') || '—'}</div>
+        <div><span className="adm-detail-label">Phone / OS</span>{[v.model, [v.os, v.osVersion].filter(Boolean).join(' ')].filter(Boolean).join(' · ') || '—'}</div>
+        <div><span className="adm-detail-label">Browser</span>{v.browser || '—'}</div>
+        <div><span className="adm-detail-label">Language</span>{v.env?.lang || '—'}</div>
+        <div><span className="adm-detail-label">Screen</span>{v.env?.screen ? `${v.env.screen}${v.env.dpr ? ` @${v.env.dpr}x` : ''}` : '—'}</div>
+        <div><span className="adm-detail-label">Timezone</span>{v.env?.tz || '—'}</div>
+        <div><span className="adm-detail-label">Connection</span>{v.env?.conn ? `${v.env.conn}${v.env.saveData ? ' · data saver on' : ''}` : '—'}</div>
         <div><span className="adm-detail-label">Came from</span>{v.utm?.source || v.referrer || (v.via === 'wa' ? 'WhatsApp link' : '—')}</div>
       </div>
       <div style={{ marginTop: 16 }}>

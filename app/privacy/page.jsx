@@ -26,7 +26,7 @@ const SECTIONS = [
   },
   {
     title: '4. Cookies & sessions',
-    body: 'The Partner, Team and Admin apps use a single signed session cookie to keep you logged in — it identifies your account and nothing else, expires on logout, and is not shared with or readable by any third party. We don’t use third-party tracking or advertising cookies on this platform.',
+    body: 'The Partner, Team and Admin apps use a single signed session cookie to keep you logged in — it identifies your account and nothing else, expires on logout, and is not shared with or readable by any third party. We don’t use third-party tracking or advertising cookies on this platform. On our public product pages we keep simple first-party visit analytics (no cookies): the pages you viewed and tapped, your IP address and the approximate city it points to, and your browser, device type, language, screen size and time zone, so we can understand how the pages are used and improve them.',
   },
   {
     title: '5. Native app permissions (Partner/Team app)',
