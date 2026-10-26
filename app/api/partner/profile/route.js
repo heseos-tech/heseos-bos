@@ -49,9 +49,12 @@ export async function PATCH(request) {
     patch.businessName = businessName;
   }
 
-  if (body.type !== undefined) {
+  // An Installation Partner's category is fixed — it decides which app they use and which jobs they see, so it
+  // can't be changed here (any `type` sent is ignored), and nobody can switch themselves INTO installer either:
+  // those accounts are only created through the Installer app's sign-up or by Admin.
+  if (body.type !== undefined && partner.type !== 'installer') {
     const type = String(body.type || '').trim();
-    if (!CATEGORY_VALUES.has(type)) return Response.json({ error: 'Please choose a valid partner category' }, { status: 400 });
+    if (!CATEGORY_VALUES.has(type) || type === 'installer') return Response.json({ error: 'Please choose a valid partner category' }, { status: 400 });
     patch.type = type;
   }
 

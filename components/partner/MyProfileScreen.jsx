@@ -58,13 +58,15 @@ export default function MyProfileScreen() {
   useEffect(() => { load(); }, [load]);
   // City + state are read from the pincode, never typed.
   const area = usePincodeLookup(pincode);
+  // Installation Partners (Installer app) have a fixed category — shown, never editable.
+  const isInstaller = partner?.type === 'installer';
 
   function flash(msg) { setToast(msg); setTimeout(() => setToast(''), 2500); }
 
   const dirty = partner && (
     partnerName.trim() !== (partner.businessName || '')
     || shopName.trim() !== (partner.shopName || '')
-    || category !== (PARTNER_CATEGORY.some((c) => c.v === partner.type) ? partner.type : '')
+    || (!isInstaller && category !== (PARTNER_CATEGORY.some((c) => c.v === partner.type) ? partner.type : ''))
     || addressLine.trim() !== (partner.addressLine || '')
     || pincode.trim() !== (partner.pincode || '')
     || gstNumber.trim() !== (partner.gstNumber || '')
@@ -72,7 +74,7 @@ export default function MyProfileScreen() {
 
   async function save() {
     if (!partnerName.trim()) { setError('Partner name cannot be empty'); return; }
-    if (!category) { setError('Please choose your partner category'); return; }
+    if (!isInstaller && !category) { setError('Please choose your partner category'); return; }
     if (!PINCODE_RE.test(pincode.trim())) { setError('Please enter your 6-digit pincode'); return; }
     if (pincode.trim() !== (partner.pincode || '') && area.status !== 'ok') { setError(area.status === 'loading' ? 'Checking your pincode — one moment' : 'Please enter a pincode we can find a city for'); return; }
     if (gstNumber.trim() && !GST_RE.test(gstNumber.trim().toUpperCase())) { setError('That doesn\u2019t look like a valid GSTIN (e.g. 22AAAAA0000A1Z5)'); return; }
@@ -84,7 +86,7 @@ export default function MyProfileScreen() {
         body: JSON.stringify({
           businessName: partnerName.trim(),
           shopName: shopName.trim(),
-          type: category,
+          ...(isInstaller ? {} : { type: category }),
           addressLine: addressLine.trim(),
           pincode: pincode.trim(),
           gstNumber: gstNumber.trim().toUpperCase(),
@@ -126,14 +128,18 @@ export default function MyProfileScreen() {
                 onChange={(e) => setShopName(e.target.value)}
                 placeholder='e.g. "Sharma Electricals"'
               />
-              <SelectField
-                label="Partner Category"
-                icon={<IconTag size={18} />}
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                options={PARTNER_CATEGORY}
-                placeholder="Select your category"
-              />
+              {isInstaller ? (
+                <TextField label="Partner Category" icon={<IconTag size={18} />} value="Installation Partner" readOnly disabled />
+              ) : (
+                <SelectField
+                  label="Partner Category"
+                  icon={<IconTag size={18} />}
+                  value={category}
+                  onChange={(e) => setCategory(e.target.value)}
+                  options={PARTNER_CATEGORY.filter((c) => c.v !== 'installer')}
+                  placeholder="Select your category"
+                />
+              )}
               <TextField
                 label="Address Line"
                 icon={<IconMapPin size={18} />}
