@@ -43,6 +43,12 @@
 .tr-sound:hover{background:rgba(0,0,0,.88)}
 @keyframes trPulse{0%,100%{box-shadow:0 0 0 0 rgba(255,255,255,.35)}50%{box-shadow:0 0 0 8px rgba(255,255,255,0)}}
 @media(prefers-reduced-motion:reduce){.tr-sound{animation:none}}
+
+/* Product video (vertical) */
+.pv{display:grid;grid-template-columns:1.1fr .9fr;gap:56px;align-items:center}
+.pv-video{position:relative;justify-self:center;width:min(100%,340px);aspect-ratio:9/16;border-radius:22px;overflow:hidden;border:1px solid var(--line);background:#000;box-shadow:0 30px 70px -30px rgba(61,117,255,.45)}
+.pv-video video{display:block;width:100%;height:100%;object-fit:cover;background:#000}
+@media(max-width:850px){.pv{grid-template-columns:1fr;gap:30px}.pv-video{width:min(100%,320px)}}
 </style>
 </head>
 <body>
@@ -72,6 +78,17 @@
   <div class="trust"><span class="symbol">⌁</span> RFID card access</div>
   <div class="trust"><span class="symbol">↗</span> Backup entry options</div>
 </div>
+<section class="wrap section" id="product-video" aria-labelledby="pvH">
+  <div class="pv">
+    <div class="pv-copy"><div class="kicker">See it in action</div><h2 id="pvH">The real lock,<br>on a real door.</h2><p style="color:var(--muted);font-size:15px;line-height:1.8;max-width:430px;margin:18px 0 0">Watch the actual HESEOS smart door lock at work — a fingerprint, a passcode, an RFID card or a key, and what it feels like to leave the keys behind.</p>
+      <ul class="checks"><li><span class="check">✓</span> Fingerprint, passcode, RFID card and key</li><li><span class="check">✓</span> Mechanical key and emergency power options</li><li><span class="check">✓</span> Live demo on delivery — pay only if you decide to buy</li></ul>
+      <a class="btn" href="#order">Order now <span>↗</span></a></div>
+    <div class="pv-video">
+      <video id="dlVid" playsinline muted preload="none" controls controlsList="nodownload" poster="/video/heseos-door-lock-poster.webp" aria-label="The HESEOS smart door lock in use"></video>
+      <button type="button" class="tr-sound" id="dlSound" hidden aria-label="Turn the video sound on"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/></svg> Tap for sound</button>
+    </div>
+  </div>
+</section>
 <section class="wrap section" id="recognition" aria-labelledby="trH">
   <div class="section-head"><div><div class="kicker">Trusted &amp; recognised</div><h2 id="trH">Proudly made in India.</h2></div><p>As featured on JioHotstar, and a recognised Indian startup.</p></div>
   <div class="tr-video">
@@ -232,37 +249,42 @@
 })();
 </script>
 <script>
-// "HESEOS on Indian Angels" clip: plays when it scrolls into view, pauses when it leaves. Browsers only allow autoplay
-// WITH sound after a tap on the page, so it tries with sound first and falls back to muted + a "Tap for sound" button.
+// Autoplay clips (the real door lock; HESEOS on Indian Angels): each plays when it scrolls into view and pauses when it
+// leaves. Browsers only allow autoplay WITH sound after a tap on the page, so each tries with sound first and falls back
+// to muted + a "Tap for sound" button.
 (function(){
-  var v=document.getElementById('trVid'),btn=document.getElementById('trSound'); if(!v||!btn) return;
-  var inView=false,loaded=false,userPaused=false,autoPaused=false,played=false,soundTracked=false;
-  function track(l){try{window.hsTrack&&window.hsTrack('mark',l);}catch(e){}}
-  function pick(){var c=navigator.connection||{};var small=window.innerWidth<760||c.saveData||/^(slow-2g|2g|3g)$/.test(c.effectiveType||'');return small?'/video/indian-angels-480.mp4':'/video/indian-angels-720.mp4';}
-  function load(){if(loaded)return;loaded=true;v.preload='auto';v.src=pick();v.load();}
-  function showBtn(){btn.hidden=false;} function hideBtn(){btn.hidden=true;}
-  function play(){
-    load(); v.muted=false;
-    var p=v.play();
-    if(p&&p.then){p.then(function(){ if(!played){played=true;track('Video played');} hideBtn(); }).catch(function(){
-      v.muted=true; var q=v.play();
-      if(q&&q.then) q.then(function(){ if(!played){played=true;track('Video played (muted)');} showBtn(); }).catch(function(){});
-    });}
+  function player(vid,btnId,tag,sources){
+    var v=document.getElementById(vid),btn=document.getElementById(btnId); if(!v||!btn) return;
+    var inView=false,loaded=false,userPaused=false,autoPaused=false,played=false,soundTracked=false;
+    function track(l){try{window.hsTrack&&window.hsTrack('mark',tag+l);}catch(e){}}
+    function pick(){var c=navigator.connection||{};var small=window.innerWidth<760||c.saveData||/^(slow-2g|2g|3g)$/.test(c.effectiveType||'');return small?sources[1]:sources[0];}
+    function load(){if(loaded)return;loaded=true;v.preload='auto';v.src=pick();v.load();}
+    function showBtn(){btn.hidden=false;} function hideBtn(){btn.hidden=true;}
+    function play(){
+      load(); v.muted=false;
+      var p=v.play();
+      if(p&&p.then){p.then(function(){ if(!played){played=true;track(' video played');} hideBtn(); }).catch(function(){
+        v.muted=true; var q=v.play();
+        if(q&&q.then) q.then(function(){ if(!played){played=true;track(' video played (muted)');} showBtn(); }).catch(function(){});
+      });}
+    }
+    btn.addEventListener('click',function(){ v.muted=false; v.volume=1; userPaused=false; if(v.paused) v.play().catch(function(){}); });
+    v.addEventListener('volumechange',function(){ if(v.muted){ if(!v.paused) showBtn(); } else { hideBtn(); if(!soundTracked){soundTracked=true;track(' video sound on');} } });
+    v.addEventListener('pause',function(){ if(autoPaused){autoPaused=false;} else if(!v.ended){userPaused=true;} });
+    v.addEventListener('play',function(){ if(v.muted) showBtn(); });
+    v.addEventListener('ended',function(){ hideBtn(); track(' video finished'); });
+    if(!('IntersectionObserver' in window)) return;
+    new IntersectionObserver(function(en){ if(en[0].isIntersecting) load(); },{rootMargin:'400px'}).observe(v);
+    var still=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    new IntersectionObserver(function(en){
+      var on=inView=en[0].isIntersecting;
+      if(on){ if(!still&&!userPaused&&!v.ended&&v.paused) play(); }
+      else if(!v.paused){ autoPaused=true; v.pause(); }
+    },{threshold:.5}).observe(v);
+    document.addEventListener('visibilitychange',function(){ if(document.hidden){ if(!v.paused){autoPaused=true;v.pause();} } else if(inView&&!still&&!userPaused&&!v.ended&&v.paused){ play(); } });
   }
-  btn.addEventListener('click',function(){ v.muted=false; v.volume=1; userPaused=false; if(v.paused) v.play().catch(function(){}); });
-  v.addEventListener('volumechange',function(){ if(v.muted){ if(!v.paused) showBtn(); } else { hideBtn(); if(!soundTracked){soundTracked=true;track('Video sound on');} } });
-  v.addEventListener('pause',function(){ if(autoPaused){autoPaused=false;} else if(!v.ended){userPaused=true;} });
-  v.addEventListener('play',function(){ if(v.muted) showBtn(); });
-  v.addEventListener('ended',function(){ hideBtn(); track('Video finished'); });
-  if(!('IntersectionObserver' in window)) return;
-  new IntersectionObserver(function(en){ if(en[0].isIntersecting) load(); },{rootMargin:'400px'}).observe(v);
-  var still=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  new IntersectionObserver(function(en){
-    var on=inView=en[0].isIntersecting;
-    if(on){ if(!still&&!userPaused&&!v.ended&&v.paused) play(); }
-    else if(!v.paused){ autoPaused=true; v.pause(); }
-  },{threshold:.5}).observe(v);
-  document.addEventListener('visibilitychange',function(){ if(document.hidden){ if(!v.paused){autoPaused=true;v.pause();} } else if(inView&&!still&&!userPaused&&!v.ended&&v.paused){ play(); } });
+  player('dlVid','dlSound','Door lock',['/video/heseos-door-lock-720.mp4','/video/heseos-door-lock-480.mp4']);
+  player('trVid','trSound','Angels',['/video/indian-angels-720.mp4','/video/indian-angels-480.mp4']);
 })();
 </script>
 </body></html>
