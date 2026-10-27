@@ -39,11 +39,12 @@ export const INVOICE_BANK = {
 };
 export const INVOICE_TERMS = [
   'No returns or exchanges on sold goods.',
-  'Warranty covers manufacturing defects only; no coverage for burning or any other damage after handover/installation.',
-  'Products are uninsured; customer bears claim responsibility.',
-  'Do not open material box if found open; any shortage or damage claim wont be considered.',
-  'Materials are checked and in working condition; no replacements for damages found at store/client site.',
-  'Materials inspected for dents/scratches; approved upon client signoff.',
+  'The product carries a 2-year warranty against manufacturing defects only. There is no coverage for burning or any other damage after handover/installation.',
+  'The warranty does not cover normal wear and tear of the product, or any case where accessories are found missing.',
+  'Products are uninsured, the customer bears responsibility for any claim.',
+  'Do not accept or open the material box if found open or tampered with, any shortage or damage claim will not be considered.',
+  'Materials are checked and in working condition, no replacements for damage found at the store/client site.',
+  'Materials are inspected for dents/scratches and are deemed approved upon client sign-off.',
 ];
 const GST_RATE = 18; // % — prices are GST-inclusive
 const HSN_CODE = process.env.INVOICE_HSN || '-';
@@ -218,14 +219,14 @@ const S = StyleSheet.create({
   lower: { marginTop: 3, borderWidth: BW, borderColor: LINE, flexDirection: 'column' },
   words: { padding: 4, borderBottomWidth: BW, borderBottomColor: LINE },
   footer: { flexDirection: 'row' },
-  fBank: { width: '30%', padding: 4, borderRightWidth: BW, borderRightColor: LINE },
-  fTerms: { width: '38%', padding: 4, borderRightWidth: BW, borderRightColor: LINE },
-  fSign: { width: '32%', padding: 4, alignItems: 'center', justifyContent: 'center' },
+  fBank: { width: '27%', padding: 4, borderRightWidth: BW, borderRightColor: LINE },
+  fTerms: { width: '46%', padding: 4, borderRightWidth: BW, borderRightColor: LINE },
+  fSign: { width: '27%', padding: 4, alignItems: 'center', justifyContent: 'center' },
   h2: { fontSize: 5.4, fontFamily: 'Helvetica-Bold', marginBottom: 2 },
   bankRow: { flexDirection: 'row', marginTop: 2 },
-  bankLbl: { width: 33 },
+  bankLbl: { width: 31 },
   bankVal: { flex: 1 },
-  term: { fontSize: 4.3, lineHeight: 1.22 },
+  term: { fontSize: 4.1, lineHeight: 1.18 },
   stamp: { width: 34, height: 34, marginBottom: 3 },
 });
 
