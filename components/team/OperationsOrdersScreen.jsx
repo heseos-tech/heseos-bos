@@ -144,7 +144,7 @@ function OrdersView({ pmap }) {
     if (action === 'cancel' && !window.confirm(`Cancel the courier shipment for ${order.id}? This only works before the courier has picked it up.`)) return;
     const r = await patch(order, { shipping: action });
     if (!r) return;
-    flash(r.shippingError ? `Velocity: ${r.shippingError}` : action === 'create' ? 'Sent to Velocity — pick the courier there' : action === 'sync' ? 'Tracking refreshed' : 'Cancellation requested');
+    flash(r.shippingError ? `Velocity: ${r.shippingError}` : (action === 'create' || action === 'resend') ? 'Sent to Velocity — pick the courier there' : action === 'sync' ? 'Tracking refreshed' : 'Cancellation requested');
   }
 
   async function saveNotes(order, notes) {

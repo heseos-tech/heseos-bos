@@ -6,7 +6,7 @@ import { dbPatch } from '@/lib/db';
 import { advanceOrderStatus, markOrderPaid, setInstallationSchedule, cleanInstallFee, ORDER_STATUSES } from '@/lib/heseosOrders';
 import { releaseJob, ensureInstallPayout } from '@/lib/installJobs';
 import { notifyHeseosOrderStatus, notifyHeseosInstallationScheduled } from '@/lib/heseosNotify';
-import { velocityConfigured, velocityConfig, createShipmentForOrder, cancelShipmentForOrder, syncShipmentTracking } from '@/lib/velocityShipping';
+import { velocityConfigured, velocityConfig, createShipmentForOrder, resendShipmentForOrder, cancelShipmentForOrder, syncShipmentTracking } from '@/lib/velocityShipping';
 
 export const dynamic = 'force-dynamic';
 
@@ -94,6 +94,11 @@ export async function PATCH(request, { params }) {
       const r = await createShipmentForOrder(id, actorLabel);
       if (!r.ok) return Response.json({ ...(r.order || existing), shippingError: r.error });
       return Response.json({ ...r.order, whatsappSent: !!r.whatsappSent });
+    }
+    if (act === 'resend') {
+      const r = await resendShipmentForOrder(id, actorLabel);
+      if (!r.ok) return Response.json({ ...(r.order || existing), shippingError: r.error });
+      return Response.json(r.order);
     }
     if (act === 'sync') {
       const r = await syncShipmentTracking(id);

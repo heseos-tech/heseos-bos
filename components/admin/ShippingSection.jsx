@@ -1,10 +1,18 @@
 'use client';
 // The "Courier shipment (Velocity)" block on an order — AWB, courier, status, tracking + label links, and the
 // Create / Retry / Refresh / Cancel buttons. Shared by Admin -> Orders and the Operations panels (desktop and
-// the Team app). `onAction(action)` is 'create' | 'sync' | 'cancel' and should resolve when the call is done;
+// the Team app). `onAction(action)` is 'create' | 'resend' | 'sync' | 'cancel' and should resolve when the call is done;
 // the parent is responsible for sending it to PATCH /api/admin/orders/<id> as { shipping: action }.
 import { useState } from 'react';
-import { velocityStatusLabel } from '@/lib/velocityStatusLabels';
+import { velocityStatusLabel, velocityBeforePickup } from '@/lib/velocityStatusLabels';
+
+const RESEND_WARNING = 'Only do this if you have ALREADY cancelled this shipment in the Velocity panel — otherwise Velocity will end up with two shipments for one order.\n\nSend it to Velocity again?';
+
+// Sent to Velocity, courier has not collected it yet (and it is not already marked cancelled, which has its own button).
+export function canResendShipment(order) {
+  const sh = order?.shipping;
+  return canCreateShipment(order) && !!sh?.shipmentId && sh.status !== 'cancelled' && velocityBeforePickup(sh.status);
+}
 
 export function canCreateShipment(order) {
   const sh = order?.shipping;
@@ -23,11 +31,15 @@ function CompactShipping({ order, sh, onAction }) {
       </div>
     );
   }
+  const resend = canResendShipment(order) ? (
+    <button type="button" className="hp-btn hp-btn-outline hp-btn-sm" disabled={busy} onClick={() => { if (window.confirm(RESEND_WARNING)) run('resend'); }}>{busy ? 'Sending…' : 'Cancelled in Velocity? Send again'}</button>
+  ) : null;
   if (sh?.awb) {
     return (
       <div style={line}>
         <span>🚚 {sh.courier || 'Courier'} · {sh.awb} · {velocityStatusLabel(sh.status)}</span>
         {sh.trackingUrl && <a href={sh.trackingUrl} target="_blank" rel="noopener noreferrer">Track</a>}
+        {resend}
       </div>
     );
   }
@@ -40,7 +52,7 @@ function CompactShipping({ order, sh, onAction }) {
       </div>
     );
   }
-  if (sh?.shipmentId) return <div style={line}><span>🚚 Waiting for a courier in Velocity</span></div>;
+  if (sh?.shipmentId) return <div style={line}><span>🚚 Waiting for a courier in Velocity</span>{resend}</div>;
   if (order.status === 'packed') {
     return (
       <div style={line}>
@@ -84,6 +96,7 @@ export default function ShippingSection({ order, onAction, compact = false }) {
         {canShip && <button type="button" className={btn} disabled={busy} onClick={() => run('create')}>{busy ? 'Working…' : sh?.status === 'cancelled' ? 'Send to Velocity again' : sh?.error ? 'Retry' : 'Send to Velocity'}</button>}
         {sh?.awb && <button type="button" className={btn} disabled={busy} onClick={() => run('sync')}>Refresh tracking</button>}
         {canCancel && <button type="button" className={btn} disabled={busy} onClick={() => run('cancel')}>Cancel shipment</button>}
+        {canResendShipment(order) && <button type="button" className={btn} disabled={busy} onClick={() => { if (window.confirm(RESEND_WARNING)) run('resend'); }}>Cancelled in Velocity? Send again</button>}
       </div>
     </div>
   );
