@@ -11,7 +11,8 @@ const RESEND_WARNING = 'Only do this if you have ALREADY cancelled this shipment
 // Sent to Velocity, courier has not collected it yet (and it is not already marked cancelled, which has its own button).
 export function canResendShipment(order) {
   const sh = order?.shipping;
-  return canCreateShipment(order) && !!sh?.shipmentId && !velocityShipmentEnded(sh.status) && velocityBeforePickup(sh.status, sh.awb);
+  // (not canCreateShipment(): that one is FALSE while a live shipment exists — exactly the case being handled here)
+  return !!order && ['confirmed', 'packed', 'shipped'].includes(order.status) && !!sh?.shipmentId && !velocityShipmentEnded(sh.status) && velocityBeforePickup(sh.status, sh.awb);
 }
 
 export function canCreateShipment(order) {
