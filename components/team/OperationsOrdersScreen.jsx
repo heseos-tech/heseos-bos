@@ -13,6 +13,7 @@ import { IconSearch, IconPhone, IconWhatsApp, IconOrders, IconX, IconDownload } 
 import { IconNote, IconCalendar } from '@/components/partner/icons';
 import { useApiResource, invalidate } from '@/lib/useApiResource';
 import ShippingSection from '@/components/admin/ShippingSection';
+import OrderEditForm, { canEditOrder, submitOrderEdit } from '@/components/admin/OrderEditForm';
 
 const ORDERS_URL = '/api/admin/orders';
 
@@ -147,6 +148,16 @@ function OrdersView({ pmap }) {
     flash(r.shippingError ? `Velocity: ${r.shippingError}` : (action === 'create' || action === 'resend') ? 'Sent to Velocity — pick the courier there' : action === 'sync' ? 'Tracking refreshed' : 'Cancellation requested');
   }
 
+  // Edit customer details / address / items. -> '' on success, else the error text for the form.
+  async function saveEdit(order, payload) {
+    const r = await submitOrderEdit(order.id, payload);
+    if (!r.ok) return r.error;
+    await invalidate(ORDERS_URL);
+    refresh();
+    flash(r.order.shippingStale ? 'Order updated — cancel the shipment in Velocity and send it again' : 'Order updated');
+    return '';
+  }
+
   async function saveNotes(order, notes) {
     if (!(await patch(order, { notes }))) return false;
     flash('Note saved');
@@ -196,6 +207,7 @@ function OrdersView({ pmap }) {
               onPaid={() => markPaid(o)}
               onSchedule={() => setSheet({ type: 'schedule', order: o })}
               onNotes={() => setSheet({ type: 'notes', order: o })}
+              onEdit={() => setSheet({ type: 'edit', order: o })}
               onCancel={() => cancel(o)}
               installer={pmap[o.installPartnerId]}
               onRelease={() => releaseInstaller(o)}
@@ -211,6 +223,13 @@ function OrdersView({ pmap }) {
           onClose={() => setSheet(null)}
           notify
           onSave={async (date, slot, fee) => { if (await saveSchedule(sheet.order, date, slot, fee)) setSheet(null); }}
+        />
+      )}
+      {sheet?.type === 'edit' && (
+        <EditSheet
+          order={orders.find((x) => x.id === sheet.order.id) || sheet.order}
+          onClose={() => setSheet(null)}
+          onSave={async (p) => { const e = await saveEdit(sheet.order, p); if (!e) setSheet(null); return e; }}
         />
       )}
       {sheet?.type === 'notes' && (
@@ -229,7 +248,7 @@ function OrdersView({ pmap }) {
 // A date the customer picked via the "Book installation" button that Operations haven't confirmed yet.
 const awaitingConfirm = (o) => !!(o && o.installDate && o.installRequestSource === 'customer' && !o.installConfirmedAt);
 
-function OrderCard({ order: o, busy, onAdvance, onPaid, onSchedule, onNotes, onCancel, installer, onRelease, onShipping }) {
+function OrderCard({ order: o, busy, onAdvance, onPaid, onSchedule, onNotes, onEdit, onCancel, installer, onRelease, onShipping }) {
   const st = STAGE[o.status];
   const [color, bg] = BADGE_COLOR[o.status] || BADGE_COLOR.confirmed;
   const paid = o.paymentStatus === 'paid';
@@ -296,6 +315,7 @@ function OrderCard({ order: o, busy, onAdvance, onPaid, onSchedule, onNotes, onC
           <button type="button" className="hp-btn hp-btn-outline hp-btn-sm" disabled={busy} onClick={onPaid}>Payment received</button>
         )}
         <button type="button" className="hp-btn hp-btn-outline hp-btn-sm" disabled={busy} onClick={onNotes}>{o.notes ? 'Edit note' : 'Add note'}</button>
+        {canEditOrder(o) && <button type="button" className="hp-btn hp-btn-outline hp-btn-sm" disabled={busy} onClick={onEdit}>Edit order</button>}
       </div>
       <div className="ops-actions">
         <a className="hp-btn hp-btn-outline hp-btn-sm" href={`/api/admin/orders/${o.id}/pdf?type=slip`} target="_blank" rel="noreferrer"><IconDownload size={14} /> Slip</a>
@@ -378,6 +398,30 @@ function InstallMeta({ date, fee, partnerId, installer, city, done, busy, onRele
       ) : !done && date && hasFee ? ` · Open for installers${city ? ` in ${city}` : ''}`
         : !done && date ? ' · Add a fee to open it to installers' : ''}
     </div>
+  );
+}
+
+function EditSheet({ order, onClose, onSave }) {
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState('');
+  return (
+    <Portal>
+      <div className="hp-sheet-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
+        <div className="hp-sheet" style={{ maxHeight: '90vh', overflowY: 'auto' }}>
+          <div className="hp-sheet-handle" />
+          <div className="hp-sheet-title">Edit order</div>
+          <div className="hp-sheet-sub">{order.id} · changes are saved in the order history</div>
+          <OrderEditForm
+            order={order}
+            variant="hp"
+            saving={saving}
+            error={err}
+            onCancel={onClose}
+            onSave={async (p) => { setSaving(true); setErr(''); const e = await onSave(p); setSaving(false); if (e) setErr(e); }}
+          />
+        </div>
+      </div>
+    </Portal>
   );
 }
 

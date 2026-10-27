@@ -31,6 +31,7 @@ function CompactShipping({ order, sh, onAction }) {
       </div>
     );
   }
+  const stale = sh?.stale && sh.status !== 'cancelled' ? <div className="adm-lead-sub" style={{ color: '#9a4a00', fontWeight: 600, width: '100%' }}>⚠ Order edited after it went to Velocity — cancel it in Velocity and send again.</div> : null;
   const resend = canResendShipment(order) ? (
     <button type="button" className="hp-btn hp-btn-outline hp-btn-sm" disabled={busy} onClick={() => { if (window.confirm(RESEND_WARNING)) run('resend'); }}>{busy ? 'Sending…' : 'Cancelled in Velocity? Send again'}</button>
   ) : null;
@@ -40,6 +41,7 @@ function CompactShipping({ order, sh, onAction }) {
         <span>🚚 {sh.courier || 'Courier'} · {sh.awb} · {velocityStatusLabel(sh.status)}</span>
         {sh.trackingUrl && <a href={sh.trackingUrl} target="_blank" rel="noopener noreferrer">Track</a>}
         {resend}
+        {stale}
       </div>
     );
   }
@@ -52,7 +54,7 @@ function CompactShipping({ order, sh, onAction }) {
       </div>
     );
   }
-  if (sh?.shipmentId) return <div style={line}><span>🚚 Waiting for a courier in Velocity</span>{resend}</div>;
+  if (sh?.shipmentId) return <div style={line}><span>🚚 Waiting for a courier in Velocity</span>{resend}{stale}</div>;
   if (order.status === 'packed') {
     return (
       <div style={line}>
@@ -91,6 +93,7 @@ export default function ShippingSection({ order, onAction, compact = false }) {
       ) : (
         <div>{sh?.shipmentId ? 'Sent to Velocity — Operations pick the courier there. The courier and tracking appear here once it is assigned.' : 'Not sent to Velocity yet. It is sent automatically when the order is marked Packed.'}</div>
       )}
+      {sh?.stale && sh.status !== 'cancelled' && <div style={{ color: '#9a4a00', fontWeight: 600, marginTop: 4 }}>⚠ This order was edited after it was sent to Velocity, so the courier has the old details (items, amount to collect, address). Cancel it in the Velocity panel, then use “Cancelled in Velocity? Send again”.</div>}
       {sh?.cancelError && <div style={{ color: '#c0392b', fontWeight: 600 }}>⚠ Cancel failed: {sh.cancelError}</div>}
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
         {canShip && <button type="button" className={btn} disabled={busy} onClick={() => run('create')}>{busy ? 'Working…' : sh?.status === 'cancelled' ? 'Send to Velocity again' : sh?.error ? 'Retry' : 'Send to Velocity'}</button>}

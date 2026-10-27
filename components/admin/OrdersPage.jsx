@@ -10,6 +10,7 @@ import { StatCard, Modal, Pagination } from './ui';
 import { IconSearch, IconOrders, IconLeads, IconConversions, IconDownload } from './icons';
 import { useApiResource, invalidate } from '@/lib/useApiResource';
 import ShippingSection from './ShippingSection';
+import OrderEditForm, { canEditOrder, submitOrderEdit } from './OrderEditForm';
 
 const ORDERS_URL = '/api/admin/orders';
 const PAGE_SIZE = 10;
@@ -106,6 +107,16 @@ export default function OrdersPage() {
     else flash((action === 'create' || action === 'resend') ? 'Sent to Velocity — pick the courier there' : action === 'sync' ? 'Tracking refreshed' : 'Cancellation requested');
   }
 
+  // Edit customer details / address / items. -> '' on success, else the error text for the form.
+  async function saveEdit(order, payload) {
+    const r = await submitOrderEdit(order.id, payload);
+    if (!r.ok) return r.error;
+    load();
+    setModal({ type: 'view', order: r.order });
+    flash(r.order.shippingStale ? 'Order updated — the courier still has the old details: cancel in Velocity, then send again' : 'Order updated');
+    return '';
+  }
+
   async function markPaid(order) {
     const updated = await patchOrder(order.id, { markPaid: true });
     setModal({ type: 'view', order: updated });
@@ -173,6 +184,7 @@ export default function OrdersPage() {
           onClose={() => setModal(null)}
           onAdvance={() => advance(modal.order)}
           onShipping={(a) => shippingAction(modal.order, a)}
+          onEdit={(p) => saveEdit(modal.order, p)}
           onCancel={() => cancel(modal.order)}
           onMarkPaid={() => markPaid(modal.order)}
         />
@@ -181,7 +193,23 @@ export default function OrdersPage() {
   );
 }
 
-function OrderDetailModal({ order, installer, onClose, onAdvance, onCancel, onMarkPaid, onShipping }) {
+function OrderDetailModal({ order, installer, onClose, onAdvance, onCancel, onMarkPaid, onShipping, onEdit }) {
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [editErr, setEditErr] = useState('');
+  if (editing) {
+    return (
+      <Modal title={`Edit order ${order.id}`} sub="Changes are saved in the order history" onClose={() => setEditing(false)}>
+        <OrderEditForm
+          order={order}
+          saving={saving}
+          error={editErr}
+          onCancel={() => setEditing(false)}
+          onSave={async (p) => { setSaving(true); setEditErr(''); const e = await onEdit(p); setSaving(false); if (e) setEditErr(e); else setEditing(false); }}
+        />
+      </Modal>
+    );
+  }
   const next = nextForwardStatus(order.status);
   const canCancel = CANCELLABLE.has(order.status);
   return (
@@ -237,6 +265,7 @@ function OrderDetailModal({ order, installer, onClose, onAdvance, onCancel, onMa
       <div className="lf-actions" style={{ marginTop: 18, flexWrap: 'wrap' }}>
         <a className="adm-btn-outline" style={{ whiteSpace: 'nowrap' }} href={`/api/admin/orders/${order.id}/pdf?type=slip`}><IconDownload size={15} /> Generate Slip</a>
         <a className="adm-btn-outline" style={{ whiteSpace: 'nowrap' }} href={`/api/admin/orders/${order.id}/pdf?type=invoice`}><IconDownload size={15} /> Generate Invoice</a>
+        {canEditOrder(order) && <button className="adm-chip-btn" style={{ whiteSpace: 'nowrap' }} onClick={() => setEditing(true)}>Edit Order</button>}
         {order.paymentStatus !== 'paid' && order.status !== 'cancelled' && (
           <button className="adm-chip-btn" style={{ whiteSpace: 'nowrap' }} onClick={onMarkPaid}>Mark Paid</button>
         )}

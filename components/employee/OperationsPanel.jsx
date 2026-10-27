@@ -14,6 +14,7 @@ import { StatCard, Modal, Pagination } from '@/components/admin/ui';
 import { IconOrders, IconDemo, IconSearch, IconConversions, IconLeads, IconPhone, IconWhatsApp, IconDownload } from '@/components/admin/icons';
 import { useApiResource, invalidate } from '@/lib/useApiResource';
 import ShippingSection from '@/components/admin/ShippingSection';
+import OrderEditForm, { canEditOrder, submitOrderEdit } from '@/components/admin/OrderEditForm';
 
 const ORDERS_URL = '/api/admin/orders';
 const PAGE_SIZE = 10;
@@ -184,6 +185,14 @@ export default function OperationsPanel({ employee }) {
     if (!r) return;
     flash(r.shippingError ? `Velocity: ${r.shippingError}` : (action === 'create' || action === 'resend') ? 'Sent to Velocity — pick the courier there' : action === 'sync' ? 'Tracking refreshed' : 'Cancellation requested');
   }
+  // Edit customer details / address / items. -> '' on success, else the error text for the form.
+  async function saveEdit(order, payload) {
+    const r = await submitOrderEdit(order.id, payload);
+    if (!r.ok) return r.error;
+    await invalidate(ORDERS_URL);
+    flash(r.order.shippingStale ? 'Order updated — the courier still has the old details: cancel in Velocity, then send again' : 'Order updated');
+    return '';
+  }
   async function saveNotes(order, notes) {
     if (!(await patch(order, { notes }))) return false;
     flash('Note saved');
@@ -346,6 +355,7 @@ export default function OperationsPanel({ employee }) {
           onSchedule={(d, s, f) => saveSchedule(modalOrder, d, s, f)}
           onNotes={(n) => saveNotes(modalOrder, n)}
           onShipping={(a) => shippingAction(modalOrder, a)}
+          onEdit={(p) => saveEdit(modalOrder, p)}
         />
       )}
     </EmployeeShell>
@@ -382,7 +392,10 @@ function OrderRow({ o, busy, onOpen, onAdvance, installer }) {
 // A date the customer picked via the "Book installation" button that Operations haven't confirmed yet.
 const awaitingConfirm = (o) => !!(o && o.installDate && o.installRequestSource === 'customer' && !o.installConfirmedAt);
 
-function OrderModal({ order, busy, installer, onClose, onAdvance, onPaid, onCancel, onRelease, onSchedule, onNotes, onShipping }) {
+function OrderModal({ order, busy, installer, onClose, onAdvance, onPaid, onCancel, onRelease, onSchedule, onNotes, onShipping, onEdit }) {
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [editErr, setEditErr] = useState('');
   const st = STAGE[order.status];
   const done = order.status === 'installed';
   const [date, setDate] = useState(order.installDate || '');
@@ -391,6 +404,19 @@ function OrderModal({ order, busy, installer, onClose, onAdvance, onPaid, onCanc
   const [fee, setFee] = useState(order.installFee != null ? String(order.installFee) : '');
   const dateDirty = date !== (order.installDate || '') || slot !== (order.installSlot || '');
   const feeDirty = fee !== (order.installFee != null ? String(order.installFee) : '');
+  if (editing) {
+    return (
+      <Modal title={`Edit order ${order.id}`} sub="Changes are saved in the order history" onClose={() => setEditing(false)} wide>
+        <OrderEditForm
+          order={order}
+          saving={saving}
+          error={editErr}
+          onCancel={() => setEditing(false)}
+          onSave={async (p) => { setSaving(true); setEditErr(''); const e = await onEdit(p); setSaving(false); if (e) setEditErr(e); else setEditing(false); }}
+        />
+      </Modal>
+    );
+  }
   return (
     <Modal title={`Order ${order.id}`} sub={`${st.label} · placed ${order.createdAt ? new Date(order.createdAt).toLocaleString('en-IN') : '—'}`} onClose={onClose} wide>
       <div className="adm-detail-grid">
@@ -436,6 +462,7 @@ function OrderModal({ order, busy, installer, onClose, onAdvance, onPaid, onCanc
       <div className="lf-actions" style={{ marginTop: 18, flexWrap: 'wrap' }}>
         <a className="adm-btn-outline" style={{ whiteSpace: 'nowrap' }} href={`/api/admin/orders/${order.id}/pdf?type=slip`}><IconDownload size={15} /> Generate Slip</a>
         <a className="adm-btn-outline" style={{ whiteSpace: 'nowrap' }} href={`/api/admin/orders/${order.id}/pdf?type=invoice`}><IconDownload size={15} /> Generate Invoice</a>
+        {canEditOrder(order) && <button className="adm-chip-btn" style={{ whiteSpace: 'nowrap' }} disabled={busy} onClick={() => setEditing(true)}>Edit Order</button>}
         {order.paymentStatus !== 'paid' && <button className="adm-chip-btn" style={{ whiteSpace: 'nowrap' }} disabled={busy} onClick={onPaid}>Mark Paid</button>}
         {CANCELLABLE.has(order.status) && <button className="lf-btn-back" style={{ whiteSpace: 'nowrap' }} disabled={busy} onClick={onCancel}>Cancel Order</button>}
         {st.next && <button className="lf-btn-next" style={{ flex: '1 1 100%', whiteSpace: 'nowrap' }} disabled={busy} onClick={onAdvance}>{st.action}</button>}

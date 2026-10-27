@@ -3,7 +3,7 @@
 import { dbGetById } from '@/lib/db';
 import { getEmployee } from '@/lib/auth';
 import { dbPatch } from '@/lib/db';
-import { advanceOrderStatus, markOrderPaid, setInstallationSchedule, cleanInstallFee, ORDER_STATUSES } from '@/lib/heseosOrders';
+import { advanceOrderStatus, editOrder, markOrderPaid, setInstallationSchedule, cleanInstallFee, ORDER_STATUSES } from '@/lib/heseosOrders';
 import { releaseJob, ensureInstallPayout } from '@/lib/installJobs';
 import { notifyHeseosOrderStatus, notifyHeseosInstallationScheduled } from '@/lib/heseosNotify';
 import { velocityConfigured, velocityConfig, createShipmentForOrder, resendShipmentForOrder, cancelShipmentForOrder, syncShipmentTracking } from '@/lib/velocityShipping';
@@ -34,6 +34,14 @@ export async function PATCH(request, { params }) {
   // Accounts can read orders and mark them paid — nothing else (no status changes, scheduling or notes).
   if (employee.role === 'accounts' && body.markPaid !== true) {
     return Response.json({ error: 'Accounts can only mark orders as paid' }, { status: 403 });
+  }
+
+  // Operations / Admin: correct the customer's details, address/pincode and the order lines (qty, price).
+  if (body.edit !== undefined) {
+    if (!['operations', 'admin'].includes(employee.role)) return Response.json({ error: 'Only Operations or Admin can edit an order' }, { status: 403 });
+    const r = await editOrder(id, body.edit, actorLabel);
+    if (!r.ok) return Response.json({ error: r.error }, { status: r.status || 400 });
+    return Response.json({ ...r.order, ...(r.shippingStale ? { shippingStale: true } : {}), ...(r.invoiceIssued ? { invoiceIssued: true } : {}) });
   }
 
   // Operations: record the installation date agreed with the customer on the phone (and, optionally,
