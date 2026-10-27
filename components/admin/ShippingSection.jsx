@@ -11,7 +11,7 @@ const RESEND_WARNING = 'Only do this if you have ALREADY cancelled this shipment
 // Sent to Velocity, courier has not collected it yet (and it is not already marked cancelled, which has its own button).
 export function canResendShipment(order) {
   const sh = order?.shipping;
-  return canCreateShipment(order) && !!sh?.shipmentId && !velocityShipmentEnded(sh.status) && velocityBeforePickup(sh.status);
+  return canCreateShipment(order) && !!sh?.shipmentId && !velocityShipmentEnded(sh.status) && velocityBeforePickup(sh.status, sh.awb);
 }
 
 export function canCreateShipment(order) {
@@ -91,7 +91,7 @@ export default function ShippingSection({ order, onAction, compact = false }) {
       ) : sh?.error ? (
         <div style={{ color: '#c0392b', fontWeight: 600 }}>⚠ {sh.error}</div>
       ) : (
-        <div>{velocityShipmentEnded(sh?.status) ? `${sh.status === 'rejected' ? 'Velocity rejected this shipment' : 'This shipment was cancelled in Velocity'} — use “Send to Velocity again” to book it afresh.` : sh?.shipmentId ? 'Sent to Velocity — Operations pick the courier there. The courier and tracking appear here once it is assigned.' : 'Not sent to Velocity yet. It is sent automatically when the order is marked Packed.'}</div>
+        <div>{velocityShipmentEnded(sh?.status) ? `${sh.status === 'rejected' ? 'Velocity rejected this shipment' : 'This shipment was cancelled in Velocity'} — use “Send to Velocity again” to book it afresh.` : sh?.shipmentId ? 'Sent to Velocity — Operations pick the courier there. The courier and tracking appear here once it is assigned.' : 'Not sent to Velocity yet. It is sent automatically when the order is marked Packed.'}{sh?.status && !velocityShipmentEnded(sh.status) && sh.status !== 'pending' ? ` (Velocity status: ${velocityStatusLabel(sh.status)})` : ''}</div>
       )}
       {sh?.stale && !velocityShipmentEnded(sh.status) && <div style={{ color: '#9a4a00', fontWeight: 600, marginTop: 4 }}>⚠ This order was edited after it was sent to Velocity, so the courier has the old details (items, amount to collect, address). Cancel it in the Velocity panel, then use “Cancelled in Velocity? Send again”.</div>}
       {sh?.cancelError && <div style={{ color: '#c0392b', fontWeight: 600 }}>⚠ Cancel failed: {sh.cancelError}</div>}
