@@ -11,6 +11,7 @@ import { IconSearch, IconOrders, IconLeads, IconConversions, IconDownload } from
 import { useApiResource, invalidate } from '@/lib/useApiResource';
 import ShippingSection from './ShippingSection';
 import OrderEditForm, { canEditOrder, submitOrderEdit } from './OrderEditForm';
+import { paymentPill, paymentLine, paymentActions } from '@/lib/orderPaymentLabels';
 
 const ORDERS_URL = '/api/admin/orders';
 const PAGE_SIZE = 10;
@@ -62,7 +63,7 @@ export default function OrdersPage() {
     return c;
   }, [orders]);
 
-  const pendingPaymentCount = useMemo(() => orders.filter((o) => o.paymentStatus !== 'paid' && o.status !== 'cancelled').length, [orders]);
+  const pendingPaymentCount = useMemo(() => orders.filter((o) => o.paymentStatus !== 'paid' && o.paymentStatus !== 'refunded' && o.status !== 'cancelled').length, [orders]);
 
   const filtered = useMemo(() => orders.filter((o) => {
     if (status !== 'all' && o.status !== status) return false;
@@ -87,6 +88,7 @@ export default function OrdersPage() {
     const next = nextForwardStatus(order.status);
     if (!next) return;
     const updated = await patchOrder(order.id, { status: next });
+    if (updated.error) { flash(updated.error); return; }
     setModal({ type: 'view', order: updated });
     flash(`Order marked ${STATUS_LABEL[next]}${updated.whatsappSent ? ' — customer notified on WhatsApp' : ' — WhatsApp message could not be sent'}`);
   }
@@ -94,6 +96,7 @@ export default function OrdersPage() {
   async function cancel(order) {
     if (!window.confirm(`Cancel order ${order.id}? This can't be undone.`)) return;
     const updated = await patchOrder(order.id, { status: 'cancelled' });
+    if (updated.error) { flash(updated.error); return; }
     setModal({ type: 'view', order: updated });
     flash(`Order cancelled${updated.whatsappSent ? ' — customer notified on WhatsApp' : ' — WhatsApp message could not be sent'}`);
   }
@@ -119,8 +122,21 @@ export default function OrdersPage() {
 
   async function markPaid(order) {
     const updated = await patchOrder(order.id, { markPaid: true });
+    if (updated.error) { flash(updated.error); return; }
     setModal({ type: 'view', order: updated });
-    flash('Marked as paid');
+    flash(order.paymentMethod === 'cod' ? 'COD marked as collected' : 'Marked as paid');
+  }
+
+  // Online (Razorpay) orders: pull the payment in from Razorpay / switch an unpaid one to COD / refund a paid one.
+  async function paymentAction(order, act) {
+    if (act === 'cod' && !window.confirm(`Switch ${order.id} to Cash / UPI on delivery? Use this only if the customer won't pay online.`)) return;
+    if (act === 'refund' && !window.confirm(`Refund the full ${money(order.subtotal)} to the customer for ${order.id}? This sends the money back through Razorpay and can't be undone.`)) return;
+    const updated = await patchOrder(order.id, act === 'refund' ? { refund: true } : { payment: act });
+    if (updated.error) { flash(updated.error); return; }
+    setModal({ type: 'view', order: updated });
+    flash(act === 'refund' ? 'Refund initiated — customer notified on WhatsApp'
+      : act === 'cod' ? 'Switched to Cash / UPI on delivery'
+      : (updated.paymentNote || 'Checked with Razorpay'));
   }
 
   return (
@@ -164,7 +180,7 @@ export default function OrdersPage() {
                   </td>
                   <td>{(o.items || []).reduce((n, it) => n + (Number(it.qty) || 0), 0)} item(s)</td>
                   <td>{money(o.subtotal)}</td>
-                  <td><span className={`adm-status-pill${o.paymentStatus === 'paid' ? ' active' : ' pending'}`}>{o.paymentStatus === 'paid' ? 'Paid' : 'Pending'}</span></td>
+                  <td>{(() => { const pp = paymentPill(o); return <span className={`adm-status-pill${pp.tone === 'active' ? ' active' : pp.tone === 'pending' ? ' pending' : ''}`}>{pp.label}</span>; })()}</td>
                   <td><span className={`adm-status-pill${o.status === 'delivered' || o.status === 'installed' ? ' active' : o.status === 'cancelled' ? '' : ' pending'}`}>{STATUS_LABEL[o.status] || o.status}</span></td>
                   <td>{o.createdAt ? new Date(o.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}</td>
                   <td className="adm-row-actions"><button className="adm-chip-btn" onClick={(e) => { e.stopPropagation(); setModal({ type: 'view', order: o }); }}>View</button></td>
@@ -187,13 +203,14 @@ export default function OrdersPage() {
           onEdit={(p) => saveEdit(modal.order, p)}
           onCancel={() => cancel(modal.order)}
           onMarkPaid={() => markPaid(modal.order)}
+          onPayment={(a) => paymentAction(modal.order, a)}
         />
       )}
     </>
   );
 }
 
-function OrderDetailModal({ order, installer, onClose, onAdvance, onCancel, onMarkPaid, onShipping, onEdit }) {
+function OrderDetailModal({ order, installer, onClose, onAdvance, onCancel, onMarkPaid, onShipping, onEdit, onPayment }) {
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [editErr, setEditErr] = useState('');
@@ -212,13 +229,14 @@ function OrderDetailModal({ order, installer, onClose, onAdvance, onCancel, onMa
   }
   const next = nextForwardStatus(order.status);
   const canCancel = CANCELLABLE.has(order.status);
+  const pay = paymentActions(order);
   return (
     <Modal title={`Order ${order.id}`} sub={`Placed ${order.createdAt ? new Date(order.createdAt).toLocaleString('en-IN') : '—'}`} onClose={onClose}>
       <div className="adm-detail-grid">
         <div><span className="adm-detail-label">Customer</span>{order.customerName || '—'}</div>
         <div><span className="adm-detail-label">Phone</span>{order.phone}</div>
         <div><span className="adm-detail-label">Status</span>{STATUS_LABEL[order.status] || order.status}</div>
-        <div><span className="adm-detail-label">Payment</span>{order.paymentStatus === 'paid' ? `Paid${order.paidAt ? ` (${new Date(order.paidAt).toLocaleDateString('en-IN')})` : ''}` : 'Pending (Cash/UPI on delivery)'}</div>
+        <div><span className="adm-detail-label">Payment</span>{paymentLine(order)}</div>
       </div>
       {order.installDate && (
         <div className="adm-detail-notes" style={{ marginTop: 4 }}>
@@ -266,15 +284,19 @@ function OrderDetailModal({ order, installer, onClose, onAdvance, onCancel, onMa
         <a className="adm-btn-outline" style={{ whiteSpace: 'nowrap' }} href={`/api/admin/orders/${order.id}/pdf?type=slip`}><IconDownload size={15} /> Generate Slip</a>
         <a className="adm-btn-outline" style={{ whiteSpace: 'nowrap' }} href={`/api/admin/orders/${order.id}/pdf?type=invoice`}><IconDownload size={15} /> Generate Invoice</a>
         {canEditOrder(order) && <button className="adm-chip-btn" style={{ whiteSpace: 'nowrap' }} onClick={() => setEditing(true)}>Edit Order</button>}
-        {order.paymentStatus !== 'paid' && order.status !== 'cancelled' && (
-          <button className="adm-chip-btn" style={{ whiteSpace: 'nowrap' }} onClick={onMarkPaid}>Mark Paid</button>
-        )}
+        {pay.canMarkPaid && <button className="adm-chip-btn" style={{ whiteSpace: 'nowrap' }} onClick={onMarkPaid}>{pay.markPaidLabel}</button>}
+        {pay.canCheckPayment && <button className="adm-chip-btn" style={{ whiteSpace: 'nowrap' }} onClick={() => onPayment('check')}>Check Payment</button>}
+        {pay.canConvertToCod && <button className="adm-chip-btn" style={{ whiteSpace: 'nowrap' }} onClick={() => onPayment('cod')}>Switch to COD</button>}
+        {pay.canRefund && <button className="adm-chip-btn" style={{ whiteSpace: 'nowrap' }} onClick={() => onPayment('refund')}>Refund {money(order.subtotal)}</button>}
         {canCancel && <button className="lf-btn-back" style={{ whiteSpace: 'nowrap' }} onClick={onCancel}>Cancel Order</button>}
-        {next && order.status !== 'cancelled' && (
+        {next && order.status !== 'cancelled' && !pay.canCheckPayment && (
           <button className="lf-btn-next" style={{ flex: '1 1 100%', whiteSpace: 'nowrap' }} onClick={onAdvance}>Mark as {STATUS_LABEL[next]}</button>
         )}
       </div>
-      {next && order.status !== 'cancelled' && (
+      {pay.canCheckPayment && (
+        <p className="adm-lead-sub" style={{ marginTop: 8 }}>The customer chose to pay online and hasn’t completed the payment. The order confirms itself the moment the payment arrives — use “Check Payment” if you think they have paid, or “Switch to COD” if they’ll pay on delivery.</p>
+      )}
+      {next && order.status !== 'cancelled' && !pay.canCheckPayment && (
         <p className="adm-lead-sub" style={{ marginTop: 8 }}>The customer gets a WhatsApp update when you move this order forward.</p>
       )}
     </Modal>

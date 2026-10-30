@@ -10,6 +10,7 @@ import { ScreenHeader } from "@/components/partner/ui";
 import { useEmployeeSession } from "@/components/team/ui";
 import { IconSearch } from "@/components/admin/icons";
 import { useApiResource, invalidate } from "@/lib/useApiResource";
+import { paymentPill, paymentActions, isAwaitingOnline } from "@/lib/orderPaymentLabels";
 
 const ORDERS_URL = "/api/admin/orders";
 const PAYOUTS_URL = "/api/admin/payouts";
@@ -36,7 +37,7 @@ function OrdersView() {
   const [busy, setBusy] = useState("");
   const [toast, setToast] = useState("");
   const flash = (m) => { setToast(m); setTimeout(() => setToast(""), 3500); };
-  const group = (o) => (o.status === "cancelled" ? "cancelled" : o.paymentStatus === "paid" ? "paid" : "unpaid");
+  const group = (o) => (o.status === "cancelled" || o.paymentStatus === "refunded" ? "cancelled" : o.paymentStatus === "paid" ? "paid" : "unpaid");
   // "Delivered" = goods have reached the customer (Delivered or Installation Done), paid or not.
   const isDelivered = (o) => o.status === "delivered" || o.status === "installed";
 
@@ -45,7 +46,7 @@ function OrdersView() {
     for (const o of orders) { c[group(o)] += 1; if (isDelivered(o)) c.delivered += 1; }
     return c;
   }, [orders]);
-  const toCollect = useMemo(() => orders.filter((o) => group(o) === "unpaid").reduce((s, o) => s + (Number(o.subtotal) || 0), 0), [orders]);
+  const toCollect = useMemo(() => orders.filter((o) => group(o) === "unpaid" && !isAwaitingOnline(o)).reduce((s, o) => s + (Number(o.subtotal) || 0), 0), [orders]);
   const rows = useMemo(() => {
     const s = q.trim().toLowerCase();
     return orders.filter((o) => (tab === "all" || (tab === "delivered" ? isDelivered(o) : group(o) === tab)) && (!s || `${o.id} ${o.customerName || ""} ${o.phone || ""}`.toLowerCase().includes(s)));
@@ -58,7 +59,18 @@ function OrdersView() {
       const res = await fetch(`${ORDERS_URL}/${o.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ markPaid: true }) });
       const d = await res.json().catch(() => ({}));
       await invalidate(ORDERS_URL); refresh();
-      flash(res.ok ? `${o.id} marked as paid` : d.error || "Could not save — try again");
+      flash(res.ok ? (o.paymentMethod === "cod" ? `${o.id} — COD marked as collected` : `${o.id} marked as paid`) : d.error || "Could not save — try again");
+    } catch { flash("Network problem — try again"); } finally { setBusy(""); }
+  }
+
+  async function paymentAction(o, act) {
+    if (act === "refund" && !window.confirm(`Refund the full ${money(o.subtotal)} to the customer for ${o.id}? This sends the money back and can't be undone.`)) return;
+    setBusy(o.id);
+    try {
+      const res = await fetch(`${ORDERS_URL}/${o.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(act === "refund" ? { refund: true } : { payment: act }) });
+      const d = await res.json().catch(() => ({}));
+      await invalidate(ORDERS_URL); refresh();
+      flash(!res.ok || d.error ? d.error || "Could not save — try again" : act === "refund" ? `Refund initiated for ${o.id}` : d.paymentNote || "Checked with Razorpay");
     } catch { flash("Network problem — try again"); } finally { setBusy(""); }
   }
 
@@ -81,6 +93,8 @@ function OrdersView() {
         <div className="hp-lead-list">
           {rows.map((o) => {
             const paid = o.paymentStatus === "paid";
+            const pill = paymentPill(o);
+            const pa = paymentActions(o);
             const expanded = open === o.id;
             return (
               <div key={o.id} className="hp-card" style={{ display: "block" }}>
@@ -92,7 +106,7 @@ function OrdersView() {
                   </div>
                   <div style={{ textAlign: "right" }}>
                     <div style={{ fontWeight: 800, color: "#fff" }}>{money(o.subtotal)}</div>
-                    <span className="hp-badge" style={{ color: paid ? "var(--hp-success)" : "var(--hp-warn)", background: paid ? "var(--hp-success-dim)" : "var(--hp-warn-dim)" }}><span className="hp-badge-dot" />{paid ? "Paid" : "Pending"}</span>
+                    <span className="hp-badge" style={{ color: paid ? "var(--hp-success)" : "var(--hp-warn)", background: paid ? "var(--hp-success-dim)" : "var(--hp-warn-dim)" }}><span className="hp-badge-dot" />{pill.label}</span>
                   </div>
                 </div>
                 {expanded && (
@@ -104,8 +118,14 @@ function OrdersView() {
                     <a href={`/api/admin/orders/${o.id}/pdf?type=invoice`} style={{ display: "inline-block", marginTop: 8, color: "var(--hp-orange)", fontWeight: 700 }}>Download invoice</a>
                   </div>
                 )}
-                {!paid && o.status !== "cancelled" && (
-                  <button type="button" style={{ ...btn, width: "100%", marginTop: 10 }} disabled={busy === o.id} onClick={() => markPaid(o)}>{busy === o.id ? "Saving…" : "Mark paid"}</button>
+                {pa.canMarkPaid && (
+                  <button type="button" style={{ ...btn, width: "100%", marginTop: 10 }} disabled={busy === o.id} onClick={() => markPaid(o)}>{busy === o.id ? "Saving…" : o.paymentMethod === "cod" ? "COD collected" : "Mark paid"}</button>
+                )}
+                {pa.canCheckPayment && (
+                  <button type="button" style={{ ...btn, width: "100%", marginTop: 10 }} disabled={busy === o.id} onClick={() => paymentAction(o, "check")}>{busy === o.id ? "Checking…" : "Check payment"}</button>
+                )}
+                {pa.canRefund && o.status === "cancelled" && (
+                  <button type="button" style={{ ...btn, width: "100%", marginTop: 10 }} disabled={busy === o.id} onClick={() => paymentAction(o, "refund")}>{busy === o.id ? "Saving…" : `Refund ${money(o.subtotal)}`}</button>
                 )}
               </div>
             );

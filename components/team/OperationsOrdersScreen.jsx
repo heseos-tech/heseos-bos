@@ -14,6 +14,7 @@ import { IconNote, IconCalendar } from '@/components/partner/icons';
 import { useApiResource, invalidate } from '@/lib/useApiResource';
 import ShippingSection from '@/components/admin/ShippingSection';
 import OrderEditForm, { canEditOrder, submitOrderEdit } from '@/components/admin/OrderEditForm';
+import { paymentPill, paymentActions } from '@/lib/orderPaymentLabels';
 
 const ORDERS_URL = '/api/admin/orders';
 
@@ -119,7 +120,7 @@ function OrdersView({ pmap }) {
 
   async function markPaid(order) {
     if (!window.confirm(`Payment of ${money(order.subtotal)} received for ${order.id}?`)) return;
-    if (await patch(order, { markPaid: true })) flash('Payment marked as received');
+    if (await patch(order, { markPaid: true })) flash(order.paymentMethod === 'cod' ? 'COD marked as collected' : 'Payment marked as received');
   }
 
   async function cancel(order) {
@@ -252,6 +253,8 @@ function OrderCard({ order: o, busy, onAdvance, onPaid, onSchedule, onNotes, onE
   const st = STAGE[o.status];
   const [color, bg] = BADGE_COLOR[o.status] || BADGE_COLOR.confirmed;
   const paid = o.paymentStatus === 'paid';
+  const pill = paymentPill(o);
+  const pay = paymentActions(o);
   const done = o.status === 'installed';
   const items = (o.items || []).map((i) => `${i.name}${i.qty > 1 ? ` × ${i.qty}` : ''}`).join(', ');
   const due = o.installDate && !done ? dueTag(o.installDate) : '';
@@ -276,7 +279,7 @@ function OrderCard({ order: o, busy, onAdvance, onPaid, onSchedule, onNotes, onE
 
       <div className="ops-meta">
         <span className="ops-total">{money(o.subtotal)}</span>
-        <span className={`ops-pay ${paid ? 'paid' : 'due'}`}>{paid ? 'Paid' : 'Payment pending'}</span>
+        <span className={`ops-pay ${paid ? 'paid' : 'due'}`}>{paid ? pill.label : pill.tone === 'off' ? pill.label : 'Payment pending'}</span>
       </div>
 
       {o.installDate ? (
@@ -311,8 +314,8 @@ function OrderCard({ order: o, busy, onAdvance, onPaid, onSchedule, onNotes, onE
         {!done && (
           <button type="button" className="hp-btn hp-btn-outline hp-btn-sm" disabled={busy} onClick={onSchedule}>{o.installDate ? 'Change date' : 'Set install date'}</button>
         )}
-        {!paid && (
-          <button type="button" className="hp-btn hp-btn-outline hp-btn-sm" disabled={busy} onClick={onPaid}>Payment received</button>
+        {pay.canMarkPaid && (
+          <button type="button" className="hp-btn hp-btn-outline hp-btn-sm" disabled={busy} onClick={onPaid}>{o.paymentMethod === 'cod' ? 'COD collected' : 'Payment received'}</button>
         )}
         <button type="button" className="hp-btn hp-btn-outline hp-btn-sm" disabled={busy} onClick={onNotes}>{o.notes ? 'Edit note' : 'Add note'}</button>
         {canEditOrder(o) && <button type="button" className="hp-btn hp-btn-outline hp-btn-sm" disabled={busy} onClick={onEdit}>Edit order</button>}

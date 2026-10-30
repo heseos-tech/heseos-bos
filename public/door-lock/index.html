@@ -15,6 +15,7 @@
 .pricebar{display:flex;align-items:baseline;flex-wrap:wrap;gap:6px 14px;margin:0 0 26px}.pricebar .now{font-size:40px;font-weight:700;letter-spacing:-1.2px;color:#fff;line-height:1}.pricebar s{color:#7f8997;font-size:18px}.pricebar .off{background:rgba(61,117,255,.16);color:#8fb0ff;border:1px solid rgba(61,117,255,.35);border-radius:3px;font-size:11px;font-weight:800;letter-spacing:1.2px;padding:5px 9px;text-transform:uppercase}
 .order-price{display:flex;align-items:baseline;flex-wrap:wrap;gap:6px 12px;margin:22px 0 0}.order-price .now{font-size:34px;font-weight:700;letter-spacing:-1px;color:#fff}.order-price s{color:#7f8997;font-size:16px}.order-price .off{color:#8fb0ff;font-size:11px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase}
 .summary{margin-top:20px;border:1px solid #303844;background:#0d1117;border-radius:4px;padding:14px 16px;font-size:13px;color:#cfd5de}.summary .row{display:flex;justify-content:space-between;gap:12px;padding:4px 0}.summary .row.total{border-top:1px solid #303844;margin-top:8px;padding-top:12px;font-weight:750;color:#fff;font-size:15px}.summary .pay{color:#8f9bab;font-size:11px;margin-top:8px}
+.paychoice{margin-top:20px;display:none}.paychoice .pc-title{font-size:11px;color:#d5dae2;font-weight:650;margin-bottom:8px}.pc-opt{display:flex;align-items:flex-start;gap:11px;border:1px solid #303844;background:#0d1117;border-radius:4px;padding:12px 14px;margin-bottom:8px;cursor:pointer;transition:border-color .15s}.pc-opt:hover{border-color:#4a5568}.pc-opt.on{border-color:#7195ff;background:#0f1522}.pc-opt input{margin-top:3px;accent-color:#7195ff}.pc-opt b{display:block;font-size:13px;color:#f5f6f7;font-weight:650}.pc-opt small{display:block;font-size:11px;color:#8f9bab;margin-top:2px}.paybox{display:none;background:#11161d;border:1px solid var(--line);padding:30px 28px;border-radius:7px}.paybox h3{font-size:24px;margin:0 0 8px}.paybox p{color:#b3bcc8;font-size:14px;line-height:1.7;margin:8px 0}.paybox .oid{display:inline-block;background:#0d1117;border:1px solid #303844;border-radius:4px;padding:8px 12px;font-weight:750;letter-spacing:1px;margin:8px 0}.paybox .pb-actions{display:flex;flex-direction:column;gap:10px;margin-top:18px}.paybox .pb-actions .btn{width:100%;margin:0}.paybox .pb-msg{color:#ffb3b3;font-size:13px;min-height:18px}
 .hp-field{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
 .err{display:none;margin-top:14px;padding:12px 14px;background:#2a1618;border:1px solid #6b2a2f;color:#ffd7da;font-size:13px;border-radius:4px}
 .btn[disabled]{opacity:.6;cursor:wait;transform:none}
@@ -126,7 +127,7 @@
       <div class="order-note"><span>◈</span><div><strong style="color:#e7ebf2">Confirmation on WhatsApp</strong><br>We'll message you the moment your order is placed.</div></div></div>
     <div>
     <form class="formbox" id="orderForm" novalidate>
-      <h3>Place your order</h3><p class="sub">HESEOS Smart Door Lock · Cash / UPI on delivery</p>
+      <h3>Place your order</h3><p class="sub" id="subLine">HESEOS Smart Door Lock · Cash / UPI on delivery</p>
       <div class="formgrid">
         <div class="field"><label for="name">Full name *</label><input id="name" name="name" placeholder="Your name" required autocomplete="name" maxlength="80"></div>
         <div class="field"><label for="phone">Mobile number (WhatsApp) *</label><input id="phone" name="phone" type="tel" inputmode="numeric" placeholder="98765 43210" required autocomplete="tel" maxlength="16"></div>
@@ -137,22 +138,38 @@
         <div class="field full"><label for="quantity">Quantity</label><select id="quantity" name="quantity"><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select></div>
         <div class="hp-field" aria-hidden="true"><label>Website <input name="website" tabindex="-1" autocomplete="off"></label></div>
       </div>
+      <div class="paychoice" id="payChoice">
+        <div class="pc-title">How would you like to pay?</div>
+        <label class="pc-opt" id="pcOnline"><input type="radio" name="paymentMethod" value="online"><span><b>Pay online now</b><small>UPI, cards &amp; netbanking — secure payment by Razorpay</small></span></label>
+        <label class="pc-opt on" id="pcCod"><input type="radio" name="paymentMethod" value="cod" checked><span><b>Cash / UPI on delivery</b><small>Nothing to pay now</small></span></label>
+      </div>
       <div class="summary" id="summary" aria-live="polite">
         <div class="row"><span id="sumLine">HESEOS Smart Door Lock × 1</span><span id="sumAmt">₹6,499</span></div>
-        <div class="row total"><span>Total payable on delivery</span><span id="sumTotal">₹6,499</span></div>
-        <div class="pay">Nothing to pay now. Pay by Cash or UPI when your lock is delivered.</div>
+        <div class="row total"><span id="sumTotalLabel">Total payable on delivery</span><span id="sumTotal">₹6,499</span></div>
+        <div class="pay" id="payNote">Nothing to pay now. Pay by Cash or UPI when your lock is delivered.</div>
       </div>
       <button class="btn" type="submit" id="placeBtn">Place order <span>↗</span></button>
       <div class="err" id="err" role="alert"></div>
       <div class="tr-mini" aria-label="Trust"><span><i>✓</i> <b>Featured on JioHotstar</b></span><span><i>✓</i> <b>Make in India</b></span><span><i>✓</i> <b>DPIIT-recognised startup</b></span></div>
       <div class="form-disclaimer">By placing this order you agree to be contacted on the number above, including on WhatsApp, to confirm delivery. Product specifications are subject to confirmation by HESEOS.</div>
     </form>
+    <div class="paybox" id="payBox" role="status" aria-live="polite">
+      <h3>Complete your payment</h3>
+      <div class="oid" id="pbId"></div>
+      <p id="pbSummary"></p>
+      <p class="pb-msg" id="pbMsg"></p>
+      <div class="pb-actions">
+        <button class="btn" type="button" id="pbPay">Pay now <span>↗</span></button>
+        <button class="btn ghost" type="button" id="pbCod">Pay on delivery instead</button>
+      </div>
+      <div class="form-disclaimer">Payments are processed securely by Razorpay. We never see or store your card or UPI details.</div>
+    </div>
     <div class="done" id="done" role="status" aria-live="polite">
-      <h3>Order placed ✓</h3>
+      <h3 id="doneTitle">Order placed ✓</h3>
       <p>Thank you, <strong id="doneName"></strong>! Your order is in.</p>
       <div class="oid" id="doneId"></div>
       <p id="doneSummary"></p>
-      <p id="doneWa">Your order confirmation is on its way to your WhatsApp.</p><p>Our team will call you shortly to confirm delivery. Pay by Cash or UPI when your lock is delivered.</p>
+      <p id="doneWa">Your order confirmation is on its way to your WhatsApp.</p><p id="doneNext">Our team will call you shortly to confirm delivery. Pay by Cash or UPI when your lock is delivered.</p>
     </div>
     </div>
   </div>
@@ -163,9 +180,10 @@
 <script src="/hs-track.js" data-page="door_lock"></script>
 <script>
 (function(){
- var price=6499,mrp=19999,maxQty=10,productName='HESEOS Smart Door Lock';
+ var price=6499,mrp=19999,maxQty=10,productName='HESEOS Smart Door Lock',onlineOk=false;
  function inr(n){return '\u20b9'+Number(n).toLocaleString('en-IN');}
  function $(id){return document.getElementById(id);}
+ var form=$('orderForm'),btn=$('placeBtn'),err=$('err');
  function paintPrice(){
    var off=Math.round((1-price/mrp)*100);
    ['hero','order'].forEach(function(k){
@@ -181,13 +199,26 @@
    $('sumLine').textContent=productName+' \u00d7 '+q;
    $('sumAmt').textContent=inr(price*q);
    $('sumTotal').textContent=inr(price*q);
+   paintPay();
+ }
+ function method(){var r=document.querySelector('input[name="paymentMethod"]:checked');return onlineOk&&r&&r.value==='online'?'online':'cod';}
+ function setBtn(t){btn.firstChild.textContent=t+' ';}
+ function paintPay(){
+   var online=method()==='online',total=inr(price*(Number($('quantity').value)||1));
+   $('pcOnline').className='pc-opt'+(online?' on':''); $('pcCod').className='pc-opt'+(online?'':' on');
+   $('subLine').textContent=productName+(onlineOk?' \u00b7 Pay online or Cash / UPI on delivery':' \u00b7 Cash / UPI on delivery');
+   $('sumTotalLabel').textContent=online?'Total payable now':'Total payable on delivery';
+   $('payNote').textContent=online?'Secure payment by Razorpay \u2014 UPI, cards and netbanking. Your receipt comes on WhatsApp.':'Nothing to pay now. Pay by Cash or UPI when your lock is delivered.';
+   if(!btn.disabled) setBtn(online?'Pay '+total+' securely':'Place order');
  }
  // Price always comes from the server (lib/heseosDoorLock.js) — the numbers above are only a first paint.
  fetch('/api/shop/door-lock',{cache:'no-store'}).then(function(r){return r.ok?r.json():null;}).then(function(d){
-   if(!d)return; price=d.price||price; mrp=d.mrp||mrp; maxQty=d.maxQty||maxQty; productName=d.name||productName; paintPrice();
+   if(!d)return; price=d.price||price; mrp=d.mrp||mrp; maxQty=d.maxQty||maxQty; productName=d.name||productName; onlineOk=!!d.onlinePayment;
+   $('payChoice').style.display=onlineOk?'block':'none'; paintPrice();
  }).catch(function(){});
  paintPrice();
  $('quantity').addEventListener('change',paintSummary);
+ document.querySelectorAll('input[name="paymentMethod"]').forEach(function(r){r.addEventListener('change',paintPay);});
 
  // The WhatsApp link carries ?p=<mobile> — only pre-fills the field.
  try{var p=new URLSearchParams(location.search).get('p'); if(p&&/^\d{10}$/.test(p)) $('phone').value=p;}catch(e){}
@@ -214,15 +245,86 @@
  })();
 
  var clientRef='c'+Date.now().toString(36)+Math.random().toString(36).slice(2,10);
- var form=$('orderForm'),btn=$('placeBtn'),err=$('err');
- function fail(msg){window.hsTrack&&window.hsTrack('error');err.textContent=msg;err.style.display='block';btn.disabled=false;btn.firstChild.textContent='Place order ';}
+ function fail(msg){window.hsTrack&&window.hsTrack('error');err.textContent=msg;err.style.display='block';btn.disabled=false;paintPay();}
+
+ function showDone(j,body,paid){
+   $('payBox').style.display='none';
+   $('doneName').textContent=body.name.split(' ')[0];
+   $('doneId').textContent='Order ID: '+j.orderId;
+   if(paid){
+     $('doneTitle').textContent='Payment received \u2713';
+     $('doneSummary').textContent=productName+' \u00d7 '+(j.quantity||body.quantity)+' \u00b7 Paid '+inr(j.total)+' online'+(j.paymentId?' ('+j.paymentId+')':'');
+     $('doneWa').textContent="We're sending your payment receipt to your WhatsApp.";
+     $('doneNext').textContent='Your order is confirmed. Our team will call you shortly to arrange delivery and free installation.';
+   } else if(j.pending){
+     $('doneTitle').textContent='Payment being confirmed';
+     $('doneSummary').textContent=productName+' \u00d7 '+(j.quantity||body.quantity)+' \u00b7 Total '+inr(j.total);
+     $('doneWa').textContent=j.message||'You will get a WhatsApp message as soon as your payment is confirmed.';
+     $('doneNext').textContent='If any money was deducted it is safe \u2014 it will be matched to this order automatically.';
+   } else {
+     $('doneSummary').textContent=productName+' \u00d7 '+(j.quantity||body.quantity)+' \u00b7 Total '+inr(j.total)+' (pay on delivery)';
+     $('doneWa').textContent=j.whatsappSent===false?"You'll receive your order confirmation on WhatsApp shortly.":"We've sent your order confirmation to your WhatsApp.";
+   }
+   $('done').style.display='block';
+   $('done').scrollIntoView({behavior:'smooth',block:'center'});
+ }
+ function post(url,b){return fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)}).then(function(r){return r.json().catch(function(){return {};}).then(function(j){return {ok:r.ok,j:j};});});}
+ var rzpLoading=null;
+ function loadRzp(){
+   if(window.Razorpay) return Promise.resolve();
+   if(rzpLoading) return rzpLoading;
+   rzpLoading=new Promise(function(res,rej){var sc=document.createElement('script');sc.src='https://checkout.razorpay.com/v1/checkout.js';sc.onload=res;sc.onerror=function(){rzpLoading=null;rej();};document.head.appendChild(sc);});
+   return rzpLoading;
+ }
+ // Online payment: the order exists (awaiting payment); open Razorpay Checkout and confirm it with our server.
+ function startPay(j,body){
+   var pb=$('payBox'),msg=$('pbMsg'),payBtn=$('pbPay'),codBtn=$('pbCod'),busy=false;
+   $('pbId').textContent='Order ID: '+j.orderId;
+   $('pbSummary').textContent=productName+' \u00d7 '+j.quantity+' \u00b7 Total '+inr(j.total);
+   pb.style.display='block'; pb.scrollIntoView({behavior:'smooth',block:'center'});
+   function setMsg(t){msg.textContent=t||'';}
+   function lock(b){busy=b;payBtn.disabled=b;codBtn.disabled=b;}
+   function open(){
+     if(busy) return; setMsg(''); lock(true); payBtn.firstChild.textContent='Opening secure payment\u2026 ';
+     loadRzp().then(function(){
+       var c=j.checkout;
+       var rz=new window.Razorpay({
+         key:c.key, amount:c.amount, currency:c.currency, name:c.name, description:c.description, order_id:c.orderId,
+         prefill:{name:c.prefill&&c.prefill.name||body.name, contact:c.prefill&&c.prefill.contact||('+91'+body.phone.replace(/\D/g,'').slice(-10))},
+         theme:{color:'#3d75ff'},
+         handler:function(resp){
+           payBtn.firstChild.textContent='Confirming your payment\u2026 ';
+           post('/api/shop/door-lock/pay',{action:'verify',orderId:j.orderId,payToken:j.payToken,razorpay_order_id:resp.razorpay_order_id,razorpay_payment_id:resp.razorpay_payment_id,razorpay_signature:resp.razorpay_signature})
+             .then(function(r){
+               if(r.ok&&r.j.ok){ window.hsTrack&&window.hsTrack('mark','paid'); showDone({orderId:j.orderId,total:r.j.total||j.total,quantity:j.quantity,paymentId:r.j.paymentId,pending:!r.j.paid,message:r.j.message},body,!!r.j.paid); }
+               else { lock(false); payBtn.firstChild.textContent='Pay now '; setMsg(r.j.error||'We could not confirm your payment. If money was deducted, our team will contact you.'); }
+             }).catch(function(){ lock(false); payBtn.firstChild.textContent='Pay now '; setMsg('Network problem while confirming. If money was deducted it will be matched automatically \u2014 you will get a WhatsApp message.'); });
+         },
+         modal:{ondismiss:function(){ if(payBtn.firstChild.textContent.indexOf('Confirming')===0) return; lock(false); payBtn.firstChild.textContent='Pay now '; setMsg('Payment not completed. You can try again, or pay on delivery instead.'); }}
+       });
+       rz.on('payment.failed',function(r){ setMsg((r&&r.error&&r.error.description)||'Payment failed. Please try again.'); });
+       rz.open();
+     }).catch(function(){ lock(false); payBtn.firstChild.textContent='Pay now '; setMsg('Could not load the secure payment window. Check your connection and try again.'); });
+   }
+   payBtn.firstChild.textContent='Pay '+inr(j.total)+' now ';
+   payBtn.onclick=open;
+   codBtn.onclick=function(){
+     if(busy) return; lock(true); setMsg('');
+     post('/api/shop/door-lock/pay',{action:'cod',orderId:j.orderId,payToken:j.payToken}).then(function(r){
+       if(r.ok&&r.j.ok){ showDone({orderId:j.orderId,total:r.j.total||j.total,quantity:j.quantity,whatsappSent:true},body,false); }
+       else { lock(false); setMsg(r.j.error||'Could not switch to pay on delivery. Please try again.'); }
+     }).catch(function(){ lock(false); setMsg('Network problem. Please try again.'); });
+   };
+   open();
+ }
  form.addEventListener('submit',function(e){
    e.preventDefault(); err.style.display='none';
    var d=new FormData(form);
+   var payMethod=method();
    var body={
      name:(d.get('name')||'').trim(), phone:(d.get('phone')||'').trim(), address:(d.get('address')||'').trim(),
      city:(d.get('city')||'').trim(), state:(d.get('state')||'').trim(), pincode:(d.get('pincode')||'').trim(), quantity:Number(d.get('quantity'))||1,
-     website:d.get('website')||'', clientRef:clientRef
+     website:d.get('website')||'', clientRef:clientRef, paymentMethod:payMethod
    };
    var digits=body.phone.replace(/\D/g,'').replace(/^91(?=\d{10}$)/,'').replace(/^0(?=\d{10}$)/,'');
    if(body.name.length<2) return fail('Please enter your full name.');
@@ -230,19 +332,15 @@
    if(body.address.length<8) return fail('Please enter your full delivery address.');
    if(!/^\d{6}$/.test(body.pincode)) return fail('Please enter a valid 6-digit pincode.');
    if(notFound) return fail('We could not find this pincode. Please check it.');
-   btn.disabled=true; btn.firstChild.textContent='Placing your order\u2026 ';
+   btn.disabled=true; setBtn(payMethod==='online'?'Starting secure payment\u2026':'Placing your order\u2026');
    fetch('/api/shop/door-lock',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
      .then(function(r){return r.json().catch(function(){return {};}).then(function(j){return {ok:r.ok,j:j};});})
      .then(function(res){
        if(!res.ok||!res.j.ok) return fail(res.j.error||'Something went wrong. Please try again.');
        window.hsTrack&&window.hsTrack('submitted',{name:body.name,phone:body.phone,refId:res.j.orderId});
        form.style.display='none';
-       $('doneName').textContent=body.name.split(' ')[0];
-       $('doneId').textContent='Order ID: '+res.j.orderId;
-       $('doneSummary').textContent=productName+' \u00d7 '+(res.j.quantity||body.quantity)+' \u00b7 Total '+inr(res.j.total)+' (pay on delivery)';
-       $('doneWa').textContent=res.j.whatsappSent===false?"You'll receive your order confirmation on WhatsApp shortly.":"We've sent your order confirmation to your WhatsApp.";
-       $('done').style.display='block';
-       $('done').scrollIntoView({behavior:'smooth',block:'center'});
+       if(res.j.paymentMethod==='online'&&res.j.checkout){ startPay(res.j,body); return; }
+       showDone(res.j,body,false);
      })
      .catch(function(){fail('Network problem \u2014 please check your connection and try again.');});
  });

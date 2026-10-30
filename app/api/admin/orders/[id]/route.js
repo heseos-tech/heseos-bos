@@ -3,9 +3,11 @@
 import { dbGetById } from '@/lib/db';
 import { getEmployee } from '@/lib/auth';
 import { dbPatch } from '@/lib/db';
+import { after } from 'next/server';
+import { syncOnlinePayment, convertToCod, refundOnlineOrder, isAwaitingOnline } from '@/lib/heseosPayments';
 import { advanceOrderStatus, editOrder, markOrderPaid, setInstallationSchedule, cleanInstallFee, ORDER_STATUSES } from '@/lib/heseosOrders';
 import { releaseJob, ensureInstallPayout } from '@/lib/installJobs';
-import { notifyHeseosOrderStatus, notifyHeseosInstallationScheduled } from '@/lib/heseosNotify';
+import { notifyHeseosOrderStatus, notifyHeseosInstallationScheduled, notifyHeseosPaymentReceived, notifyHeseosRefundInitiated, notifyHeseosOrderPlaced } from '@/lib/heseosNotify';
 import { velocityConfigured, velocityConfig, createShipmentForOrder, resendShipmentForOrder, cancelShipmentForOrder, syncShipmentTracking } from '@/lib/velocityShipping';
 
 export const dynamic = 'force-dynamic';
@@ -32,8 +34,38 @@ export async function PATCH(request, { params }) {
   const actorLabel = employee.name || 'Admin';
 
   // Accounts can read orders and mark them paid — nothing else (no status changes, scheduling or notes).
-  if (employee.role === 'accounts' && body.markPaid !== true) {
-    return Response.json({ error: 'Accounts can only mark orders as paid' }, { status: 403 });
+  if (employee.role === 'accounts' && body.markPaid !== true && body.refund !== true && body.payment !== 'check') {
+    return Response.json({ error: 'Accounts can only record payments and refunds' }, { status: 403 });
+  }
+
+  // Online (Razorpay) payments. 'check' re-asks Razorpay what happened on this order (the fallback for a missed
+  // webhook / a customer who paid and closed the page); 'cod' switches an unpaid online order to Cash / UPI on delivery.
+  if (body.payment !== undefined) {
+    const act = String(body.payment);
+    if (act === 'check') {
+      if (!['operations', 'admin', 'accounts'].includes(employee.role)) return Response.json({ error: 'Not allowed' }, { status: 403 });
+      const r = await syncOnlinePayment(id, `${actorLabel} (check)`);
+      if (r.applied) after(async () => { await notifyHeseosPaymentReceived(r.order).catch(() => {}); });
+      if (!r.ok) return Response.json({ ...(await dbGetById('orders', id)), paymentNote: r.error });
+      return Response.json({ ...r.order, ...(r.applied ? { paymentNote: 'Payment found — order marked paid and confirmed' } : {}) });
+    }
+    if (act === 'cod') {
+      if (!['operations', 'admin'].includes(employee.role)) return Response.json({ error: 'Only Operations or Admin can switch an order to COD' }, { status: 403 });
+      const r = await convertToCod(id, actorLabel);
+      if (!r.ok) return Response.json({ error: r.error }, { status: 400 });
+      after(async () => { await notifyHeseosOrderPlaced(r.order).catch(() => {}); });
+      return Response.json(r.order);
+    }
+    return Response.json({ error: 'Unknown payment action' }, { status: 400 });
+  }
+
+  // Refund an online payment in full (Admin / Accounts). Non-admins can only refund a cancelled order.
+  if (body.refund === true) {
+    if (!['admin', 'accounts'].includes(employee.role)) return Response.json({ error: 'Only Admin or Accounts can refund a payment' }, { status: 403 });
+    const r = await refundOnlineOrder(id, actorLabel, { admin: employee.role === 'admin' });
+    if (!r.ok) return Response.json({ error: r.error }, { status: 400 });
+    after(async () => { await notifyHeseosRefundInitiated(r.order).catch(() => {}); });
+    return Response.json(r.order);
   }
 
   // Operations / Admin: correct the customer's details, address/pincode and the order lines (qty, price).
@@ -123,13 +155,19 @@ export async function PATCH(request, { params }) {
   if (body.markPaid === true) {
     if (existing.status === 'cancelled') return Response.json({ error: 'A cancelled order cannot be marked paid' }, { status: 400 });
     if (existing.paymentStatus === 'paid') return Response.json(existing); // already paid — never record it twice
-    const updated = await markOrderPaid(id, actorLabel);
+    if (existing.paymentStatus === 'refunded') return Response.json({ error: 'This payment was refunded' }, { status: 400 });
+    if (isAwaitingOnline(existing)) return Response.json({ error: 'The customer is paying online — use "Check payment" to pull it in, or switch the order to COD first' }, { status: 400 });
+    const mode = ['cash', 'upi'].includes(body.mode) ? body.mode : undefined;
+    const updated = await markOrderPaid(id, actorLabel, mode);
     return Response.json(updated);
   }
 
   if (body.status !== undefined) {
     if (!VALID_STATUSES.has(body.status)) {
       return Response.json({ error: `Unknown status "${body.status}"` }, { status: 400 });
+    }
+    if (isAwaitingOnline(existing) && body.status !== 'cancelled') {
+      return Response.json({ error: 'This order is waiting for the customer\u2019s online payment — it can be confirmed once the payment arrives (use "Check payment"), or switch it to COD first' }, { status: 400 });
     }
     let updated = await advanceOrderStatus(id, body.status, actorLabel);
     // Tell the customer on WhatsApp — only when the status actually changed (a double-click or a

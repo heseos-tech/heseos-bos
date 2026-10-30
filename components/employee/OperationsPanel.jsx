@@ -15,6 +15,7 @@ import { IconOrders, IconDemo, IconSearch, IconConversions, IconLeads, IconPhone
 import { useApiResource, invalidate } from '@/lib/useApiResource';
 import ShippingSection from '@/components/admin/ShippingSection';
 import OrderEditForm, { canEditOrder, submitOrderEdit } from '@/components/admin/OrderEditForm';
+import { paymentPill, paymentLine, paymentActions } from '@/lib/orderPaymentLabels';
 
 const ORDERS_URL = '/api/admin/orders';
 const PAGE_SIZE = 10;
@@ -136,7 +137,7 @@ export default function OperationsPanel({ employee }) {
   }
   async function markPaid(order) {
     if (!window.confirm(`Payment of ${money(order.subtotal)} received for ${order.id}?`)) return;
-    if (await patch(order, { markPaid: true })) flash('Payment marked as received');
+    if (await patch(order, { markPaid: true })) flash(order.paymentMethod === 'cod' ? 'COD marked as collected' : 'Payment marked as received');
   }
   async function cancel(order) {
     if (!window.confirm(`Cancel order ${order.id}? This can't be undone, and the customer is told on WhatsApp.`)) return;
@@ -372,7 +373,7 @@ function OrderRow({ o, busy, onOpen, onAdvance, installer }) {
       <td><div className="adm-lead-name">{o.customerName || '—'}</div><div className="adm-lead-sub">{o.phone}{o.city ? ` · ${o.city}` : ''}</div></td>
       <td>{(o.items || []).map((i) => `${i.name}${i.qty > 1 ? ` × ${i.qty}` : ''}`).join(', ') || '—'}</td>
       <td>{money(o.subtotal)}</td>
-      <td><span className={`adm-status-pill${o.paymentStatus === 'paid' ? ' active' : ' pending'}`}>{o.paymentStatus === 'paid' ? 'Paid' : 'Pending'}</span></td>
+      <td>{(() => { const pp = paymentPill(o); return <span className={`adm-status-pill${pp.tone === 'active' ? ' active' : pp.tone === 'pending' ? ' pending' : ''}`}>{pp.label}</span>; })()}</td>
       <td><span className={`adm-status-pill${done ? ' active' : ' pending'}`}>{st.label}</span></td>
       <td>
         {o.installDate
@@ -398,6 +399,7 @@ function OrderModal({ order, busy, installer, onClose, onAdvance, onPaid, onCanc
   const [editErr, setEditErr] = useState('');
   const st = STAGE[order.status];
   const done = order.status === 'installed';
+  const pay = paymentActions(order);
   const [date, setDate] = useState(order.installDate || '');
   const [slot, setSlot] = useState(order.installSlot || '');
   const [notes, setNotes] = useState(order.notes || '');
@@ -426,7 +428,7 @@ function OrderModal({ order, busy, installer, onClose, onAdvance, onPaid, onCanc
           <a className="adm-chip-btn" href={telHref(order.phone)} style={{ textDecoration: 'none', marginLeft: 6 }}>Call</a>{' '}
           <a className="adm-chip-btn" href={waHref(order.phone)} target="_blank" rel="noreferrer" style={{ textDecoration: 'none' }}><IconWhatsApp size={12} /> WhatsApp</a>
         </div>
-        <div><span className="adm-detail-label">Payment</span>{order.paymentStatus === 'paid' ? `Paid${order.paidAt ? ` (${new Date(order.paidAt).toLocaleDateString('en-IN')})` : ''}` : 'Pending (Cash/UPI on delivery)'}</div>
+        <div><span className="adm-detail-label">Payment</span>{paymentLine(order)}</div>
         <div><span className="adm-detail-label">Total</span>{money(order.subtotal)}</div>
       </div>
       <div className="adm-detail-notes" style={{ marginTop: 4 }}>
@@ -463,7 +465,7 @@ function OrderModal({ order, busy, installer, onClose, onAdvance, onPaid, onCanc
         <a className="adm-btn-outline" style={{ whiteSpace: 'nowrap' }} href={`/api/admin/orders/${order.id}/pdf?type=slip`}><IconDownload size={15} /> Generate Slip</a>
         <a className="adm-btn-outline" style={{ whiteSpace: 'nowrap' }} href={`/api/admin/orders/${order.id}/pdf?type=invoice`}><IconDownload size={15} /> Generate Invoice</a>
         {canEditOrder(order) && <button className="adm-chip-btn" style={{ whiteSpace: 'nowrap' }} disabled={busy} onClick={() => setEditing(true)}>Edit Order</button>}
-        {order.paymentStatus !== 'paid' && <button className="adm-chip-btn" style={{ whiteSpace: 'nowrap' }} disabled={busy} onClick={onPaid}>Mark Paid</button>}
+        {pay.canMarkPaid && <button className="adm-chip-btn" style={{ whiteSpace: 'nowrap' }} disabled={busy} onClick={onPaid}>{pay.markPaidLabel}</button>}
         {CANCELLABLE.has(order.status) && <button className="lf-btn-back" style={{ whiteSpace: 'nowrap' }} disabled={busy} onClick={onCancel}>Cancel Order</button>}
         {st.next && <button className="lf-btn-next" style={{ flex: '1 1 100%', whiteSpace: 'nowrap' }} disabled={busy} onClick={onAdvance}>{st.action}</button>}
       </div>

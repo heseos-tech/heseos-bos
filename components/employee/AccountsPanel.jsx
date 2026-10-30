@@ -11,6 +11,7 @@ import PayoutsPage from '@/components/admin/PayoutsPage';
 import { StatCard, Modal, Pagination } from '@/components/admin/ui';
 import { IconOrders, IconPayouts, IconConversions, IconSearch, IconSettings, IconDownload } from '@/components/admin/icons';
 import { useApiResource, invalidate } from '@/lib/useApiResource';
+import { paymentPill, paymentLine, paymentActions, isAwaitingOnline } from '@/lib/orderPaymentLabels';
 
 const ORDERS_URL = '/api/admin/orders';
 const PAGE_SIZE = 10;
@@ -47,7 +48,7 @@ function OrdersSection() {
   const [busy, setBusy] = useState(false);
 
   const flash = (m) => { setNotice(m); setTimeout(() => setNotice(''), 4000); };
-  const groupOf = (o) => (o.status === 'cancelled' ? 'cancelled' : isPaid(o) ? 'paid' : 'unpaid');
+  const groupOf = (o) => (o.status === 'cancelled' || o.paymentStatus === 'refunded' ? 'cancelled' : isPaid(o) ? 'paid' : 'unpaid');
   // "Delivered" = the goods have reached the customer (Delivered or Installation Done), paid or not.
   const isDelivered = (o) => o.status === 'delivered' || o.status === 'installed';
 
@@ -55,7 +56,7 @@ function OrdersSection() {
     const s = { unpaid: 0, unpaidAmt: 0, paid: 0, paidAmt: 0, cancelled: 0 };
     for (const o of orders) {
       const g = groupOf(o);
-      if (g === 'unpaid') { s.unpaid += 1; s.unpaidAmt += Number(o.subtotal) || 0; }
+      if (g === 'unpaid') { s.unpaid += 1; if (!isAwaitingOnline(o)) s.unpaidAmt += Number(o.subtotal) || 0; }
       else if (g === 'paid') { s.paid += 1; s.paidAmt += Number(o.subtotal) || 0; }
       else s.cancelled += 1;
     }
@@ -80,8 +81,21 @@ function OrdersSection() {
       const d = await res.json().catch(() => ({}));
       if (!res.ok) { flash(d.error || 'Could not mark paid'); return; }
       await invalidate(ORDERS_URL); refresh();
-      flash(`Order ${order.id} marked as paid`);
+      flash(order.paymentMethod === 'cod' ? `Order ${order.id} — COD marked as collected` : `Order ${order.id} marked as paid`);
     } finally { setBusy(false); }
+  }
+
+  // Online (Razorpay) orders: 'check' pulls in a payment that hasn't shown up; 'refund' sends the money back.
+  async function paymentAction(order, act) {
+    if (act === 'refund' && !window.confirm(`Refund the full ${money(order.subtotal)} to the customer for ${order.id}? This sends the money back through Razorpay and can't be undone.`)) return;
+    setBusy(true);
+    try {
+      const res = await fetch(`${ORDERS_URL}/${order.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(act === 'refund' ? { refund: true } : { payment: act }) });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok || d.error) { flash(d.error || 'Could not save — try again'); return; }
+      await invalidate(ORDERS_URL); refresh();
+      flash(act === 'refund' ? `Refund initiated for ${order.id} — customer notified on WhatsApp` : (d.paymentNote || 'Checked with Razorpay'));
+    } catch { flash('Network problem — try again'); } finally { setBusy(false); }
   }
 
   return (
@@ -119,12 +133,14 @@ function OrdersSection() {
                   <td><div className="adm-lead-name">{o.customerName || '—'}</div><div className="adm-lead-sub">{o.phone}</div></td>
                   <td>{(o.items || []).reduce((n, it) => n + (Number(it.qty) || 0), 0)} item(s)</td>
                   <td>{money(o.subtotal)}</td>
-                  <td><span className={`adm-status-pill${isPaid(o) ? ' active' : ' pending'}`}>{isPaid(o) ? 'Paid' : 'Pending'}</span></td>
+                  <td>{(() => { const pp = paymentPill(o); return <span className={`adm-status-pill${pp.tone === 'active' ? ' active' : pp.tone === 'pending' ? ' pending' : ''}`}>{pp.label}</span>; })()}</td>
                   <td><span className={`adm-status-pill${o.status === 'delivered' || o.status === 'installed' ? ' active' : o.status === 'cancelled' ? '' : ' pending'}`}>{STATUS_LABEL[o.status] || o.status}</span></td>
                   <td>{dateOf(o.createdAt)}</td>
                   <td className="adm-row-actions" onClick={(e) => e.stopPropagation()}>
                     <button className="adm-chip-btn" onClick={() => setModalId(o.id)}>View</button>
-                    {!isPaid(o) && o.status !== 'cancelled' && <button className="adm-chip-btn" style={{ marginLeft: 6 }} disabled={busy} onClick={() => markPaid(o)}>Mark Paid</button>}
+                    {paymentActions(o).canMarkPaid && <button className="adm-chip-btn" style={{ marginLeft: 6 }} disabled={busy} onClick={() => markPaid(o)}>{paymentActions(o).markPaidLabel}</button>}
+                    {paymentActions(o).canCheckPayment && <button className="adm-chip-btn" style={{ marginLeft: 6 }} disabled={busy} onClick={() => paymentAction(o, 'check')}>Check Payment</button>}
+                    {paymentActions(o).canRefund && o.status === 'cancelled' && <button className="adm-chip-btn" style={{ marginLeft: 6 }} disabled={busy} onClick={() => paymentAction(o, 'refund')}>Refund</button>}
                   </td>
                 </tr>
               ))}
@@ -134,20 +150,20 @@ function OrdersSection() {
         <Pagination page={page} pageCount={pageCount} total={filtered.length} pageSize={PAGE_SIZE} onPage={setPage} />
       </div>
 
-      {modalOrder && <OrderModal order={modalOrder} busy={busy} onClose={() => setModalId(null)} onMarkPaid={() => markPaid(modalOrder)} />}
+      {modalOrder && <OrderModal order={modalOrder} busy={busy} onClose={() => setModalId(null)} onMarkPaid={() => markPaid(modalOrder)} onPayment={(a) => paymentAction(modalOrder, a)} />}
     </>
   );
 }
 
-function OrderModal({ order, busy, onClose, onMarkPaid }) {
-  const paid = isPaid(order);
+function OrderModal({ order, busy, onClose, onMarkPaid, onPayment }) {
+  const pay = paymentActions(order);
   return (
     <Modal title={`Order ${order.id}`} sub={`Placed ${order.createdAt ? new Date(order.createdAt).toLocaleString('en-IN') : '—'}`} onClose={onClose}>
       <div className="adm-detail-grid">
         <div><span className="adm-detail-label">Customer</span>{order.customerName || '—'}</div>
         <div><span className="adm-detail-label">Phone</span>{order.phone}</div>
         <div><span className="adm-detail-label">Order status</span>{STATUS_LABEL[order.status] || order.status}</div>
-        <div><span className="adm-detail-label">Payment</span>{paid ? `Paid${order.paidAt ? ` (${dateOf(order.paidAt)})` : ''}` : 'Pending (Cash/UPI on delivery)'}</div>
+        <div><span className="adm-detail-label">Payment</span>{paymentLine(order)}</div>
         <div><span className="adm-detail-label">Order total</span>{money(order.subtotal)}</div>
         {Number(order.installFee) > 0 && <div><span className="adm-detail-label">Installer fee</span>{money(order.installFee)}</div>}
       </div>
@@ -178,7 +194,9 @@ function OrderModal({ order, busy, onClose, onMarkPaid }) {
       <div className="lf-actions" style={{ marginTop: 18, flexWrap: 'wrap' }}>
         <a className="adm-btn-outline" style={{ whiteSpace: 'nowrap' }} href={`/api/admin/orders/${order.id}/pdf?type=invoice`}><IconDownload size={15} /> Invoice</a>
         <button className="lf-btn-back" onClick={onClose}>Close</button>
-        {!paid && order.status !== 'cancelled' && <button className="lf-btn-next" onClick={onMarkPaid} disabled={busy}>{busy ? 'Saving…' : 'Mark as Paid'}</button>}
+        {pay.canCheckPayment && <button className="adm-chip-btn" onClick={() => onPayment('check')} disabled={busy}>Check Payment</button>}
+        {pay.canRefund && <button className="adm-chip-btn" onClick={() => onPayment('refund')} disabled={busy}>{busy ? 'Saving…' : `Refund ${money(order.subtotal)}`}</button>}
+        {pay.canMarkPaid && <button className="lf-btn-next" onClick={onMarkPaid} disabled={busy}>{busy ? 'Saving…' : pay.markPaidLabel === 'Mark COD Collected' ? 'Mark COD as Collected' : 'Mark as Paid'}</button>}
       </div>
     </Modal>
   );
