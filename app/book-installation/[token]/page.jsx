@@ -2,14 +2,15 @@
 import { notFound } from 'next/navigation';
 import { dbGetById } from '@/lib/db';
 import {
-  verifyInstallBookingToken, bookingBlockReason, istDate, earliestBookingDate, bookableDates, BOOKING_MAX_DAYS, BOOKING_SLOTS,
+  verifyInstallBookingToken, cleanInstallBookingToken, bookingBlockReason, istDate, earliestBookingDate, bookableDates, BOOKING_MAX_DAYS, BOOKING_SLOTS,
 } from '@/lib/installBooking';
 import BookInstallationForm from '@/components/BookInstallationForm';
 
 export const dynamic = 'force-dynamic';
 
 export default async function BookInstallationPage({ params }) {
-  const { token } = await params;
+  const { token: rawToken } = await params;
+  const token = cleanInstallBookingToken(rawToken);
   const orderId = verifyInstallBookingToken(token);
   if (!orderId) notFound();
   const order = await dbGetById('orders', orderId);
