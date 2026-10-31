@@ -145,7 +145,7 @@
       </div>
       <div class="summary" id="summary" aria-live="polite">
         <div class="row"><span id="sumLine">HESEOS Smart Door Lock × 1</span><span id="sumAmt">₹6,499</span></div>
-        <div class="row" id="discRow" style="display:none"><span>Online payment discount</span><span id="discAmt" style="color:#7be0a5"></span></div>
+        <div class="row" id="discRow" style="display:none"><span>Online payment discount<span id="discPct"></span></span><span id="discAmt" style="color:#7be0a5"></span></div>
         <div class="row total"><span id="sumTotalLabel">Total payable on delivery</span><span id="sumTotal">₹6,499</span></div>
         <div class="pay" id="payNote">Nothing to pay now. Pay by Cash or UPI when your lock is delivered.</div>
       </div>
@@ -186,7 +186,7 @@
 <script src="/hs-track.js" data-page="door_lock"></script>
 <script>
 (function(){
- var price=6499,mrp=19999,maxQty=10,productName='HESEOS Smart Door Lock',onlineOk=false,onlineOff=0;
+ var price=6499,mrp=19999,maxQty=10,productName='HESEOS Smart Door Lock',onlineOk=false,onlineOff=0,onlinePct=0;
  function inr(n){return '\u20b9'+Number(n).toLocaleString('en-IN');}
  function $(id){return document.getElementById(id);}
  var form=$('orderForm'),btn=$('placeBtn'),err=$('err');
@@ -226,15 +226,16 @@
  }
  function method(){var r=document.querySelector('input[name="paymentMethod"]:checked');return onlineOk&&r&&r.value==='online'?'online':'cod';}
  function paintOffer(){
-   if(!onlineOff) return; var t='Save '+inr(onlineOff)+' on every lock when you pay online';
-   $('pcSave').textContent='Save '+inr(onlineOff); $('pcSave').style.display='inline-block';
-   $('promoOnlineTxt').textContent=inr(onlineOff)+' off when you pay online'; $('promoOnline').style.display='';
+   if(!onlineOff) return; var pc=onlinePct?onlinePct+'% ':'';
+   var t='Save '+pc+'('+inr(onlineOff)+') on every lock when you pay online';
+   $('pcSave').textContent='Save '+(pc||inr(onlineOff)); $('pcSave').style.display='inline-block';
+   $('promoOnlineTxt').textContent=(pc||inr(onlineOff)+' ')+'off when you pay online'; $('promoOnline').style.display='';
    $('noteOnlineH').textContent=t; $('noteOnline').style.display='flex';
  }
  function setBtn(t){btn.firstChild.textContent=t+' ';}
  function paintPay(){
    var q=Number($('quantity').value)||1,online=method()==='online',off=online?onlineOff:0,total=inr((price-off)*q);
-   $('discRow').style.display=off?'flex':'none'; $('discAmt').textContent=off?'\u2212'+inr(off*q):''; $('sumTotal').textContent=total;
+   $('discRow').style.display=off?'flex':'none'; $('discPct').textContent=off&&onlinePct?' ('+onlinePct+'%)':''; $('discAmt').textContent=off?'\u2212'+inr(off*q):''; $('sumTotal').textContent=total;
    $('pcOnline').className='pc-opt'+(online?' on':''); $('pcCod').className='pc-opt'+(online?'':' on');
    $('subLine').textContent=productName+(onlineOk?' \u00b7 Pay online or Cash / UPI on delivery':' \u00b7 Cash / UPI on delivery');
    $('sumTotalLabel').textContent=online?'Total payable now':'Total payable on delivery';
@@ -243,7 +244,7 @@
  }
  // Price always comes from the server (lib/heseosDoorLock.js) — the numbers above are only a first paint.
  fetch('/api/shop/door-lock',{cache:'no-store'}).then(function(r){return r.ok?r.json():null;}).then(function(d){
-   if(!d)return; price=d.price||price; mrp=d.mrp||mrp; maxQty=d.maxQty||maxQty; productName=d.name||productName; onlineOk=!!d.onlinePayment; onlineOff=onlineOk?Math.max(0,Number(d.onlineDiscount)||0):0;
+   if(!d)return; price=d.price||price; mrp=d.mrp||mrp; maxQty=d.maxQty||maxQty; productName=d.name||productName; onlineOk=!!d.onlinePayment; onlineOff=onlineOk?Math.max(0,Number(d.onlineDiscount)||0):0; onlinePct=onlineOk?Math.max(0,Number(d.onlineDiscountPercent)||0):0;
    $('payChoice').style.display=onlineOk?'block':'none';
    if(onlineOk){ document.querySelector('input[name="paymentMethod"][value="online"]').checked=true; paintOffer(); }
    paintPrice();

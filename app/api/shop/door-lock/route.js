@@ -16,7 +16,7 @@
 import crypto from 'crypto';
 import { dbList, dbDelete, dbPatch } from '@/lib/db';
 import { razorpayConfigured, razorpayConfig, createRazorpayOrder } from '@/lib/razorpay';
-import { DOOR_LOCK, indianMobile } from '@/lib/heseosDoorLock';
+import { DOOR_LOCK, indianMobile, onlineDiscountPerLock } from '@/lib/heseosDoorLock';
 import { createHeseosLandingOrder } from '@/lib/heseosOrders';
 import { checkServiceArea, recordUnserviceable, NOT_SERVICEABLE_MESSAGE } from '@/lib/serviceArea';
 import { getClientIp } from '@/lib/rateLimit';
@@ -42,7 +42,7 @@ function checkoutFor(order) {
 }
 
 export async function GET() {
-  return Response.json({ name: DOOR_LOCK.name, mrp: DOOR_LOCK.mrp, price: DOOR_LOCK.price, maxQty: DOOR_LOCK.maxQty, onlinePayment: razorpayConfigured(), onlineDiscount: razorpayConfigured() ? (DOOR_LOCK.onlineDiscount || 0) : 0 });
+  return Response.json({ name: DOOR_LOCK.name, mrp: DOOR_LOCK.mrp, price: DOOR_LOCK.price, maxQty: DOOR_LOCK.maxQty, onlinePayment: razorpayConfigured(), onlineDiscount: razorpayConfigured() ? onlineDiscountPerLock() : 0, onlineDiscountPercent: razorpayConfigured() ? (Number(DOOR_LOCK.onlineDiscountPercent) || 0) : 0 });
 }
 
 export async function POST(request) {
