@@ -144,8 +144,8 @@ export default function LandingActivityPage() {
         <div className="adm-card" style={{ marginBottom: 18 }}>
           <div className="adm-card-title">Areas we don’t serve yet</div>
           <div className="adm-card-sub">Visitors who typed a pincode outside Pune on the door-lock page. They can’t order; the number is picked up automatically when they came from WhatsApp, and “Asked to be notified” shows who tapped “Notify me” — a ready-made list for when a new city opens</div>
-          <div className="adm-grid-2">
-            <div className="adm-table-scroll">
+          <div>
+            <div>
               <table className="adm-table">
                 <thead><tr><th>City</th><th>Requests</th><th>Numbers known</th><th>Asked to be notified</th><th>Pincodes</th></tr></thead>
                 <tbody>
@@ -159,8 +159,9 @@ export default function LandingActivityPage() {
                 </tbody>
               </table>
             </div>
-            <div>
-              <div className="adm-table-scroll">
+            <div style={{ marginTop: 22 }}>
+              <div className="adm-card-title" style={{ fontSize: 14, marginBottom: 6 }}>Recent requests</div>
+              <div>
                 <table className="adm-table">
                   <thead><tr><th>When</th><th>Visitor</th><th>Pincode · City</th><th>Asked to be notified</th><th></th></tr></thead>
                   <tbody>
