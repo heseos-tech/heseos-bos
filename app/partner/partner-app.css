@@ -617,3 +617,80 @@ html:has(.hp-root), body:has(.hp-root) {
 .hp-vid-frame { position: relative; width: 100%; aspect-ratio: 16 / 9; border-radius: 10px; overflow: hidden; background: #000; }
 .hp-vid-frame iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
 .hp-vid .hp-vid-ext { display: inline-block; margin-top: 8px; font-size: 12px; color: var(--hp-orange); text-decoration: none; font-weight: 600; }
+
+/* ═══ Installer app — Home redesign (components/installer/InstallerDashboard.jsx) ═══════════
+   Everything below is `ih-*` (installer home) or scoped to `.hp-bottom-nav.ih-nav`, so the
+   Partner and Team apps — which share the rest of this file — are untouched. Colors are the
+   existing --hp-* brand tokens. */
+.ih-hero { position: relative; overflow: hidden; padding: 0 20px 18px; }
+.ih-hero-art { position: absolute; top: 0; right: 0; bottom: 0; width: 66%; pointer-events: none;
+  -webkit-mask-image: linear-gradient(to right, transparent 0%, #000 62%), linear-gradient(to bottom, #000 60%, transparent 100%);
+  -webkit-mask-composite: source-in; mask-image: linear-gradient(to right, transparent 0%, #000 62%), linear-gradient(to bottom, #000 60%, transparent 100%); mask-composite: intersect; }
+.ih-hero-art img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 62%; opacity: 0.82; display: block; }
+.ih-hero-glow { position: absolute; right: -10%; top: 18%; width: 70%; height: 60%; background: radial-gradient(closest-side, rgba(255,122,0,0.22), transparent); pointer-events: none; }
+.ih-hero-body { position: relative; z-index: 2; }
+.ih-greet { margin: 20px 0 0; font-size: 32px; line-height: 1.12; font-weight: 800; letter-spacing: -0.4px; color: #fff; }
+.ih-greet-sub { margin: 8px 0 0; max-width: 58%; font-size: 17px; line-height: 1.32; color: var(--hp-text-soft); }
+.ih-coverage { margin-top: 18px; display: inline-flex; align-items: center; gap: 10px; padding: 7px 18px 7px 8px; border-radius: 999px; background: rgba(14,33,54,0.82); border: 1px solid var(--hp-border-strong); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
+.ih-coverage-pin { width: 32px; height: 32px; border-radius: 50%; background: rgba(255,122,0,0.16); color: var(--hp-orange); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.ih-coverage-text { display: flex; flex-direction: column; line-height: 1.2; }
+.ih-coverage-label { font-size: 12.5px; color: var(--hp-text-soft); }
+.ih-coverage-city { font-size: 15px; font-weight: 700; color: #fff; }
+
+.ih-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin: 4px 16px 14px; }
+.ih-stat { position: relative; display: flex; flex-direction: column; align-items: flex-start; min-width: 0; padding: 10px 8px 34px; border-radius: 16px; border: 1px solid var(--ih-b); background: linear-gradient(160deg, var(--ih-bg1), var(--ih-bg2)); overflow: hidden; }
+.ih-stat:active { transform: scale(0.97); }
+.ih-stat--orange { --ih-b: rgba(255,122,0,0.28); --ih-bg1: rgba(255,122,0,0.2); --ih-bg2: #12202f; --ih-c: #ff9a3d; --ih-ic: rgba(255,122,0,0.2); }
+.ih-stat--blue { --ih-b: rgba(56,130,246,0.28); --ih-bg1: rgba(56,130,246,0.18); --ih-bg2: #0e1f36; --ih-c: #5aa2ff; --ih-ic: rgba(56,130,246,0.26); }
+.ih-stat--green { --ih-b: rgba(34,197,94,0.28); --ih-bg1: rgba(34,197,94,0.17); --ih-bg2: #0c2128; --ih-c: #3ddc84; --ih-ic: rgba(34,197,94,0.22); }
+.ih-stat--purple { --ih-b: rgba(139,92,246,0.3); --ih-bg1: rgba(139,92,246,0.2); --ih-bg2: #141c37; --ih-c: #a98bff; --ih-ic: rgba(139,92,246,0.28); }
+.ih-stat-icon { width: 34px; height: 34px; border-radius: 10px; background: var(--ih-ic); color: var(--ih-c); display: flex; align-items: center; justify-content: center; margin-bottom: 12px; }
+.ih-stat-val { font-size: clamp(19px, 5.6vw, 24px); font-weight: 800; line-height: 1.05; color: #fff; letter-spacing: -0.3px; max-width: 100%; white-space: nowrap; }
+.ih-stat-val.ih-val--sm { font-size: clamp(14px, 4.7vw, 20px); }
+.ih-stat-val.ih-val--xs { font-size: clamp(12px, 3.9vw, 16px); }
+.ih-stat-label { font-size: clamp(10px, 2.9vw, 12px); line-height: 1.25; color: var(--hp-text-soft); margin-top: 4px; }
+.ih-stat-go { position: absolute; right: 7px; bottom: 7px; width: 22px; height: 22px; border-radius: 50%; background: rgba(255,255,255,0.1); color: #fff; display: flex; align-items: center; justify-content: center; }
+
+.ih-next { display: block; margin: 0 16px 12px; padding: 14px 16px; border-radius: 18px; background: var(--hp-surface); border: 1px solid var(--hp-orange); }
+.ih-banner { position: relative; display: flex; align-items: center; gap: 12px; margin: 0 16px 6px; padding: 16px 14px; min-height: 108px; border-radius: 20px; overflow: hidden; background: linear-gradient(120deg, #0f2238 0%, #0c1d31 100%); border: 1px solid var(--hp-border-strong); }
+.ih-banner:active { transform: scale(0.99); }
+.ih-banner-text { position: relative; z-index: 2; display: flex; flex-direction: column; gap: 5px; min-width: 0; flex: 1; margin-right: clamp(86px, 27vw, 118px); }
+.ih-banner-title { font-size: 17.5px; line-height: 1.22; font-weight: 800; color: #fff; }
+.ih-banner-sub { font-size: 12.5px; line-height: 1.35; color: var(--hp-text-soft); }
+.ih-banner .ih-icon-box { align-self: flex-start; position: relative; z-index: 2; }
+.ih-banner-art { position: absolute; right: 50px; top: 50%; width: clamp(92px, 28vw, 120px); height: auto; transform: translateY(-50%); opacity: 0.85; pointer-events: none; -webkit-mask-image: linear-gradient(to right, transparent 0, #000 38%); mask-image: linear-gradient(to right, transparent 0, #000 38%); }
+.ih-banner-go { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); z-index: 3; width: 38px; height: 38px; border-radius: 50%; background: linear-gradient(155deg, var(--hp-orange), var(--hp-orange-dark)); color: #fff; display: flex; align-items: center; justify-content: center; box-shadow: 0 6px 16px var(--hp-orange-glow); }
+
+.ih-icon-box { width: 44px; height: 44px; border-radius: 13px; background: rgba(255,122,0,0.14); border: 1px solid rgba(255,122,0,0.18); color: var(--hp-orange); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.ih-icon-box--lg { width: 50px; height: 50px; border-radius: 15px; }
+
+.ih-section-head { display: flex; align-items: center; justify-content: space-between; padding: 14px 20px 10px; }
+.ih-section-title { margin: 0; font-size: 20px; font-weight: 800; letter-spacing: -0.2px; color: #fff; }
+.hp-root .ih-view-all { font-size: 14px; font-weight: 700; color: var(--hp-orange); padding: 4px 0 4px 10px; }
+.ih-action { display: flex; align-items: center; gap: 14px; margin: 0 16px 10px; padding: 12px 14px; min-height: 64px; border-radius: 16px; background: linear-gradient(160deg, #10253b, #0d2033); border: 1px solid var(--hp-border); }
+.ih-action:active { transform: scale(0.99); background: var(--hp-surface-2); }
+.ih-action-text { display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1; }
+.ih-action-title { font-size: 16px; font-weight: 700; line-height: 1.2; color: #fff; }
+.ih-action-sub { font-size: 13px; line-height: 1.35; color: var(--hp-text-soft); }
+.ih-train { padding: 10px 14px 10px 10px; }
+.ih-train-thumb { position: relative; width: clamp(96px, 30vw, 128px); aspect-ratio: 4 / 3; border-radius: 12px; overflow: hidden; flex-shrink: 0; background: var(--hp-surface-3); display: flex; align-items: center; justify-content: center; }
+.ih-train-thumb img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.ih-train-play { position: relative; width: 36px; height: 36px; border-radius: 50%; background: rgba(6,15,28,0.62); border: 1px solid rgba(255,255,255,0.35); color: #fff; display: flex; align-items: center; justify-content: center; }
+.ih-cta { padding: 12px 16px 8px; }
+.ih-cta-btn { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; height: 56px; border-radius: 999px; background: linear-gradient(180deg, #ff8a1f, var(--hp-orange-dark)); color: #fff; font-size: 17px; font-weight: 800; box-shadow: 0 10px 26px var(--hp-orange-glow), inset 0 1px 0 rgba(255,255,255,0.22); }
+.ih-cta-btn:active { transform: scale(0.98); filter: brightness(0.94); }
+
+/* Bottom nav — installer only. Same mechanism as the shared bar (fixed, centered, safe-area aware;
+   --hp-nav-h is measured from its real height); just the look: rounded translucent bar, an
+   orange dot under the active tab and a bigger glowing Add Lead button. */
+.hp-bottom-nav.ih-nav { background: rgba(8,20,36,0.94); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); border-top: 1px solid var(--hp-border-strong); border-radius: 22px 22px 0 0; padding: 8px 6px calc(8px + env(safe-area-inset-bottom, 0px)); }
+.ih-nav .hp-nav-item { position: relative; gap: 4px; font-size: 12px; padding: 4px 4px 8px; }
+.ih-nav .hp-nav-item.active::after { content: ''; position: absolute; left: 50%; bottom: 0; width: 5px; height: 5px; margin-left: -2.5px; border-radius: 50%; background: var(--hp-orange); }
+.ih-nav .hp-nav-center-label { font-size: 12px; padding-bottom: 8px; }
+.ih-nav .hp-nav-center-btn { width: 62px; height: 62px; bottom: 32px; border: 5px solid var(--hp-bg); background: linear-gradient(160deg, #ff8a1f, var(--hp-orange-dark)); box-shadow: 0 0 0 1px rgba(255,122,0,0.4), 0 6px 26px var(--hp-orange-glow), 0 0 40px rgba(255,122,0,0.28); }
+@media (max-width: 360px) {
+  .ih-greet { font-size: 28px; }
+  .ih-greet-sub { font-size: 15px; }
+  .ih-banner-title { font-size: 16.5px; }
+  .ih-action-title { font-size: 15px; }
+}

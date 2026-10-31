@@ -32,7 +32,7 @@ export function InstallerBottomNav() {
   const navRef = useRef(null);
   useNavHeightVar(navRef);
   return (
-    <nav ref={navRef} className="hp-bottom-nav">
+    <nav ref={navRef} className="hp-bottom-nav ih-nav">
       {NAV_ITEMS.map((item) => {
         const Icon = item.icon;
         if (item.center) {

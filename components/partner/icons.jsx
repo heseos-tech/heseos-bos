@@ -125,6 +125,11 @@ export const IconAlertTriangle = ({ size = 20, ...p }) => (
   <svg {...base(size)} {...p}><path d="M12 4.2 21 19H3L12 4.2Z" /><path d="M12 10v4" /><path d="M12 16.8v.1" /></svg>
 );
 
+// Check-in-a-circle — Installer Home "Completed" stat card.
+export const IconCheckCircle = ({ size = 20, ...p }) => (
+  <svg {...base(size)} {...p}><circle cx="12" cy="12" r="9" /><path d="M8 12.4l2.7 2.7L16.2 9.4" /></svg>
+);
+
 // Play icon — the Installer app's Training Videos rows and Profile / Home entries.
 export const IconPlay = ({ size = 18, ...p }) => (
   <svg {...base(size)} {...p}><circle cx="12" cy="12" r="9" /><path d="M10.2 8.6v6.8l5.6-3.4z" fill="currentColor" stroke="none" /></svg>
