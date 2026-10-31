@@ -93,7 +93,7 @@ export default function LandingActivityPage() {
         <StatCard label="WhatsApp cards opened" value={`${sum.cardsOpened} / ${sum.cardsSent}${sum.cardsSent ? ` (${openRate}%)` : ''}`} Icon={IconPhone} tone="purple" />
         <StatCard label="Avg time on page" value={dur(sum.avgSeconds)} Icon={IconLeads} tone="teal" />
         <StatCard label="Submitted" value={`${sum.submitted}${sum.visits ? ` (${conv}%)` : ''}`} Icon={IconConversions} tone="green" />
-        {page !== 'smart_home' && <StatCard label="Outside service area" value={`${ns.total}${ns.leads ? ` · ${ns.leads} left a number` : ''}`} Icon={IconLeads} tone="orange" />}
+        {page !== 'smart_home' && <StatCard label="Outside service area" value={`${ns.total}${ns.notify ? ` · ${ns.notify} want to be notified` : ''}`} Icon={IconLeads} tone="orange" />}
       </div>
 
       <div className="adm-grid-2">
@@ -143,16 +143,16 @@ export default function LandingActivityPage() {
       {page !== 'smart_home' && (
         <div className="adm-card" style={{ marginBottom: 18 }}>
           <div className="adm-card-title">Areas we don’t serve yet</div>
-          <div className="adm-card-sub">Visitors who typed a pincode outside Pune on the door-lock page. They can’t order; anyone who left a number is waiting to hear from us — a ready-made list for when a new city opens</div>
+          <div className="adm-card-sub">Visitors who typed a pincode outside Pune on the door-lock page. They can’t order; the number is picked up automatically when they came from WhatsApp, and “Asked to be notified” shows who tapped “Notify me” — a ready-made list for when a new city opens</div>
           <div className="adm-grid-2">
             <div className="adm-table-scroll">
               <table className="adm-table">
-                <thead><tr><th>City</th><th>Requests</th><th>Left a number</th><th>Pincodes</th></tr></thead>
+                <thead><tr><th>City</th><th>Requests</th><th>Numbers known</th><th>Asked to be notified</th><th>Pincodes</th></tr></thead>
                 <tbody>
-                  {ns.byCity.length === 0 ? <tr><td colSpan={4} className="adm-empty">No one from outside Pune yet in this period.</td></tr> : ns.byCity.map((c) => (
+                  {ns.byCity.length === 0 ? <tr><td colSpan={5} className="adm-empty">No one from outside Pune yet in this period.</td></tr> : ns.byCity.map((c) => (
                     <tr key={`${c.city}${c.state}`}>
                       <td><div className="adm-lead-name">{c.city}</div><div className="adm-lead-sub">{c.state}</div></td>
-                      <td>{c.requests}</td><td>{c.leads}</td>
+                      <td>{c.requests}</td><td>{c.leads}</td><td>{c.notify}</td>
                       <td>{c.pincodes.map((p) => `${p.pincode}${p.count > 1 ? ` ×${p.count}` : ''}`).join(', ')}</td>
                     </tr>
                   ))}
@@ -162,13 +162,14 @@ export default function LandingActivityPage() {
             <div>
               <div className="adm-table-scroll">
                 <table className="adm-table">
-                  <thead><tr><th>When</th><th>Visitor</th><th>Pincode · City</th><th></th></tr></thead>
+                  <thead><tr><th>When</th><th>Visitor</th><th>Pincode · City</th><th>Asked to be notified</th><th></th></tr></thead>
                   <tbody>
-                    {ns.recent.length === 0 ? <tr><td colSpan={4} className="adm-empty">Nothing here yet.</td></tr> : nsRows.map((n) => (
+                    {ns.recent.length === 0 ? <tr><td colSpan={5} className="adm-empty">Nothing here yet.</td></tr> : nsRows.map((n) => (
                       <tr key={n.id}>
                         <td>{when(n.lastAt)}</td>
-                        <td>{n.phone ? <><div className="adm-lead-name">{n.name || '—'}</div><div className="adm-lead-sub">{n.phone}</div></> : <span className="adm-lead-sub">Didn’t leave a number</span>}</td>
+                        <td>{n.phone ? <><div className="adm-lead-name">{n.name || n.phone}</div>{n.name && <div className="adm-lead-sub">{n.phone}</div>}</> : <span className="adm-lead-sub">Number not known</span>}</td>
                         <td>{n.pincode}<div className="adm-lead-sub">{[n.city, n.state].filter(Boolean).join(', ')}</div></td>
+                        <td><span className={`adm-status-pill${n.wantsCallback ? ' active' : ''}`}>{n.wantsCallback ? 'Yes' : 'No'}</span></td>
                         <td className="adm-row-actions">{n.phone && <a className="adm-chip-btn" href={waLink(n.phone)} target="_blank" rel="noreferrer">WhatsApp</a>}</td>
                       </tr>
                     ))}

@@ -22,14 +22,14 @@ export async function POST(request) {
   const rawPhone = String(body?.phone || '').trim();
   const mobile = rawPhone ? indianMobile(rawPhone) : '';
   if (rawPhone && !mobile) return Response.json({ error: 'Please enter a valid 10-digit mobile number.' }, { status: 400 });
-  if (body?.wantsCallback && (!mobile || name.length < 2)) return Response.json({ error: 'Please enter your name and mobile number.' }, { status: 400 });
+  if (body?.wantsCallback && !mobile) return Response.json({ error: 'Please enter a valid 10-digit mobile number.' }, { status: 400 });
 
   const area = await checkServiceArea(pincode);
   if (!area.known) return Response.json({ ok: true, recorded: false });
   if (area.serviceable) return Response.json({ ok: true, serviceable: true, recorded: false });
   const row = await recordUnserviceable({
     pincode, city: area.city, state: area.state, name, phone: mobile, sid: clean(body?.sid, 40),
-    ip: getClientIp(request), geo: geoFromHeaders(request.headers), source: body?.wantsCallback ? 'notify_me' : 'pincode_check',
+    ip: getClientIp(request), geo: geoFromHeaders(request.headers), source: body?.wantsCallback ? 'notify_me' : 'pincode_check', wantsCallback: !!body?.wantsCallback,
   });
   return Response.json({ ok: true, serviceable: false, recorded: !!row, city: area.city });
 }

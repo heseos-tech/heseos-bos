@@ -154,7 +154,7 @@
       <div class="form-disclaimer">By placing this order you agree to be contacted on the number above, including on WhatsApp, to confirm delivery. Product specifications are subject to confirmation by HESEOS.</div>
     </form>
     <div class="nsbox" id="nsBox" role="status" aria-live="polite">
-      <h3>Thank you, <span id="nsName"></span></h3>
+      <h3>Thank you<span id="nsName"></span></h3>
       <p id="nsText"></p>
     </div>
     <div class="paybox" id="payBox" role="status" aria-live="polite">
@@ -191,6 +191,7 @@
  // Pune-only: when the pincode is outside our service area, ordering is switched off (the server refuses too) and the
  // visitor can leave a name + number to be told when we reach them.
  var blocked=false,blockedCity='',blockedPin='',nsSent={},NS_MSG='Sorry, we\u2019re not serviceable in your area yet. We\u2019ll get back to you once we start serving your area.';
+ function known(){var o={},d=($('phone').value||'').replace(/\D/g,'').replace(/^91(?=\d{10}$)/,'').replace(/^0(?=\d{10}$)/,''),n=($('name').value||'').trim();if(/^[6-9]\d{9}$/.test(d))o.phone=d;if(n.length>=2)o.name=n;return o;}
  function sid(){try{return sessionStorage.getItem('hs_sid_door_lock')||'';}catch(e){return '';}}
  function nsPost(extra){
    var b={pincode:blockedPin,sid:sid(),website:''};for(var k in extra)b[k]=extra[k];
@@ -200,8 +201,8 @@
    var was=blocked; blocked=city!==null; blockedCity=city||''; blockedPin=blocked?pin:'';
    form.classList.toggle('ns',blocked);
    var m=$('nsMsg'); m.style.display=blocked?'block':'none';
-   if(blocked) m.innerHTML='<b>'+(msg||NS_MSG).replace(/</g,'&lt;')+'</b>'+(blockedCity?'<br>We don\u2019t deliver to '+blockedCity.replace(/</g,'&lt;')+' yet. Check your name and mobile number above and tap the button \u2014 we will message you the moment we do.':'');
-   if(blocked&&!nsSent[pin]){nsSent[pin]=1;window.hsTrack&&window.hsTrack('mark','Not serviceable '+pin); nsPost({}).catch(function(){});}
+   if(blocked) m.innerHTML='<b>'+(msg||NS_MSG).replace(/</g,'&lt;')+'</b>'+(blockedCity?'<br>We don\u2019t deliver to '+blockedCity.replace(/</g,'&lt;')+' yet. Tap the button and we will message you on WhatsApp the moment we do.':'');
+   if(blocked&&!nsSent[pin]){nsSent[pin]=1;window.hsTrack&&window.hsTrack('mark','Not serviceable '+pin); nsPost(known()).catch(function(){});}
    if(blocked!==was) paintPay();
  }
  function paintPrice(){
@@ -338,19 +339,19 @@
    };
    open();
  }
+ ['phone','name'].forEach(function(id){$(id).addEventListener('change',function(){if(blocked){var k=known();if(k.phone)nsPost(k).catch(function(){});}});});
  form.addEventListener('submit',function(e){
    e.preventDefault(); err.style.display='none';
    if(blocked){
      var nn=($('name').value||'').trim(),pp=($('phone').value||'').trim();
      var dg=pp.replace(/\D/g,'').replace(/^91(?=\d{10}$)/,'').replace(/^0(?=\d{10}$)/,'');
-     if(nn.length<2) return fail('Please enter your name so we know who to message.');
      if(!/^[6-9]\d{9}$/.test(dg)) return fail('Please enter a valid 10-digit mobile number.');
      btn.disabled=true; setBtn('Saving\u2026');
-     nsPost({name:nn,phone:dg,wantsCallback:true}).then(function(r){
+     nsPost({name:nn.length>=2?nn:'',phone:dg,wantsCallback:true}).then(function(r){
        if(!r.ok||!r.j.ok) return fail((r.j&&r.j.error)||'Something went wrong. Please try again.');
        window.hsTrack&&window.hsTrack('mark','Notify me left');
        form.style.display='none';
-       $('nsName').textContent=nn.split(' ')[0];
+       $('nsName').textContent=nn.length>=2?', '+nn.split(' ')[0]:'';
        $('nsText').textContent='We\u2019re not serviceable in '+(blockedCity||'your area')+' (pincode '+blockedPin+') yet. We\u2019ve noted your number and will get back to you on WhatsApp as soon as we start serving your area.';
        $('nsBox').style.display='block'; $('nsBox').scrollIntoView({behavior:'smooth',block:'center'});
      }).catch(function(){fail('Network problem \u2014 please check your connection and try again.');});
