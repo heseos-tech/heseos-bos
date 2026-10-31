@@ -657,14 +657,13 @@ html:has(.hp-root), body:has(.hp-root) {
 .ih-stat-go svg { width: 55%; height: 55%; }
 
 .ih-next { display: block; margin: 0 16px 12px; padding: 14px 16px; border-radius: 18px; background: var(--hp-surface); border: 1px solid var(--hp-orange); }
-.ih-banner { position: relative; display: flex; align-items: center; gap: 12px; margin: 0 16px 6px; padding: 16px 14px; min-height: 108px; border-radius: 20px; overflow: hidden; background: linear-gradient(120deg, #0f2238 0%, #0c1d31 100%); border: 1px solid var(--hp-border-strong); }
+.ih-banner { position: relative; display: flex; flex-direction: column; justify-content: center; gap: 10px; margin: 0 16px 6px; padding: 16px 14px 14px; min-height: 112px; border-radius: 20px; overflow: hidden; background: linear-gradient(120deg, #0f2238 0%, #0c1d31 100%); border: 1px solid var(--hp-border-strong); }
 .ih-banner:active { transform: scale(0.99); }
-.ih-banner-text { position: relative; z-index: 2; display: flex; flex-direction: column; gap: 5px; min-width: 0; flex: 1; margin-right: clamp(86px, 27vw, 118px); }
-.ih-banner-title { font-size: 17.5px; line-height: 1.22; font-weight: 800; color: #fff; }
-.ih-banner-sub { font-size: 12.5px; line-height: 1.35; color: var(--hp-text-soft); }
-.ih-banner .ih-icon-box { align-self: flex-start; position: relative; z-index: 2; }
-.ih-banner-art { position: absolute; right: 50px; top: 50%; width: clamp(92px, 28vw, 120px); height: auto; transform: translateY(-50%); opacity: 0.85; pointer-events: none; -webkit-mask-image: linear-gradient(to right, transparent 0, #000 38%); mask-image: linear-gradient(to right, transparent 0, #000 38%); }
-.ih-banner-go { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); z-index: 3; width: 38px; height: 38px; border-radius: 50%; background: linear-gradient(155deg, var(--hp-orange), var(--hp-orange-dark)); color: #fff; display: flex; align-items: center; justify-content: center; box-shadow: 0 6px 16px var(--hp-orange-glow); }
+.ih-banner-head { position: relative; z-index: 2; display: flex; align-items: center; gap: 12px; margin-right: clamp(104px, 32vw, 134px); min-width: 0; }
+.ih-banner-title { font-size: 17.5px; line-height: 1.22; font-weight: 800; color: #fff; min-width: 0; }
+.ih-banner-sub { position: relative; z-index: 2; font-size: 12.5px; line-height: 1.3; color: var(--hp-text-soft); white-space: nowrap; }
+.ih-banner-art { position: absolute; right: 50px; top: 40%; width: clamp(88px, 26vw, 112px); height: auto; transform: translateY(-50%); opacity: 0.85; pointer-events: none; -webkit-mask-image: linear-gradient(to right, transparent 0, #000 38%); mask-image: linear-gradient(to right, transparent 0, #000 38%); }
+.ih-banner-go { position: absolute; right: 12px; top: 40%; transform: translateY(-50%); z-index: 3; width: 38px; height: 38px; border-radius: 50%; background: linear-gradient(155deg, var(--hp-orange), var(--hp-orange-dark)); color: #fff; display: flex; align-items: center; justify-content: center; box-shadow: 0 6px 16px var(--hp-orange-glow); }
 
 .ih-icon-box { width: 44px; height: 44px; border-radius: 13px; background: rgba(255,122,0,0.14); border: 1px solid rgba(255,122,0,0.18); color: var(--hp-orange); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .ih-icon-box--lg { width: 50px; height: 50px; border-radius: 15px; }
@@ -696,6 +695,7 @@ html:has(.hp-root), body:has(.hp-root) {
 @media (max-width: 360px) {
   .ih-greet { font-size: 28px; }
   .ih-greet-sub { font-size: 15px; }
-  .ih-banner-title { font-size: 16.5px; }
+  .ih-banner-title { font-size: 16px; }
+  .ih-banner-sub { font-size: 11.5px; }
   .ih-action-title { font-size: 15px; }
 }

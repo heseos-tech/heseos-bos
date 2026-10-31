@@ -137,11 +137,11 @@ export default function InstallerDashboard({ partner }) {
       )}
 
       <Link href="/installer/home?tab=jobs" className="ih-banner">
-        <span className="ih-icon-box ih-icon-box--lg"><IconOrders size={26} /></span>
-        <span className="ih-banner-text">
+        <span className="ih-banner-head">
+          <span className="ih-icon-box ih-icon-box--lg"><IconOrders size={26} /></span>
           <span className="ih-banner-title">{available.length ? `${available.length} job${available.length === 1 ? '' : 's'} available in your city` : 'Find installation jobs'}</span>
-          <span className="ih-banner-sub">Claim a job — first come, first served</span>
         </span>
+        <span className="ih-banner-sub">Claim a job, first come first served</span>
         <JobsArt />
         <span className="ih-banner-go" aria-hidden="true"><IconChevronRight size={20} /></span>
       </Link>
