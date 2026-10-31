@@ -146,21 +146,6 @@ export default function LandingActivityPage() {
           <div className="adm-card-sub">Visitors who typed a pincode outside Pune on the door-lock page. They can’t order; the number is picked up automatically when they came from WhatsApp, and “Asked to be notified” shows who tapped “Notify me” — a ready-made list for when a new city opens</div>
           <div>
             <div>
-              <table className="adm-table">
-                <thead><tr><th>City</th><th>Requests</th><th>Numbers known</th><th>Asked to be notified</th><th>Pincodes</th></tr></thead>
-                <tbody>
-                  {ns.byCity.length === 0 ? <tr><td colSpan={5} className="adm-empty">No one from outside Pune yet in this period.</td></tr> : ns.byCity.map((c) => (
-                    <tr key={`${c.city}${c.state}`}>
-                      <td><div className="adm-lead-name">{c.city}</div><div className="adm-lead-sub">{c.state}</div></td>
-                      <td>{c.requests}</td><td>{c.leads}</td><td>{c.notify}</td>
-                      <td>{c.pincodes.map((p) => `${p.pincode}${p.count > 1 ? ` ×${p.count}` : ''}`).join(', ')}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <div style={{ marginTop: 22 }}>
-              <div className="adm-card-title" style={{ fontSize: 14, marginBottom: 6 }}>Recent requests</div>
               <div>
                 <table className="adm-table">
                   <thead><tr><th>When</th><th>Visitor</th><th>Pincode · City</th><th>Asked to be notified</th><th></th></tr></thead>
