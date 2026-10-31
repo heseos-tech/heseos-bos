@@ -42,7 +42,7 @@ function checkoutFor(order) {
 }
 
 export async function GET() {
-  return Response.json({ name: DOOR_LOCK.name, mrp: DOOR_LOCK.mrp, price: DOOR_LOCK.price, maxQty: DOOR_LOCK.maxQty, onlinePayment: razorpayConfigured() });
+  return Response.json({ name: DOOR_LOCK.name, mrp: DOOR_LOCK.mrp, price: DOOR_LOCK.price, maxQty: DOOR_LOCK.maxQty, onlinePayment: razorpayConfigured(), onlineDiscount: razorpayConfigured() ? (DOOR_LOCK.onlineDiscount || 0) : 0 });
 }
 
 export async function POST(request) {
