@@ -16,16 +16,19 @@ function shortMoney(n) {
   if (v >= 100000) return `₹${(v / 100000).toFixed(v >= 10000000 ? 0 : 1).replace(/\.0$/, '')}L`;
   return `₹${v.toLocaleString('en-IN')}`;
 }
-const valSize = (t) => (String(t).length >= 7 ? ' ih-val--xs' : String(t).length >= 6 ? ' ih-val--sm' : '');
+const valSize = (t) => (String(t).length >= 7 ? ' ih-val--xs' : '');
 
 function StatCard({ tone, href, Icon, value, label }) {
   const text = String(value);
   return (
     <Link href={href} className={`ih-stat ih-stat--${tone}`} aria-label={`${label}: ${text}`}>
-      <span className="ih-stat-icon"><Icon size={19} /></span>
-      <span className={`ih-stat-val${valSize(text)}`}>{text}</span>
-      <span className="ih-stat-label">{label}</span>
-      <span className="ih-stat-go" aria-hidden="true"><IconChevronRight size={14} /></span>
+      <span className="ih-stat-in">
+        <span className="ih-stat-icon"><Icon size={20} /></span>
+        <span className="ih-stat-spacer" />
+        <span className={`ih-stat-val${valSize(text)}`}>{text}</span>
+        <span className="ih-stat-label">{label}</span>
+        <span className="ih-stat-go" aria-hidden="true"><IconChevronRight size={14} /></span>
+      </span>
     </Link>
   );
 }

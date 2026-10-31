@@ -637,19 +637,24 @@ html:has(.hp-root), body:has(.hp-root) {
 .ih-coverage-label { font-size: 12.5px; color: var(--hp-text-soft); }
 .ih-coverage-city { font-size: 15px; font-weight: 700; color: #fff; }
 
-.ih-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin: 4px 16px 14px; }
-.ih-stat { position: relative; display: flex; flex-direction: column; align-items: flex-start; min-width: 0; padding: 10px 8px 34px; border-radius: 16px; border: 1px solid var(--ih-b); background: linear-gradient(160deg, var(--ih-bg1), var(--ih-bg2)); overflow: hidden; }
+.ih-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 7px; margin: 4px 14px 14px; }
+/* Each card is a 4:5 portrait tile; everything inside is sized in cqw (% of the card's own width) so
+   the proportions stay identical at every phone width. */
+.ih-stat { container-type: inline-size; display: block; position: relative; aspect-ratio: 4 / 5; min-width: 0; border-radius: 13px; border: 1px solid var(--ih-b); background: linear-gradient(155deg, var(--ih-bg1), var(--ih-bg2) 70%); box-shadow: inset 0 1px 0 rgba(255,255,255,0.05); overflow: hidden; }
 .ih-stat:active { transform: scale(0.97); }
-.ih-stat--orange { --ih-b: rgba(255,122,0,0.28); --ih-bg1: rgba(255,122,0,0.2); --ih-bg2: #12202f; --ih-c: #ff9a3d; --ih-ic: rgba(255,122,0,0.2); }
-.ih-stat--blue { --ih-b: rgba(56,130,246,0.28); --ih-bg1: rgba(56,130,246,0.18); --ih-bg2: #0e1f36; --ih-c: #5aa2ff; --ih-ic: rgba(56,130,246,0.26); }
-.ih-stat--green { --ih-b: rgba(34,197,94,0.28); --ih-bg1: rgba(34,197,94,0.17); --ih-bg2: #0c2128; --ih-c: #3ddc84; --ih-ic: rgba(34,197,94,0.22); }
-.ih-stat--purple { --ih-b: rgba(139,92,246,0.3); --ih-bg1: rgba(139,92,246,0.2); --ih-bg2: #141c37; --ih-c: #a98bff; --ih-ic: rgba(139,92,246,0.28); }
-.ih-stat-icon { width: 34px; height: 34px; border-radius: 10px; background: var(--ih-ic); color: var(--ih-c); display: flex; align-items: center; justify-content: center; margin-bottom: 12px; }
-.ih-stat-val { font-size: clamp(19px, 5.6vw, 24px); font-weight: 800; line-height: 1.05; color: #fff; letter-spacing: -0.3px; max-width: 100%; white-space: nowrap; }
-.ih-stat-val.ih-val--sm { font-size: clamp(14px, 4.7vw, 20px); }
-.ih-stat-val.ih-val--xs { font-size: clamp(12px, 3.9vw, 16px); }
-.ih-stat-label { font-size: clamp(10px, 2.9vw, 12px); line-height: 1.25; color: var(--hp-text-soft); margin-top: 4px; }
-.ih-stat-go { position: absolute; right: 7px; bottom: 7px; width: 22px; height: 22px; border-radius: 50%; background: rgba(255,255,255,0.1); color: #fff; display: flex; align-items: center; justify-content: center; }
+.ih-stat--orange { --ih-b: rgba(255,122,0,0.3); --ih-bg1: rgba(255,122,0,0.2); --ih-bg2: #121f2f; --ih-c: #ff9a3d; --ih-ic: rgba(255,122,0,0.22); }
+.ih-stat--blue { --ih-b: rgba(56,130,246,0.3); --ih-bg1: rgba(56,130,246,0.18); --ih-bg2: #0e1f36; --ih-c: #5aa2ff; --ih-ic: rgba(56,130,246,0.28); }
+.ih-stat--green { --ih-b: rgba(34,197,94,0.3); --ih-bg1: rgba(34,197,94,0.17); --ih-bg2: #0c2128; --ih-c: #3ddc84; --ih-ic: rgba(34,197,94,0.24); }
+.ih-stat--purple { --ih-b: rgba(139,92,246,0.32); --ih-bg1: rgba(139,92,246,0.22); --ih-bg2: #141c37; --ih-c: #a98bff; --ih-ic: rgba(139,92,246,0.3); }
+.ih-stat-in { display: flex; flex-direction: column; align-items: flex-start; height: 100%; padding: 11cqw 9cqw 9cqw; }
+.ih-stat-icon { width: 27cqw; height: 27cqw; border-radius: 8cqw; background: radial-gradient(circle at 30% 25%, rgba(255,255,255,0.1), transparent 60%), var(--ih-ic); color: var(--ih-c); display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 0 16px var(--ih-ic); }
+.ih-stat-icon svg { width: 56%; height: 56%; }
+.ih-stat-spacer { flex: 1 1 0; min-height: 0; }
+.ih-stat-val { font-size: 19cqw; font-weight: 800; line-height: 1; color: #fff; letter-spacing: -0.02em; white-space: nowrap; }
+.ih-stat-val.ih-val--xs { font-size: 15cqw; }
+.ih-stat-label { margin-top: 3cqw; font-size: 11cqw; line-height: 1.2; color: rgba(255,255,255,0.86); white-space: nowrap; }
+.ih-stat-go { align-self: flex-end; margin-top: 4cqw; width: 23cqw; height: 23cqw; border-radius: 50%; background: rgba(255,255,255,0.1); color: #fff; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.ih-stat-go svg { width: 55%; height: 55%; }
 
 .ih-next { display: block; margin: 0 16px 12px; padding: 14px 16px; border-radius: 18px; background: var(--hp-surface); border: 1px solid var(--hp-orange); }
 .ih-banner { position: relative; display: flex; align-items: center; gap: 12px; margin: 0 16px 6px; padding: 16px 14px; min-height: 108px; border-radius: 20px; overflow: hidden; background: linear-gradient(120deg, #0f2238 0%, #0c1d31 100%); border: 1px solid var(--hp-border-strong); }
