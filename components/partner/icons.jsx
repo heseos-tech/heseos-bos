@@ -125,6 +125,11 @@ export const IconAlertTriangle = ({ size = 20, ...p }) => (
   <svg {...base(size)} {...p}><path d="M12 4.2 21 19H3L12 4.2Z" /><path d="M12 10v4" /><path d="M12 16.8v.1" /></svg>
 );
 
+// Play icon — the Installer app's Training Videos rows and Profile / Home entries.
+export const IconPlay = ({ size = 18, ...p }) => (
+  <svg {...base(size)} {...p}><circle cx="12" cy="12" r="9" /><path d="M10.2 8.6v6.8l5.6-3.4z" fill="currentColor" stroke="none" /></svg>
+);
+
 // Download / install-app icon — used by InstallApp.jsx's "Install App" profile menu item and
 // its install-steps sheet, for both the Partner and Team apps.
 export const IconDownload = ({ size = 20, ...p }) => (

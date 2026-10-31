@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Avatar, useAppBase } from './ui';
-import { IconUser, IconBank, IconHistory, IconHelp, IconFile, IconShield, IconLogout, IconChevronRight, IconLink, IconQrCode, IconAlertTriangle } from './icons';
+import { IconUser, IconBank, IconHistory, IconHelp, IconFile, IconShield, IconLogout, IconChevronRight, IconLink, IconQrCode, IconAlertTriangle, IconPlay } from './icons';
 
 const menuFor = (base) => [
   { icon: IconUser, label: 'My Profile', href: `${base}/my-profile` },
@@ -11,6 +11,7 @@ const menuFor = (base) => [
   { icon: IconLink, label: 'Referral Link', href: `${base}/refer` },
   { icon: IconBank, label: 'Bank Details', href: `${base}/bank-details` },
   { icon: IconHistory, label: 'Payout History', href: `${base}/payouts` },
+  ...(base === '/installer' ? [{ icon: IconPlay, label: 'Training Videos', href: `${base}/training` }] : []),
   { icon: IconShield, label: 'How It Works', href: `${base}/how-it-works` },
   { icon: IconHelp, label: 'Help & Support', href: `${base}/help` },
   { icon: IconFile, label: 'Terms & Conditions', href: `${base}/terms` },

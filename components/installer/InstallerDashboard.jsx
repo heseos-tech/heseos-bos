@@ -2,7 +2,7 @@
 // Installer app -> Home: today's picture at a glance, and the same refer-and-earn shortcuts partners get.
 import Link from 'next/link';
 import { Avatar } from '@/components/partner/ui';
-import { IconBell, IconLeads, IconPlus, IconQrCode, IconLink, IconMapPin, IconCalendar } from '@/components/partner/icons';
+import { IconBell, IconLeads, IconPlus, IconQrCode, IconLink, IconMapPin, IconCalendar, IconPlay } from '@/components/partner/icons';
 import { IconOrders, IconChevronRight } from '@/components/admin/icons';
 import { useJobs, money, fmtDate, dueTag } from './jobUtils';
 
@@ -89,6 +89,9 @@ export default function InstallerDashboard({ partner }) {
       <ShortcutCard href="/installer/refer" Icon={IconLink} title="Your referral link" sub="Share it — earn when a lead you send converts" />
       <ShortcutCard href="/installer/qr" Icon={IconQrCode} title="Your QR code" sub="Customers scan it to enquire through you" />
       <ShortcutCard href="/installer/home?tab=leads" Icon={IconLeads} title="My referred leads" sub="Track the leads you've sent in" />
+
+      <div className="hp-section-head" style={{ marginTop: 0 }}><div className="hp-section-title">Training</div></div>
+      <ShortcutCard href="/installer/training" Icon={IconPlay} title="Training videos" sub="Install & set up Touch Panel, Smart Plug, IR Blaster, Door Lock" />
 
       <div className="hp-cta-block" style={{ paddingBottom: 24 }}>
         <Link href="/installer/leads/new" className="hp-btn hp-btn-primary hp-btn-block"><IconPlus size={18} /> Punch New Lead</Link>
