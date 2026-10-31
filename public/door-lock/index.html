@@ -15,7 +15,7 @@
 .pricebar{display:flex;align-items:baseline;flex-wrap:wrap;gap:6px 14px;margin:0 0 26px}.pricebar .now{font-size:40px;font-weight:700;letter-spacing:-1.2px;color:#fff;line-height:1}.pricebar s{color:#7f8997;font-size:18px}.pricebar .off{background:rgba(61,117,255,.16);color:#8fb0ff;border:1px solid rgba(61,117,255,.35);border-radius:3px;font-size:11px;font-weight:800;letter-spacing:1.2px;padding:5px 9px;text-transform:uppercase}
 .order-price{display:flex;align-items:baseline;flex-wrap:wrap;gap:6px 12px;margin:22px 0 0}.order-price .now{font-size:34px;font-weight:700;letter-spacing:-1px;color:#fff}.order-price s{color:#7f8997;font-size:16px}.order-price .off{color:#8fb0ff;font-size:11px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase}
 .summary{margin-top:20px;border:1px solid #303844;background:#0d1117;border-radius:4px;padding:14px 16px;font-size:13px;color:#cfd5de}.summary .row{display:flex;justify-content:space-between;gap:12px;padding:4px 0}.summary .row.total{border-top:1px solid #303844;margin-top:8px;padding-top:12px;font-weight:750;color:#fff;font-size:15px}.summary .pay{color:#8f9bab;font-size:11px;margin-top:8px}
-.paychoice{margin-top:20px;display:none}.paychoice .pc-title{font-size:11px;color:#d5dae2;font-weight:650;margin-bottom:8px}.pc-opt{display:flex;align-items:flex-start;gap:11px;border:1px solid #303844;background:#0d1117;border-radius:4px;padding:12px 14px;margin-bottom:8px;cursor:pointer;transition:border-color .15s}.pc-opt:hover{border-color:#4a5568}.pc-opt.on{border-color:#7195ff;background:#0f1522}.pc-opt input{margin-top:3px;accent-color:#7195ff}.pc-opt b{display:block;font-size:13px;color:#f5f6f7;font-weight:650}.pc-opt small{display:block;font-size:11px;color:#8f9bab;margin-top:2px}.paybox{display:none;background:#11161d;border:1px solid var(--line);padding:30px 28px;border-radius:7px}.paybox h3{font-size:24px;margin:0 0 8px}.paybox p{color:#b3bcc8;font-size:14px;line-height:1.7;margin:8px 0}.paybox .oid{display:inline-block;background:#0d1117;border:1px solid #303844;border-radius:4px;padding:8px 12px;font-weight:750;letter-spacing:1px;margin:8px 0}.paybox .pb-actions{display:flex;flex-direction:column;gap:10px;margin-top:18px}.paybox .pb-actions .btn{width:100%;margin:0}.paybox .pb-msg{color:#ffb3b3;font-size:13px;min-height:18px}
+.paychoice{margin-top:20px;display:none}.paychoice .pc-title{font-size:11px;color:#d5dae2;font-weight:650;margin-bottom:8px}.pc-opt{display:flex;align-items:flex-start;gap:11px;border:1px solid #303844;background:#0d1117;border-radius:4px;padding:12px 14px;margin-bottom:8px;cursor:pointer;transition:border-color .15s}.pc-opt:hover{border-color:#4a5568}.pc-opt.on{border-color:#7195ff;background:#0f1522}.pc-opt input{margin-top:3px;accent-color:#7195ff}.pc-opt b{display:block;font-size:13px;color:#f5f6f7;font-weight:650}.pc-opt small{display:block;font-size:11px;color:#8f9bab;margin-top:2px}.nsmsg{display:none;margin-top:18px;padding:14px 16px;border:1px solid #6b3a3a;background:#1c1214;color:#ffd6d6;font-size:13px;line-height:1.65;border-radius:4px}.nsmsg b{color:#fff}.formbox.ns #payChoice,.formbox.ns #summary,.formbox.ns .ns-hide{display:none!important}.nsbox{display:none;background:#11161d;border:1px solid var(--line);padding:30px 28px;border-radius:7px}.nsbox h3{font-size:24px;margin:0 0 8px}.nsbox p{color:#b3bcc8;font-size:14px;line-height:1.7;margin:8px 0}.paybox{display:none;background:#11161d;border:1px solid var(--line);padding:30px 28px;border-radius:7px}.paybox h3{font-size:24px;margin:0 0 8px}.paybox p{color:#b3bcc8;font-size:14px;line-height:1.7;margin:8px 0}.paybox .oid{display:inline-block;background:#0d1117;border:1px solid #303844;border-radius:4px;padding:8px 12px;font-weight:750;letter-spacing:1px;margin:8px 0}.paybox .pb-actions{display:flex;flex-direction:column;gap:10px;margin-top:18px}.paybox .pb-actions .btn{width:100%;margin:0}.paybox .pb-msg{color:#ffb3b3;font-size:13px;min-height:18px}
 .hp-field{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
 .err{display:none;margin-top:14px;padding:12px 14px;background:#2a1618;border:1px solid #6b2a2f;color:#ffd7da;font-size:13px;border-radius:4px}
 .btn[disabled]{opacity:.6;cursor:wait;transform:none}
@@ -132,9 +132,9 @@
         <div class="field"><label for="phone">Mobile number (WhatsApp) *</label><input id="phone" name="phone" type="tel" inputmode="numeric" placeholder="98765 43210" required autocomplete="tel" maxlength="16"></div>
         <div class="field"><label for="pincode">Pincode *</label><input id="pincode" name="pincode" inputmode="numeric" placeholder="6-digit pincode" required autocomplete="postal-code" maxlength="6"><small id="pinHint" style="display:block;margin-top:5px;font-size:12px;color:#8fa0b5;min-height:15px"></small></div>
         <div class="field"><label for="city">City</label><input id="city" name="city" placeholder="Filled from your pincode" readonly tabindex="-1" autocomplete="off" style="background:#0e1117;color:#c9d1dc;cursor:default"></div>
-        <div class="field full"><label for="state">State</label><input id="state" name="state" placeholder="Filled from your pincode" readonly tabindex="-1" autocomplete="off" style="background:#0e1117;color:#c9d1dc;cursor:default"></div>
-        <div class="field full"><label for="address">Full delivery address *</label><textarea id="address" name="address" placeholder="House / flat no., building, street, area" required maxlength="300"></textarea></div>
-        <div class="field full"><label for="quantity">Quantity</label><select id="quantity" name="quantity"><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select></div>
+        <div class="field full ns-hide"><label for="state">State</label><input id="state" name="state" placeholder="Filled from your pincode" readonly tabindex="-1" autocomplete="off" style="background:#0e1117;color:#c9d1dc;cursor:default"></div>
+        <div class="field full ns-hide"><label for="address">Full delivery address *</label><textarea id="address" name="address" placeholder="House / flat no., building, street, area" required maxlength="300"></textarea></div>
+        <div class="field full ns-hide"><label for="quantity">Quantity</label><select id="quantity" name="quantity"><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select></div>
         <div class="hp-field" aria-hidden="true"><label>Website <input name="website" tabindex="-1" autocomplete="off"></label></div>
       </div>
       <div class="paychoice" id="payChoice">
@@ -147,11 +147,16 @@
         <div class="row total"><span id="sumTotalLabel">Total payable on delivery</span><span id="sumTotal">₹6,499</span></div>
         <div class="pay" id="payNote">Nothing to pay now. Pay by Cash or UPI when your lock is delivered.</div>
       </div>
+      <div class="nsmsg" id="nsMsg" role="alert"></div>
       <button class="btn" type="submit" id="placeBtn">Place order <span>↗</span></button>
       <div class="err" id="err" role="alert"></div>
       <div class="tr-mini" aria-label="Trust"><span><i>✓</i> <b>Featured on JioHotstar</b></span><span><i>✓</i> <b>Make in India</b></span><span><i>✓</i> <b>DPIIT-recognised startup</b></span></div>
       <div class="form-disclaimer">By placing this order you agree to be contacted on the number above, including on WhatsApp, to confirm delivery. Product specifications are subject to confirmation by HESEOS.</div>
     </form>
+    <div class="nsbox" id="nsBox" role="status" aria-live="polite">
+      <h3>Thank you, <span id="nsName"></span></h3>
+      <p id="nsText"></p>
+    </div>
     <div class="paybox" id="payBox" role="status" aria-live="polite">
       <h3>Complete your payment</h3>
       <div class="oid" id="pbId"></div>
@@ -183,6 +188,22 @@
  function inr(n){return '\u20b9'+Number(n).toLocaleString('en-IN');}
  function $(id){return document.getElementById(id);}
  var form=$('orderForm'),btn=$('placeBtn'),err=$('err');
+ // Pune-only: when the pincode is outside our service area, ordering is switched off (the server refuses too) and the
+ // visitor can leave a name + number to be told when we reach them.
+ var blocked=false,blockedCity='',blockedPin='',nsSent={},NS_MSG='Sorry, we\u2019re not serviceable in your area yet. We\u2019ll get back to you once we start serving your area.';
+ function sid(){try{return sessionStorage.getItem('hs_sid_door_lock')||'';}catch(e){return '';}}
+ function nsPost(extra){
+   var b={pincode:blockedPin,sid:sid(),website:''};for(var k in extra)b[k]=extra[k];
+   return fetch('/api/shop/door-lock/notify-me',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)}).then(function(r){return r.json().catch(function(){return {};}).then(function(j){return {ok:r.ok,j:j};});});
+ }
+ function setBlocked(city,pin,msg){
+   var was=blocked; blocked=city!==null; blockedCity=city||''; blockedPin=blocked?pin:'';
+   form.classList.toggle('ns',blocked);
+   var m=$('nsMsg'); m.style.display=blocked?'block':'none';
+   if(blocked) m.innerHTML='<b>'+(msg||NS_MSG).replace(/</g,'&lt;')+'</b>'+(blockedCity?'<br>We don\u2019t deliver to '+blockedCity.replace(/</g,'&lt;')+' yet. Check your name and mobile number above and tap the button \u2014 we will message you the moment we do.':'');
+   if(blocked&&!nsSent[pin]){nsSent[pin]=1;window.hsTrack&&window.hsTrack('mark','Not serviceable '+pin); nsPost({}).catch(function(){});}
+   if(blocked!==was) paintPay();
+ }
  function paintPrice(){
    var off=Math.round((1-price/mrp)*100);
    ['hero','order'].forEach(function(k){
@@ -208,7 +229,7 @@
    $('subLine').textContent=productName+(onlineOk?' \u00b7 Pay online or Cash / UPI on delivery':' \u00b7 Cash / UPI on delivery');
    $('sumTotalLabel').textContent=online?'Total payable now':'Total payable on delivery';
    $('payNote').textContent=online?'Secure payment by Razorpay \u2014 UPI, cards and netbanking. Your receipt comes on WhatsApp.':'Nothing to pay now. Pay by Cash or UPI when your lock is delivered.';
-   if(!btn.disabled) setBtn(online?'Pay '+total+' securely':'Place order');
+   if(!btn.disabled) setBtn(blocked?'Notify me when you serve my area':online?'Pay '+total+' securely':'Place order');
  }
  // Price always comes from the server (lib/heseosDoorLock.js) — the numbers above are only a first paint.
  fetch('/api/shop/door-lock',{cache:'no-store'}).then(function(r){return r.ok?r.json():null;}).then(function(d){
@@ -230,13 +251,14 @@
    function lookup(){
      var v=pin.value.replace(/\D/g,'');
      if(v!==pin.value) pin.value=v;
-     if(v.length<6){hint.textContent='';last='';city.value='';sel.value='';found=false;notFound=false;return;}
+     if(v.length<6){hint.textContent='';last='';city.value='';sel.value='';found=false;notFound=false;setBlocked(null);return;}
      if(v===last) return; last=v;
-     hint.textContent='Finding your city and state\u2026'; found=false; notFound=false; city.value=''; sel.value='';
+     hint.textContent='Finding your city and state\u2026'; found=false; notFound=false; city.value=''; sel.value=''; setBlocked(null);
      fetch('/api/shop/pincode?pin='+v).then(function(r){return r.json();}).then(function(j){
        if(pin.value!==v) return;
        city.value=j.city||''; sel.value=j.state||''; found=!!j.city; notFound=!j.city;
-       hint.textContent=j.city?'\u2713 '+[j.city,j.state].filter(Boolean).join(', '):'We could not find this pincode. Please check it.';
+       hint.textContent=j.city?(j.serviceable===false?'\u2715 ':'\u2713 ')+[j.city,j.state].filter(Boolean).join(', '):'We could not find this pincode. Please check it.';
+       if(j.serviceable===false) setBlocked(j.city||'',v,j.message);
      }).catch(function(){notFound=false;hint.textContent='Could not check the pincode right now \u2014 we will confirm it when you place the order.';});
    }
    pin.addEventListener('input',lookup);
@@ -318,12 +340,28 @@
  }
  form.addEventListener('submit',function(e){
    e.preventDefault(); err.style.display='none';
+   if(blocked){
+     var nn=($('name').value||'').trim(),pp=($('phone').value||'').trim();
+     var dg=pp.replace(/\D/g,'').replace(/^91(?=\d{10}$)/,'').replace(/^0(?=\d{10}$)/,'');
+     if(nn.length<2) return fail('Please enter your name so we know who to message.');
+     if(!/^[6-9]\d{9}$/.test(dg)) return fail('Please enter a valid 10-digit mobile number.');
+     btn.disabled=true; setBtn('Saving\u2026');
+     nsPost({name:nn,phone:dg,wantsCallback:true}).then(function(r){
+       if(!r.ok||!r.j.ok) return fail((r.j&&r.j.error)||'Something went wrong. Please try again.');
+       window.hsTrack&&window.hsTrack('mark','Notify me left');
+       form.style.display='none';
+       $('nsName').textContent=nn.split(' ')[0];
+       $('nsText').textContent='We\u2019re not serviceable in '+(blockedCity||'your area')+' (pincode '+blockedPin+') yet. We\u2019ve noted your number and will get back to you on WhatsApp as soon as we start serving your area.';
+       $('nsBox').style.display='block'; $('nsBox').scrollIntoView({behavior:'smooth',block:'center'});
+     }).catch(function(){fail('Network problem \u2014 please check your connection and try again.');});
+     return;
+   }
    var d=new FormData(form);
    var payMethod=method();
    var body={
      name:(d.get('name')||'').trim(), phone:(d.get('phone')||'').trim(), address:(d.get('address')||'').trim(),
      city:(d.get('city')||'').trim(), state:(d.get('state')||'').trim(), pincode:(d.get('pincode')||'').trim(), quantity:Number(d.get('quantity'))||1,
-     website:d.get('website')||'', clientRef:clientRef, paymentMethod:payMethod
+     website:d.get('website')||'', clientRef:clientRef, paymentMethod:payMethod, sid:sid()
    };
    var digits=body.phone.replace(/\D/g,'').replace(/^91(?=\d{10}$)/,'').replace(/^0(?=\d{10}$)/,'');
    if(body.name.length<2) return fail('Please enter your full name.');
@@ -335,6 +373,7 @@
    fetch('/api/shop/door-lock',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
      .then(function(r){return r.json().catch(function(){return {};}).then(function(j){return {ok:r.ok,j:j};});})
      .then(function(res){
+       if(res.j&&res.j.nonServiceable){ btn.disabled=false; setBlocked(res.j.city||'',body.pincode,res.j.error); return; }
        if(!res.ok||!res.j.ok) return fail(res.j.error||'Something went wrong. Please try again.');
        window.hsTrack&&window.hsTrack('submitted',{name:body.name,phone:body.phone,refId:res.j.orderId});
        form.style.display='none';

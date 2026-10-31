@@ -18,7 +18,9 @@ import { dbList, dbDelete, dbPatch } from '@/lib/db';
 import { razorpayConfigured, razorpayConfig, createRazorpayOrder } from '@/lib/razorpay';
 import { DOOR_LOCK, indianMobile } from '@/lib/heseosDoorLock';
 import { createHeseosLandingOrder } from '@/lib/heseosOrders';
-import { lookupPincode } from '@/lib/pincodeLookup';
+import { checkServiceArea, recordUnserviceable, NOT_SERVICEABLE_MESSAGE } from '@/lib/serviceArea';
+import { getClientIp } from '@/lib/rateLimit';
+import { geoFromHeaders } from '@/lib/userAgent';
 import { notifyHeseosOrderPlaced } from '@/lib/heseosNotify';
 
 export const dynamic = 'force-dynamic';
@@ -67,7 +69,13 @@ export async function POST(request) {
   if (!/^\d{6}$/.test(pincode)) return Response.json({ error: 'Please enter a valid 6-digit pincode.' }, { status: 400 });
   // City and state are never taken from the form — they come from the pincode, so the courier hand-off
   // always has a real city and state (the page shows them read-only).
-  const { city, state } = await lookupPincode(pincode);
+  const area = await checkServiceArea(pincode);
+  const { city, state } = area;
+  // Pune only (lib/serviceArea.js): anywhere else is not an order — keep the name / number / pincode so we can get back to them.
+  if (area.known && !area.serviceable) {
+    await recordUnserviceable({ pincode, city, state, name, phone: mobile, sid: clean(body?.sid, 40), ip: getClientIp(request), geo: geoFromHeaders(request.headers), source: 'order_attempt' });
+    return Response.json({ error: NOT_SERVICEABLE_MESSAGE, nonServiceable: true, city }, { status: 422 });
+  }
   if (!city || !state) return Response.json({ error: 'We couldn\u2019t verify this pincode right now. Please check it and try again.' }, { status: 400 });
   if (!Number.isFinite(quantity) || quantity < 1 || quantity > DOOR_LOCK.maxQty) {
     return Response.json({ error: `Quantity must be between 1 and ${DOOR_LOCK.maxQty}.` }, { status: 400 });
